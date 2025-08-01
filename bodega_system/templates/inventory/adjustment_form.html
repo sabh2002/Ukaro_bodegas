@@ -1,0 +1,174 @@
+<!-- templates/inventory/adjustment_form.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}Ajuste de Inventario - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Ajuste de Inventario</h1>
+        <a href="{% url 'inventory:product_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+            </svg>
+            Volver
+        </a>
+    </div>
+    
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 text-red-800 p-4 rounded-md mb-6">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Selección de Producto -->
+            <div class="bg-gray-50 p-4 rounded-md space-y-4">
+                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Producto</h2>
+                
+                <div>
+                    <label for="{{ form.product.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Seleccione Producto</label>
+                    {{ form.product }}
+                    {% if form.product.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.product.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Información del producto seleccionado (se muestra con JavaScript) -->
+                <div id="product-info" class="hidden mt-4 p-3 bg-indigo-50 rounded-md">
+                    <div class="flex items-center">
+                        <div id="product-image" class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div id="product-name" class="text-sm font-medium text-indigo-800"></div>
+                            <div id="product-barcode" class="text-xs text-indigo-600"></div>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-indigo-700">Stock Actual:</span>
+                            <span id="product-stock" class="font-medium text-indigo-800"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-indigo-700">Stock Mínimo:</span>
+                            <span id="product-min-stock" class="font-medium text-indigo-800"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ajuste de Inventario -->
+            <div class="bg-gray-50 p-4 rounded-md space-y-4">
+                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Ajuste</h2>
+                
+                <div>
+                    <label for="{{ form.adjustment_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Ajuste</label>
+                    {{ form.adjustment_type }}
+                    {% if form.adjustment_type.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.adjustment_type.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.quantity.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Razón</label>
+                    {{ form.reason }}
+                    {% if form.reason.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.reason.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'inventory:product_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md">
+                Cancelar
+            </a>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
+                Realizar Ajuste
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const productSelect = document.getElementById('{{ form.product.id_for_label }}');
+        const productInfo = document.getElementById('product-info');
+        const productName = document.getElementById('product-name');
+        const productBarcode = document.getElementById('product-barcode');
+        const productStock = document.getElementById('product-stock');
+        const productMinStock = document.getElementById('product-min-stock');
+        const productImage = document.getElementById('product-image');
+        
+        // Función para cargar información del producto
+        function loadProductInfo() {
+            const productId = productSelect.value;
+            
+            if (!productId) {
+                productInfo.classList.add('hidden');
+                return;
+            }
+            
+            fetch(`/api/products/${productId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al cargar información del producto');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    productName.textContent = data.name;
+                    productBarcode.textContent = data.barcode;
+                    
+                    // Establecer color según nivel de stock
+                    let stockClass = 'text-green-600';
+                    if (data.stock <= 0) {
+                        stockClass = 'text-red-600';
+                    } else if (data.stock <= data.min_stock) {
+                        stockClass = 'text-yellow-600';
+                    }
+                    
+                    productStock.textContent = data.stock;
+                    productStock.className = `font-medium ${stockClass}`;
+                    
+                    productMinStock.textContent = data.min_stock;
+                    
+                    // Mostrar imagen si existe
+                    if (data.image) {
+                        productImage.innerHTML = `<img src="${data.image}" alt="${data.name}" class="h-12 w-12 rounded-full object-cover">`;
+                    }
+                    
+                    productInfo.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    productInfo.classList.add('hidden');
+                });
+        }
+        
+        // Cargar información al cambiar producto
+        productSelect.addEventListener('change', loadProductInfo);
+        
+        // Cargar información inicial si hay un producto seleccionado
+        if (productSelect.value) {
+            loadProductInfo();
+        }
+    });
+</script>
+{% endblock %}

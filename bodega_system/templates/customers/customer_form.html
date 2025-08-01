@@ -1,0 +1,128 @@
+<!-- templates/customers/customer_form.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}{{ title }} - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">{{ title }}</h1>
+        <a href="{% url 'customers:customer_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+            </svg>
+            Volver
+        </a>
+    </div>
+    
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 text-red-800 p-4 rounded-md mb-6">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Información básica -->
+            <div class="bg-gray-50 p-4 rounded-md space-y-4">
+                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Información Básica</h2>
+                
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    {{ form.phone }}
+                    {% if form.phone.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.phone.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.address.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                    {{ form.address }}
+                    {% if form.address.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.address.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Información de crédito -->
+            <div class="bg-gray-50 p-4 rounded-md space-y-4">
+                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Información de Crédito</h2>
+                
+                <div>
+                    <label for="{{ form.credit_limit_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Límite de Crédito (Bs)</label>
+                    {{ form.credit_limit_bs }}
+                    {% if form.credit_limit_bs.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.credit_limit_bs.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500">Establezca en 0 si no desea otorgar crédito a este cliente.</p>
+                </div>
+                
+                {% if customer %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Crédito Utilizado</label>
+                    <input 
+                        type="text" 
+                        value="Bs {{ customer.total_credit_used|floatformat:2 }}"
+                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md"
+                        disabled>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Crédito Disponible</label>
+                    <input 
+                        type="text" 
+                        value="Bs {{ customer.available_credit|floatformat:2 }}"
+                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md {% if customer.available_credit > 0 %}text-green-600{% else %}text-red-600{% endif %}"
+                        disabled>
+                </div>
+                {% endif %}
+                
+                <div>
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="flex items-center mt-4">
+                    {{ form.is_active }}
+                    <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm text-gray-900">
+                        Cliente activo
+                    </label>
+                    {% if form.is_active.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.is_active.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'customers:customer_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md">
+                Cancelar
+            </a>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
+                {% if customer %}Actualizar{% else %}Guardar{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

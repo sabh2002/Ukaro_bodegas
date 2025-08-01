@@ -1,0 +1,9 @@
+ django
+djangorestframework
+django-crispy-forms
+crispy-tailwind
+reportlab
+psycopg2-binary
+Pillow
+django-simple-history
+django-htmx

@@ -1,0 +1,169 @@
+<!-- templates/sales/sale_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}Detalle de Venta #{{ sale.id }} - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Detalle de Venta #{{ sale.id }}</h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'sales:sale_receipt' sale.id %}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Ver Recibo
+            </a>
+            <a href="{% url 'sales:sale_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+                Volver
+            </a>
+        </div>
+    </div>
+    
+    <!-- Información de la venta -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-medium text-gray-700 mb-3">Información General</h2>
+            <dl class="grid grid-cols-1 gap-2">
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">ID:</dt>
+                    <dd class="text-sm text-gray-900">{{ sale.id }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Fecha:</dt>
+                    <dd class="text-sm text-gray-900">{{ sale.date|date:"d/m/Y H:i" }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Usuario:</dt>
+                    <dd class="text-sm text-gray-900">{{ sale.user.get_full_name|default:sale.user.username }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Tipo:</dt>
+                    <dd class="text-sm text-gray-900">
+                        {% if sale.is_credit %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Crédito
+                            </span>
+                        {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Contado
+                            </span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+        
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-medium text-gray-700 mb-3">Cliente</h2>
+            {% if sale.customer %}
+                <dl class="grid grid-cols-1 gap-2">
+                    <div class="flex justify-between py-1 border-b border-gray-200">
+                        <dt class="text-sm font-medium text-gray-500">Nombre:</dt>
+                        <dd class="text-sm text-gray-900">{{ sale.customer.name }}</dd>
+                    </div>
+                    {% if sale.customer.phone %}
+                    <div class="flex justify-between py-1 border-b border-gray-200">
+                        <dt class="text-sm font-medium text-gray-500">Teléfono:</dt>
+                        <dd class="text-sm text-gray-900">{{ sale.customer.phone }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if sale.is_credit %}
+                    <div class="flex justify-between py-1 border-b border-gray-200">
+                        <dt class="text-sm font-medium text-gray-500">Crédito:</dt>
+                        <dd class="text-sm text-gray-900">
+                            {% if sale.credit %}
+                                {% if sale.credit.is_paid %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Pagado
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Pendiente
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-gray-400">No registrado</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    {% if sale.credit %}
+                    <div class="flex justify-between py-1 border-b border-gray-200">
+                        <dt class="text-sm font-medium text-gray-500">Fecha de vencimiento:</dt>
+                        <dd class="text-sm text-gray-900">{{ sale.credit.date_due|date:"d/m/Y" }}</dd>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </dl>
+            {% else %}
+                <p class="text-sm text-gray-500">Consumidor Final</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Notas de la venta -->
+    {% if sale.notes %}
+    <div class="bg-yellow-50 p-4 rounded-md mb-6">
+        <h2 class="text-lg font-medium text-yellow-700 mb-2">Notas</h2>
+        <p class="text-sm text-yellow-800">{{ sale.notes }}</p>
+    </div>
+    {% endif %}
+    
+    <!-- Productos vendidos -->
+    <div class="mb-6">
+        <h2 class="text-lg font-medium text-gray-700 mb-3">Productos</h2>
+        <div class="bg-white overflow-hidden border border-gray-200 rounded-md">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Producto
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Precio Unitario
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cantidad
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Subtotal
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in sale.items.all %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ item.product.name }}</div>
+                            <div class="text-xs text-gray-500">{{ item.product.barcode }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                            Bs {{ item.price_bs|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            {{ item.quantity }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                            Bs {{ item.subtotal|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td colspan="3" class="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                            Total:
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
+                            Bs {{ sale.total_bs|floatformat:2 }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,284 @@
+<!-- templates/customers/customer_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}{{ customer.name }} - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Detalle de Cliente</h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'customers:customer_update' customer.id %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar
+            </a>
+            {% if customer.credit_limit_bs > 0 and customer.available_credit > 0 %}
+            <a href="{% url 'customers:credit_create' %}?customer={{ customer.id }}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Nuevo Crédito
+            </a>
+            {% endif %}
+            <a href="{% url 'sales:sale_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Nueva Venta
+            </a>
+            <a href="{% url 'customers:customer_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+                Volver
+            </a>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Información del cliente -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-medium text-gray-800 mb-4">Información del Cliente</h2>
+            
+            <dl class="space-y-2">
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Nombre:</dt>
+                    <dd class="text-sm text-gray-900">{{ customer.name }}</dd>
+                </div>
+                {% if customer.phone %}
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Teléfono:</dt>
+                    <dd class="text-sm text-gray-900">{{ customer.phone }}</dd>
+                </div>
+                {% endif %}
+                {% if customer.email %}
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Email:</dt>
+                    <dd class="text-sm text-gray-900">{{ customer.email }}</dd>
+                </div>
+                {% endif %}
+                {% if customer.address %}
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Dirección:</dt>
+                    <dd class="text-sm text-gray-900">{{ customer.address }}</dd>
+                </div>
+                {% endif %}
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Estado:</dt>
+                    <dd class="text-sm text-gray-900">
+                        {% if customer.is_active %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Activo
+                            </span>
+                        {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Inactivo
+                            </span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Fecha de Registro:</dt>
+                    <dd class="text-sm text-gray-900">{{ customer.created_at|date:"d/m/Y" }}</dd>
+                </div>
+            </dl>
+            
+            {% if customer.notes %}
+            <div class="mt-4">
+                <h3 class="text-sm font-medium text-gray-700">Notas:</h3>
+                <p class="mt-1 text-sm text-gray-600">{{ customer.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Información de crédito -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-medium text-gray-800 mb-4">Información de Crédito</h2>
+            
+            <dl class="space-y-2">
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Límite de Crédito:</dt>
+                    <dd class="text-sm text-gray-900">Bs {{ customer.credit_limit_bs|floatformat:2 }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Crédito Utilizado:</dt>
+                    <dd class="text-sm text-gray-900">Bs {{ customer.total_credit_used|floatformat:2 }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Crédito Disponible:</dt>
+                    <dd class="text-sm {% if customer.available_credit > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        Bs {{ customer.available_credit|floatformat:2 }}
+                    </dd>
+                </div>
+            </dl>
+            
+            <!-- Créditos activos -->
+            <div class="mt-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Créditos Pendientes</h3>
+                
+                {% with pending_credits=credits|dictsortreversed:"date_created"|slice:":5" %}
+                {% if pending_credits %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Fecha
+                                </th>
+                                <th scope="col" class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Monto
+                                </th>
+                                <th scope="col" class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Estado
+                                </th>
+                                <th scope="col" class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for credit in pending_credits %}
+                            {% if not credit.is_paid %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                                    {{ credit.date_created|date:"d/m/Y" }}
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-right">
+                                    Bs {{ credit.amount_bs|floatformat:2 }}
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap text-center">
+                                    {% if credit.is_paid %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            Pagado
+                                        </span>
+                                    {% else %}
+                                        {% now "Y-m-d" as today %}
+                                        {% if credit.date_due|date:"Y-m-d" < today %}
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                Vencido
+                                            </span>
+                                        {% else %}
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                Pendiente
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap text-xs text-center">
+                                    <a href="{% url 'customers:credit_detail' credit.id %}" class="text-indigo-600 hover:text-indigo-900 mr-1" title="Ver detalles">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </a>
+                                    {% if not credit.is_paid %}
+                                    <a href="{% url 'customers:credit_payment' credit.id %}" class="text-green-600 hover:text-green-900" title="Registrar pago">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500 py-2">No hay créditos pendientes.</p>
+                {% endif %}
+                {% endwith %}
+                
+                <div class="mt-2">
+                    <a href="{% url 'customers:credit_list' %}?customer={{ customer.id }}" class="text-sm text-indigo-600 hover:text-indigo-900">
+                        Ver todos los créditos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historial de ventas -->
+    <div class="bg-gray-50 p-4 rounded-md">
+        <h2 class="text-lg font-medium text-gray-800 mb-4">Historial de Ventas</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Venta #
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tipo
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Usuario
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for sale in sales %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ sale.date|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #{{ sale.id }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            Bs {{ sale.total_bs|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if sale.is_credit %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    Crédito
+                                </span>
+                            {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Contado
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ sale.user.get_full_name|default:sale.user.username }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <a href="{% url 'sales:sale_detail' sale.id %}" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </a>
+                            <a href="{% url 'sales:sale_receipt' sale.id %}" target="_blank" class="text-green-600 hover:text-green-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No hay ventas registradas para este cliente.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

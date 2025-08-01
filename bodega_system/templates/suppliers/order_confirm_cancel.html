@@ -1,0 +1,57 @@
+<!-- templates/suppliers/order_confirm_cancel.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}Cancelar Orden #{{ order.id }} - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">
+    <div class="text-center mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h1 class="text-2xl font-bold text-gray-800 mt-4">Confirmar Cancelación</h1>
+    </div>
+    
+    <div class="bg-red-50 p-4 rounded-md mb-6">
+        <p class="text-sm text-red-800">
+            ¿Está seguro que desea cancelar la orden de compra #{{ order.id }} de {{ order.supplier.name }}?
+        </p>
+        <p class="text-sm text-red-800 mt-2">
+            Esta acción no se puede deshacer.
+        </p>
+    </div>
+    
+    <div class="bg-gray-50 p-4 rounded-md mb-6">
+        <h2 class="text-lg font-medium text-gray-800 mb-2">Resumen de la Orden</h2>
+        
+        <dl class="space-y-2">
+            <div class="flex justify-between py-1 border-b border-gray-200">
+                <dt class="text-sm font-medium text-gray-500">Proveedor:</dt>
+                <dd class="text-sm text-gray-900">{{ order.supplier.name }}</dd>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-200">
+                <dt class="text-sm font-medium text-gray-500">Fecha:</dt>
+                <dd class="text-sm text-gray-900">{{ order.order_date|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-200">
+                <dt class="text-sm font-medium text-gray-500">Total:</dt>
+                <dd class="text-sm text-gray-900">Bs {{ order.total_bs|floatformat:2 }}</dd>
+            </div>
+            <div class="flex justify-between py-1 border-b border-gray-200">
+                <dt class="text-sm font-medium text-gray-500">Ítems:</dt>
+                <dd class="text-sm text-gray-900">{{ order.items.count }}</dd>
+            </div>
+        </dl>
+    </div>
+    
+    <form method="post" class="flex justify-center space-x-4">
+        {% csrf_token %}
+        <a href="{% url 'suppliers:order_detail' order.id %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-6 rounded-md">
+            Volver
+        </a>
+        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md">
+            Confirmar Cancelación
+        </button>
+    </form>
+</div>
+{% endblock %}
