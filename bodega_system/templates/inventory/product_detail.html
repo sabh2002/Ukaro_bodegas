@@ -48,7 +48,7 @@
                 <p class="text-sm text-gray-500 mt-1">{{ product.barcode }}</p>
                 
                 <div class="mt-4">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-indigo-100 text-indigo-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
                         {{ product.category.name }}
                     </span>
                     
@@ -117,13 +117,22 @@
                         
                         {% if latest_exchange_rate %}
                         <div class="mt-4 pt-2 border-t border-gray-200">
-                            <div class="flex justify-between">
-                                <dt class="text-sm font-medium text-gray-500">Precio de Compra (USD):</dt>
-                                <dd class="text-sm text-gray-900">${{ product.purchase_price_bs|div:latest_exchange_rate.bs_to_usd|floatformat:2 }}</dd>
-                            </div>
-                            <div class="flex justify-between">
-                                <dt class="text-sm font-medium text-gray-500">Precio de Venta (USD):</dt>
-                                <dd class="text-sm font-bold text-gray-900">${{ product.selling_price_bs|div:latest_exchange_rate.bs_to_usd|floatformat:2 }}</dd>
+                            <div class="bg-blue-50 p-3 rounded-md">
+                                <div class="text-sm font-medium text-blue-800 mb-2">💱 Equivalente en USD</div>
+                                <div class="space-y-1 text-xs text-blue-700">
+                                    <div class="flex justify-between">
+                                        <span>Tasa de cambio:</span>
+                                        <span class="font-medium">{{ latest_exchange_rate.bs_to_usd }} Bs/USD</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Precio Compra:</span>
+                                        <span class="font-medium">≈ ${% widthratio product.purchase_price_bs latest_exchange_rate.bs_to_usd 1 %}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Precio Venta:</span>
+                                        <span class="font-medium">≈ ${% widthratio product.selling_price_bs latest_exchange_rate.bs_to_usd 1 %}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         {% endif %}
@@ -219,7 +228,7 @@
                             {{ item.sale.date|date:"d/m/Y H:i" }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            <a href="{% url 'sales:sale_detail' item.sale.id %}" class="text-indigo-600 hover:text-indigo-900">
+                            <a href="{% url 'sales:sale_detail' item.sale.id %}" class="text-blue-600 hover:text-blue-900">
                                 #{{ item.sale.id }}
                             </a>
                         </td>
