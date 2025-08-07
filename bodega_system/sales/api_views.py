@@ -9,17 +9,18 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from .models import Sale, SaleItem
-from inventory.models import Product, InventoryAdjustment
+from inventory.models import Product, InventoryAdjustment, ProductCombo
 from customers.models import Customer, CustomerCredit
+
+# sales/api_views.py - API mejorada para ventas
 
 @require_POST
 @login_required
 def create_sale_api(request):
-    """API para crear una venta"""
+    """API mejorada para crear ventas con peso y combos"""
     try:
         data = json.loads(request.body)
         
-        # Validar datos
         if not data.get('items'):
             return JsonResponse({'error': 'No hay productos en la venta'}, status=400)
         
@@ -27,18 +28,7 @@ def create_sale_api(request):
         customer = None
         if data.get('customer_id'):
             customer = get_object_or_404(Customer, pk=data['customer_id'])
-            
-            # Validar crédito si es venta a crédito
-            if data.get('is_credit'):
-                total_bs = Decimal(str(data.get('total_bs', 0)))
-                
-                if customer.available_credit < total_bs:
-                    return JsonResponse({
-                        'error': f'El cliente no tiene suficiente crédito disponible. '
-                                f'Disponible: Bs {customer.available_credit}, Requerido: Bs {total_bs}'
-                    }, status=400)
         
-        # Crear venta en una transacción
         with transaction.atomic():
             # Crear venta
             sale = Sale.objects.create(
@@ -49,56 +39,20 @@ def create_sale_api(request):
                 notes=data.get('notes', '')
             )
             
-            # Crear ítems de venta y actualizar inventario
+            # Procesar ítems de venta
             for item_data in data['items']:
-                product = get_object_or_404(Product, pk=item_data['product_id'])
-                quantity = int(item_data['quantity'])
-                
-                # Validar stock
-                if product.stock < quantity:
-                    # Hacer rollback de la transacción
-                    transaction.set_rollback(True)
-                    return JsonResponse({
-                        'error': f'Stock insuficiente para {product.name}. '
-                                f'Disponible: {product.stock}, Requerido: {quantity}'
-                    }, status=400)
-                
-                # Crear ítem de venta
-                SaleItem.objects.create(
-                    sale=sale,
-                    product=product,
-                    quantity=quantity,
-                    price_bs=item_data['price_bs']
-                )
-                
-                # Actualizar inventario
-                previous_stock = product.stock
-                product.stock -= quantity
-                product.save()
-                
-                # Registrar ajuste de inventario
-                InventoryAdjustment.objects.create(
-                    product=product,
-                    adjustment_type='remove',
-                    quantity=quantity,
-                    previous_stock=previous_stock,
-                    new_stock=product.stock,
-                    reason=f'Venta #{sale.id}',
-                    adjusted_by=request.user
-                )
-            
-            # Crear crédito si es venta a crédito
-            if sale.is_credit and customer:
-                # Fecha de vencimiento (30 días por defecto)
-                from datetime import date, timedelta
-                due_date = date.today() + timedelta(days=30)
-                
-                CustomerCredit.objects.create(
-                    customer=customer,
-                    sale=sale,
-                    amount_bs=sale.total_bs,
-                    date_due=due_date
-                )
+                if item_data.get('is_combo', False):
+                    # Procesar venta de combo
+                    result = process_combo_sale(sale, item_data, request.user)
+                    if not result['success']:
+                        transaction.set_rollback(True)
+                        return JsonResponse({'error': result['error']}, status=400)
+                else:
+                    # Procesar venta normal (incluyendo por peso)
+                    result = process_regular_sale(sale, item_data, request.user)
+                    if not result['success']:
+                        transaction.set_rollback(True)
+                        return JsonResponse({'error': result['error']}, status=400)
             
             return JsonResponse({
                 'id': sale.id,
@@ -107,3 +61,101 @@ def create_sale_api(request):
             
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+def process_regular_sale(sale, item_data, user):
+    """Procesa venta regular (por unidad o peso)"""
+    try:
+        product = get_object_or_404(Product, pk=item_data['product_id'])
+        quantity = Decimal(str(item_data['quantity']))
+        
+        # Validar stock (considerando decimales para peso)
+        if product.stock < quantity:
+            return {
+                'success': False,
+                'error': f'Stock insuficiente para {product.name}. '
+                        f'Disponible: {product.stock} {product.unit_display}, '
+                        f'Requerido: {quantity} {product.unit_display}'
+            }
+        
+        # Calcular precio (considerar precios al mayor)
+        unit_price = product.get_price_for_quantity(quantity)
+        
+        # Crear ítem de venta
+        SaleItem.objects.create(
+            sale=sale,
+            product=product,
+            quantity=quantity,
+            price_bs=unit_price
+        )
+        
+        # Actualizar inventario
+        previous_stock = product.stock
+        product.stock -= quantity
+        product.save()
+        
+        # Registrar ajuste de inventario
+        InventoryAdjustment.objects.create(
+            product=product,
+            adjustment_type='remove',
+            quantity=quantity,
+            previous_stock=previous_stock,
+            new_stock=product.stock,
+            reason=f'Venta #{sale.id}',
+            adjusted_by=user
+        )
+        
+        return {'success': True}
+        
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+def process_combo_sale(sale, item_data, user):
+    """Procesa venta de combo"""
+    try:
+        combo = get_object_or_404(ProductCombo, pk=item_data['combo_id'])
+        combo_quantity = int(item_data.get('combo_quantity', 1))
+        
+        # Validar stock para todos los productos del combo
+        for combo_item in combo.items.all():
+            required_quantity = combo_item.quantity * combo_quantity
+            if combo_item.product.stock < required_quantity:
+                return {
+                    'success': False,
+                    'error': f'Stock insuficiente para {combo_item.product.name} '
+                            f'(necesario para combo {combo.name}). '
+                            f'Disponible: {combo_item.product.stock}, '
+                            f'Requerido: {required_quantity}'
+                }
+        
+        # Crear ítem de venta para el combo
+        SaleItem.objects.create(
+            sale=sale,
+            combo=combo,
+            quantity=combo_quantity,
+            price_bs=combo.combo_price_bs
+        )
+        
+        # Actualizar inventario para cada producto del combo
+        for combo_item in combo.items.all():
+            product = combo_item.product
+            quantity_to_remove = combo_item.quantity * combo_quantity
+            
+            previous_stock = product.stock
+            product.stock -= quantity_to_remove
+            product.save()
+            
+            # Registrar ajuste de inventario
+            InventoryAdjustment.objects.create(
+                product=product,
+                adjustment_type='remove',
+                quantity=quantity_to_remove,
+                previous_stock=previous_stock,
+                new_stock=product.stock,
+                reason=f'Venta combo #{sale.id} - {combo.name}',
+                adjusted_by=user
+            )
+        
+        return {'success': True}
+        
+    except Exception as e:
+        return {'success': False, 'error': str(e)}

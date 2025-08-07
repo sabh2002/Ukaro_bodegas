@@ -1,0 +1,169 @@
+<!-- templates/inventory/combo_list.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}Combos de Productos - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Combos de Productos</h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'inventory:combo_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Nuevo Combo
+            </a>
+            <a href="{% url 'inventory:product_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+                Ver Productos
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="mb-6 bg-gray-50 p-4 rounded-md">
+        <form method="get" action="{% url 'inventory:combo_list' %}">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="q" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+                    <input 
+                        type="text" 
+                        id="q" 
+                        name="q" 
+                        value="{{ search_query|default:'' }}" 
+                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        placeholder="Nombre del combo...">
+                </div>
+                <div>
+                    <label for="active" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <select 
+                        id="active" 
+                        name="active" 
+                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                        <option value="">Todos</option>
+                        <option value="active" {% if active_filter == 'active' %}selected{% endif %}>Activos</option>
+                        <option value="inactive" {% if active_filter == 'inactive' %}selected{% endif %}>Inactivos</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md w-full">
+                        Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Lista de Combos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for combo in page_obj %}
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">{{ combo.name }}</h3>
+                    {% if combo.is_active %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Activo
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Inactivo
+                        </span>
+                    {% endif %}
+                </div>
+                
+                {% if combo.description %}
+                <p class="text-sm text-gray-600 mb-4">{{ combo.description|truncatechars:100 }}</p>
+                {% endif %}
+                
+                <div class="space-y-2 mb-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Precio del combo:</span>
+                        <span class="font-bold text-blue-600">Bs {{ combo.combo_price_bs|floatformat:2 }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Precio individual:</span>
+                        <span class="text-gray-700">Bs {{ combo.total_individual_price|floatformat:2 }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Ahorro:</span>
+                        <span class="font-medium text-green-600">
+                            Bs {{ combo.savings_amount|floatformat:2 }} ({{ combo.savings_percentage|floatformat:1 }}%)
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Productos incluidos:</h4>
+                    <div class="space-y-1">
+                        {% for item in combo.items.all %}
+                        <div class="text-xs text-gray-600 flex justify-between">
+                            <span>{{ item.quantity }} {{ item.product.get_unit_type_display|lower }} de {{ item.product.name }}</span>
+                            <span class="text-gray-400">Stock: {{ item.product.stock }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="flex space-x-2">
+                    <a href="{% url 'inventory:combo_detail' combo.id %}" 
+                       class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md text-center">
+                        Ver Detalles
+                    </a>
+                    <a href="{% url 'inventory:combo_update' combo.id %}" 
+                       class="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-3 rounded-md text-center">
+                        Editar
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-4v4H7V9h10z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No hay combos</h3>
+            <p class="mt-1 text-sm text-gray-500">Comience creando su primer combo de productos.</p>
+            <div class="mt-6">
+                <a href="{% url 'inventory:combo_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Nuevo Combo
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-6">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if active_filter %}&active={{ active_filter }}{% endif %}" 
+                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Anterior
+                </a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if active_filter %}&active={{ active_filter }}{% endif %}" 
+                   class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Siguiente
+                </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ page_obj.paginator.count }}</span> combos
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

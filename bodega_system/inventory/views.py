@@ -1,5 +1,4 @@
-# inventory/views.py
-
+from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -7,8 +6,9 @@ from django.db.models import F, Sum, Count
 from django.core.paginator import Paginator
 from django.db import transaction
 
-from .models import Category, Product, InventoryAdjustment
-from .forms import CategoryForm, ProductForm, InventoryAdjustmentForm
+from .models import Category, Product, InventoryAdjustment, ProductCombo, ComboItem
+from .forms import (CategoryForm, ProductForm, InventoryAdjustmentForm, 
+                   ProductComboForm, ComboItemFormset)
 
 # Vistas de Productos
 @login_required
@@ -297,3 +297,131 @@ def adjustment_create(request):
         'form': form,
         'title': 'Nuevo Ajuste de Inventario'
     })
+
+@login_required
+def combo_list(request):
+    """Vista para listar combos de productos"""
+    # Filtros
+    search_query = request.GET.get('q')
+    active_filter = request.GET.get('active')
+    
+    # Consulta base
+    combos = ProductCombo.objects.all()
+    
+    # Aplicar filtros
+    if search_query:
+        combos = combos.filter(name__icontains=search_query)
+    
+    if active_filter == 'active':
+        combos = combos.filter(is_active=True)
+    elif active_filter == 'inactive':
+        combos = combos.filter(is_active=False)
+    
+    # Ordenar
+    combos = combos.order_by('name')
+    
+    # Paginación
+    paginator = Paginator(combos, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'inventory/combo_list.html', {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'active_filter': active_filter,
+    })
+
+@login_required
+def combo_detail(request, pk):
+    """Vista para ver detalles de un combo"""
+    combo = get_object_or_404(ProductCombo, pk=pk)
+    items = combo.items.all().select_related('product')
+    
+    return render(request, 'inventory/combo_detail.html', {
+        'combo': combo,
+        'items': items,
+    })
+
+@login_required
+def combo_create(request):
+    """Vista para crear un nuevo combo"""
+    if request.method == 'POST':
+        form = ProductComboForm(request.POST)
+        formset = ComboItemFormset(request.POST)
+        
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                combo = form.save()
+                formset.instance = combo
+                formset.save()
+                
+                messages.success(request, f'Combo "{combo.name}" creado exitosamente.')
+                return redirect('inventory:combo_detail', pk=combo.pk)
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario.')
+    else:
+        form = ProductComboForm()
+        formset = ComboItemFormset()
+    
+    return render(request, 'inventory/combo_form.html', {
+        'form': form,
+        'formset': formset,
+        'title': 'Nuevo Combo de Productos'
+    })
+
+@login_required
+def combo_update(request, pk):
+    """Vista para actualizar un combo"""
+    combo = get_object_or_404(ProductCombo, pk=pk)
+    
+    if request.method == 'POST':
+        form = ProductComboForm(request.POST, instance=combo)
+        formset = ComboItemFormset(request.POST, instance=combo)
+        
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                form.save()
+                formset.save()
+                
+                messages.success(request, f'Combo "{combo.name}" actualizado exitosamente.')
+                return redirect('inventory:combo_detail', pk=combo.pk)
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario.')
+    else:
+        form = ProductComboForm(instance=combo)
+        formset = ComboItemFormset(instance=combo)
+    
+    return render(request, 'inventory/combo_form.html', {
+        'form': form,
+        'formset': formset,
+        'combo': combo,
+        'title': 'Editar Combo de Productos'
+    })
+
+@login_required
+def combo_delete(request, pk):
+    """Vista para eliminar un combo"""
+    combo = get_object_or_404(ProductCombo, pk=pk)
+    
+    if request.method == 'POST':
+        combo_name = combo.name
+        combo.delete()
+        messages.success(request, f'Combo "{combo_name}" eliminado exitosamente.')
+        return redirect('inventory:combo_list')
+    
+    return render(request, 'inventory/combo_confirm_delete.html', {
+        'combo': combo
+    })
+
+@login_required
+def combo_toggle_status(request, pk):
+    """Vista para activar/desactivar un combo"""
+    combo = get_object_or_404(ProductCombo, pk=pk)
+    
+    combo.is_active = not combo.is_active
+    combo.save()
+    
+    status = "activado" if combo.is_active else "desactivado"
+    messages.success(request, f'Combo "{combo.name}" {status} exitosamente.')
+    
+    return redirect('inventory:combo_detail', pk=combo.pk)

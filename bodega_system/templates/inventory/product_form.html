@@ -15,7 +15,7 @@
         </a>
     </div>
     
-    <form method="post" enctype="multipart/form-data" class="space-y-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-6" x-data="productForm()">
         {% csrf_token %}
         
         {% if form.non_field_errors %}
@@ -24,33 +24,46 @@
         </div>
         {% endif %}
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Información básica -->
-            <div class="bg-gray-50 p-4 rounded-md space-y-4">
+            <div class="lg:col-span-2 bg-gray-50 p-4 rounded-md space-y-4">
                 <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Información Básica</h2>
                 
-                <div>
-                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                    {{ form.name }}
-                    {% if form.name.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
-                    {% endif %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        <label for="{{ form.barcode.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Código de Barras *</label>
+                        {{ form.barcode }}
+                        {% if form.barcode.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.barcode.errors.0 }}</p>
+                        {% endif %}
+                    </div>
                 </div>
                 
-                <div>
-                    <label for="{{ form.barcode.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
-                    {{ form.barcode }}
-                    {% if form.barcode.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.barcode.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <div>
-                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                    {{ form.category }}
-                    {% if form.category.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
-                    {% endif %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        <label for="{{ form.unit_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Unidad *</label>
+                        {{ form.unit_type }}
+                        {% if form.unit_type.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.unit_type.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-gray-500">Seleccione "Kilogramo" para frutas y verduras</p>
+                    </div>
                 </div>
                 
                 <div>
@@ -82,7 +95,7 @@
                 <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Precios e Inventario</h2>
                 
                 <div>
-                    <label for="{{ form.purchase_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio de Compra (Bs)</label>
+                    <label for="{{ form.purchase_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio de Compra (Bs) *</label>
                     {{ form.purchase_price_bs }}
                     {% if form.purchase_price_bs.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.purchase_price_bs.errors.0 }}</p>
@@ -90,7 +103,7 @@
                 </div>
                 
                 <div>
-                    <label for="{{ form.selling_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio de Venta (Bs)</label>
+                    <label for="{{ form.selling_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio de Venta (Bs) *</label>
                     {{ form.selling_price_bs }}
                     {% if form.selling_price_bs.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.selling_price_bs.errors.0 }}</p>
@@ -98,11 +111,12 @@
                 </div>
                 
                 <div>
-                    <label for="{{ form.min_stock.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo</label>
+                    <label for="{{ form.min_stock.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo *</label>
                     {{ form.min_stock }}
                     {% if form.min_stock.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.min_stock.errors.0 }}</p>
                     {% endif %}
+                    <p class="mt-1 text-xs text-gray-500">Para productos por peso, use decimales (ej: 2.5)</p>
                 </div>
                 
                 {% if show_initial_stock %}
@@ -112,9 +126,11 @@
                         type="number" 
                         id="initial_stock" 
                         name="initial_stock" 
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         value="0"
+                        step="0.001"
                         min="0">
+                    <p class="mt-1 text-xs text-gray-500">Para productos por peso, use decimales</p>
                 </div>
                 {% else %}
                 <div>
@@ -134,9 +150,40 @@
                     <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm text-gray-900">
                         Producto activo
                     </label>
-                    {% if form.is_active.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.is_active.errors.0 }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de Precios al Mayor -->
+        <div class="bg-yellow-50 p-4 rounded-md border border-yellow-200">
+            <div class="flex items-center mb-4">
+                {{ form.is_bulk_pricing }}
+                <label for="{{ form.is_bulk_pricing.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-900">
+                    Habilitar precios al mayor
+                </label>
+            </div>
+            
+            <div x-show="document.getElementById('{{ form.is_bulk_pricing.id_for_label }}').checked" 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 transform scale-95"
+                 x-transition:enter-end="opacity-100 transform scale-100"
+                 class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.bulk_min_quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Cantidad Mínima</label>
+                    {{ form.bulk_min_quantity }}
+                    {% if form.bulk_min_quantity.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.bulk_min_quantity.errors.0 }}</p>
                     {% endif %}
+                    <p class="mt-1 text-xs text-gray-600">Cantidad mínima para aplicar precio al mayor</p>
+                </div>
+                
+                <div>
+                    <label for="{{ form.bulk_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio al Mayor (Bs)</label>
+                    {{ form.bulk_price_bs }}
+                    {% if form.bulk_price_bs.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.bulk_price_bs.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-600">Precio por unidad cuando se compra al mayor</p>
                 </div>
             </div>
         </div>
@@ -145,10 +192,18 @@
             <a href="{% url 'inventory:product_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md">
                 Cancelar
             </a>
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
                 {% if product %}Actualizar{% else %}Guardar{% endif %}
             </button>
         </div>
     </form>
 </div>
+
+<script>
+function productForm() {
+    return {
+        // Funciones JavaScript para manejar la interactividad del formulario
+    }
+}
+</script>
 {% endblock %}
