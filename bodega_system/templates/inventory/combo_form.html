@@ -1,0 +1,510 @@
+<!-- templates/inventory/combo_form.html - FORMULARIO COMPLETO RESPONSIVO -->
+{% extends 'base/base.html' %}
+
+{% block title %}
+    {% if form.instance.pk %}Editar Combo{% else %}Nuevo Combo{% endif %} - Sistema de Bodega
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Estilos para drag and drop */
+    .product-item {
+        transition: all 0.3s ease;
+    }
+    .product-item:hover {
+        transform: translateY(-2px);
+    }
+    .dragging {
+        opacity: 0.5;
+        transform: rotate(5deg);
+    }
+    .drop-zone {
+        transition: all 0.3s ease;
+    }
+    .drop-zone.active {
+        background-color: #dbeafe;
+        border-color: #3b82f6;
+        border-style: dashed;
+    }
+    .quantity-input {
+        width: 80px;
+    }
+    @media (max-width: 640px) {
+        .quantity-input {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- HEADER RESPONSIVO -->
+    <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800">
+                    {% if form.instance.pk %}
+                        Editar Combo: {{ form.instance.name }}
+                    {% else %}
+                        Crear Nuevo Combo
+                    {% endif %}
+                </h1>
+                <p class="text-sm text-gray-600 mt-1 hidden sm:block">Configure los productos y precios del combo</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <a href="{% url 'inventory:combo_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full sm:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                    </svg>
+                    Volver a Combos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" class="space-y-6" x-data="comboForm()" @submit="validateForm($event)">
+        {% csrf_token %}
+        
+        <!-- INFORMACIÓN BÁSICA DEL COMBO -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Información del Combo
+            </h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Columna Izquierda -->
+                <div class="space-y-4">
+                    <!-- Nombre del Combo -->
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Nombre del Combo <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            name="{{ form.name.name }}" 
+                            id="{{ form.name.id_for_label }}"
+                            value="{{ form.name.value|default:'' }}" 
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2"
+                            placeholder="Ej: Combo Desayuno, Pack Familiar..."
+                            required>
+                        {% if form.name.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- SKU del Combo -->
+                    <div>
+                        <label for="combo_sku" class="block text-sm font-medium text-gray-700 mb-1">
+                            SKU del Combo <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex">
+                            <input 
+                                type="text" 
+                                name="combo_sku" 
+                                id="combo_sku"
+                                value="{{ form.instance.combo_sku|default:'' }}" 
+                                class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full text-base sm:text-sm border-gray-300 rounded-l-md min-h-[44px] sm:min-h-[38px] px-3 py-2"
+                                placeholder="CBM-001"
+                                x-model="comboSku"
+                                required>
+                            <button 
+                                type="button" 
+                                @click="generateSku()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-md border border-l-0 border-blue-600 min-h-[44px] sm:min-h-[38px] flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Código único para identificar el combo</p>
+                    </div>
+
+                    <!-- Precio del Combo -->
+                    <div>
+                        <label for="{{ form.combo_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Precio del Combo (Bs) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">Bs</span>
+                            </div>
+                            <input 
+                                type="number" 
+                                name="{{ form.combo_price_bs.name }}" 
+                                id="{{ form.combo_price_bs.id_for_label }}"
+                                value="{{ form.combo_price_bs.value|default:'' }}" 
+                                step="0.01" 
+                                min="0"
+                                x-model="comboPrice"
+                                @input="calculateSavings()"
+                                class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full pl-8 text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2"
+                                placeholder="0.00"
+                                required>
+                        </div>
+                        {% if form.combo_price_bs.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.combo_price_bs.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Columna Derecha -->
+                <div class="space-y-4">
+                    <!-- Descripción -->
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            Descripción
+                        </label>
+                        <textarea 
+                            name="{{ form.description.name }}" 
+                            id="{{ form.description.id_for_label }}"
+                            rows="4"
+                            class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full text-base sm:text-sm border-gray-300 rounded-md px-3 py-2"
+                            placeholder="Descripción detallada del combo...">{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Estado -->
+                    <div>
+                        <label for="{{ form.is_active.id_for_label }}" class="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                name="{{ form.is_active.name }}" 
+                                id="{{ form.is_active.id_for_label }}"
+                                {% if form.is_active.value %}checked{% endif %}
+                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-700">Combo activo</span>
+                        </label>
+                    </div>
+
+                    <!-- Resumen de Ahorros (calculado dinámicamente) -->
+                    <div x-show="totalIndividualPrice > 0" class="bg-green-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-green-800 mb-2">Resumen de Ahorros</h3>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-green-700">Precio individual total:</span>
+                                <span class="font-medium" x-text="'Bs ' + totalIndividualPrice.toFixed(2)"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-green-700">Precio del combo:</span>
+                                <span class="font-medium" x-text="'Bs ' + (comboPrice || 0).toFixed(2)"></span>
+                            </div>
+                            <div class="flex justify-between border-t border-green-200 pt-1">
+                                <span class="font-medium text-green-800">Ahorro:</span>
+                                <span class="font-bold text-green-800" x-text="'Bs ' + savingsAmount.toFixed(2) + ' (' + savingsPercentage.toFixed(1) + '%)'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SELECTOR DE PRODUCTOS -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Búsqueda y Lista de Productos Disponibles -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Productos Disponibles
+                </h2>
+
+                <!-- Búsqueda de productos -->
+                <div class="mb-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input 
+                            type="text" 
+                            x-model="searchQuery"
+                            @input="searchProducts()"
+                            class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-sm min-h-[44px] sm:min-h-[38px]"
+                            placeholder="Buscar productos...">
+                    </div>
+                </div>
+
+                <!-- Lista de productos disponibles -->
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                    <template x-for="product in filteredProducts" :key="product.id">
+                        <div class="product-item bg-gray-50 border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                             @click="addToCombo(product)">
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="text-sm font-medium text-gray-900 truncate" x-text="product.name"></h4>
+                                    <p class="text-xs text-gray-500" x-text="product.barcode"></p>
+                                    <p class="text-xs text-gray-600" x-text="product.category"></p>
+                                </div>
+                                <div class="flex flex-col items-end ml-3">
+                                    <span class="text-sm font-bold text-blue-600" x-text="'Bs ' + product.selling_price_bs.toFixed(2)"></span>
+                                    <span class="text-xs text-gray-500" x-text="'Stock: ' + product.stock + ' ' + product.unit_display"></span>
+                                    <button type="button" class="mt-1 bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700">
+                                        Agregar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <div x-show="filteredProducts.length === 0" class="text-center py-8 text-gray-500">
+                        <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-4v4H7V9h10z" />
+                        </svg>
+                        <p class="text-sm">No se encontraron productos</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Productos Seleccionados en el Combo -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Productos en el Combo
+                    <span x-show="comboItems.length > 0" class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full" x-text="comboItems.length"></span>
+                </h2>
+
+                <!-- Lista de productos en el combo -->
+                <div class="space-y-3 min-h-[200px]">
+                    <template x-for="(item, index) in comboItems" :key="'combo-' + item.product_id + '-' + index">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="text-sm font-medium text-gray-900" x-text="item.product_name"></h4>
+                                    <p class="text-xs text-gray-500" x-text="item.product_barcode"></p>
+                                    <p class="text-xs text-green-600" x-text="'Bs ' + item.unit_price.toFixed(2) + ' c/u'"></p>
+                                </div>
+                                <div class="flex items-center space-x-2 ml-3">
+                                    <!-- Control de cantidad -->
+                                    <div class="flex items-center space-x-1">
+                                        <button type="button" @click="updateQuantity(index, item.quantity - (item.is_weight_based ? 0.1 : 1))" 
+                                                class="bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-gray-300">
+                                            −
+                                        </button>
+                                        <input type="number" 
+                                               x-model="item.quantity"
+                                               @input="updateQuantity(index, parseFloat($event.target.value))"
+                                               :step="item.is_weight_based ? '0.1' : '1'"
+                                               :min="item.is_weight_based ? '0.1' : '1'"
+                                               class="quantity-input text-center border border-gray-300 rounded text-sm py-1">
+                                        <button type="button" @click="updateQuantity(index, item.quantity + (item.is_weight_based ? 0.1 : 1))" 
+                                                class="bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-gray-300">
+                                            +
+                                        </button>
+                                    </div>
+                                    <span class="text-xs text-gray-600" x-text="item.unit_display"></span>
+                                    <button type="button" @click="removeFromCombo(index)" 
+                                            class="text-red-600 hover:text-red-800 p-1">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex justify-between text-xs">
+                                <span class="text-gray-600">Subtotal:</span>
+                                <span class="font-medium text-green-600" x-text="'Bs ' + (item.quantity * item.unit_price).toFixed(2)"></span>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <div x-show="comboItems.length === 0" class="text-center py-12 text-gray-500">
+                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <p class="text-sm mb-2">No hay productos en el combo</p>
+                        <p class="text-xs">Seleccione productos de la lista de la izquierda</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAMPOS OCULTOS PARA ENVÍO -->
+        <div x-show="false">
+            <template x-for="(item, index) in comboItems" :key="'hidden-' + index">
+                <div>
+                    <input type="hidden" :name="'items-' + index + '-product_id'" :value="item.product_id">
+                    <input type="hidden" :name="'items-' + index + '-quantity'" :value="item.quantity">
+                </div>
+            </template>
+            <input type="hidden" name="total_items" :value="comboItems.length">
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <a href="{% url 'inventory:combo_list' %}" 
+                   class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white font-medium py-2.5 px-6 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {% if form.instance.pk %}Actualizar Combo{% else %}Crear Combo{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function comboForm() {
+    return {
+        // Estado del formulario
+        comboSku: '{{ form.instance.combo_sku|default:"" }}',
+        comboPrice: {{ form.combo_price_bs.value|default:0 }},
+        
+        // Productos y búsqueda
+        searchQuery: '',
+        allProducts: [],
+        filteredProducts: [],
+        comboItems: [],
+        
+        // Cálculos
+        totalIndividualPrice: 0,
+        savingsAmount: 0,
+        savingsPercentage: 0,
+        
+        init() {
+            this.loadProducts();
+            this.loadExistingComboItems();
+            this.calculateSavings();
+        },
+        
+        async loadProducts() {
+            try {
+                const response = await fetch('/inventory/api/products/search/?q=');
+                const data = await response.json();
+                this.allProducts = data.products || [];
+                this.filteredProducts = this.allProducts;
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        },
+        
+        loadExistingComboItems() {
+            {% if form.instance.pk %}
+            // Cargar items existentes del combo
+            {% for item in form.instance.items.all %}
+            this.comboItems.push({
+                product_id: {{ item.product.id }},
+                product_name: "{{ item.product.name|escapejs }}",
+                product_barcode: "{{ item.product.barcode|escapejs }}",
+                quantity: {{ item.quantity }},
+                unit_price: {{ item.product.selling_price_bs }},
+                unit_display: "{{ item.product.unit_display|escapejs }}",
+                is_weight_based: {{ item.product.is_weight_based|yesno:"true,false" }}
+            });
+            {% endfor %}
+            this.calculateSavings();
+            {% endif %}
+        },
+        
+        searchProducts() {
+            if (!this.searchQuery.trim()) {
+                this.filteredProducts = this.allProducts;
+                return;
+            }
+            
+            const query = this.searchQuery.toLowerCase();
+            this.filteredProducts = this.allProducts.filter(product => 
+                product.name.toLowerCase().includes(query) ||
+                product.barcode.toLowerCase().includes(query) ||
+                product.category.toLowerCase().includes(query)
+            );
+        },
+        
+        addToCombo(product) {
+            // Verificar si el producto ya está en el combo
+            const existingIndex = this.comboItems.findIndex(item => item.product_id === product.id);
+            
+            if (existingIndex >= 0) {
+                // Si ya existe, incrementar cantidad
+                const increment = this.comboItems[existingIndex].is_weight_based ? 0.1 : 1;
+                this.updateQuantity(existingIndex, this.comboItems[existingIndex].quantity + increment);
+            } else {
+                // Agregar nuevo producto
+                this.comboItems.push({
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_barcode: product.barcode,
+                    quantity: product.is_weight_based ? 0.1 : 1,
+                    unit_price: product.selling_price_bs,
+                    unit_display: product.unit_display,
+                    is_weight_based: product.is_weight_based
+                });
+            }
+            
+            this.calculateSavings();
+        },
+        
+        removeFromCombo(index) {
+            this.comboItems.splice(index, 1);
+            this.calculateSavings();
+        },
+        
+        updateQuantity(index, newQuantity) {
+            const item = this.comboItems[index];
+            const minQuantity = item.is_weight_based ? 0.1 : 1;
+            
+            if (newQuantity >= minQuantity) {
+                this.comboItems[index].quantity = parseFloat(newQuantity.toFixed(1));
+                this.calculateSavings();
+            }
+        },
+        
+        calculateSavings() {
+            this.totalIndividualPrice = this.comboItems.reduce((total, item) => {
+                return total + (item.quantity * item.unit_price);
+            }, 0);
+            
+            this.savingsAmount = this.totalIndividualPrice - (this.comboPrice || 0);
+            this.savingsPercentage = this.totalIndividualPrice > 0 ? 
+                (this.savingsAmount / this.totalIndividualPrice) * 100 : 0;
+        },
+        
+        generateSku() {
+            const timestamp = Date.now().toString().slice(-6);
+            const prefix = 'CBM';
+            this.comboSku = `${prefix}-${timestamp}`;
+        },
+        
+        validateForm(event) {
+            if (this.comboItems.length === 0) {
+                event.preventDefault();
+                alert('Debe agregar al menos un producto al combo.');
+                return false;
+            }
+            
+            if (!this.comboSku.trim()) {
+                event.preventDefault();
+                alert('Debe especificar un SKU para el combo.');
+                return false;
+            }
+            
+            if (!this.comboPrice || this.comboPrice <= 0) {
+                event.preventDefault();
+                alert('Debe especificar un precio válido para el combo.');
+                return false;
+            }
+            
+            return true;
+        }
+    }
+}
+</script>
+{% endblock %}

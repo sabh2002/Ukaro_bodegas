@@ -1,5 +1,14 @@
 # sales/views.py
+import io
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.core.paginator import Paginator
+from django.db.models import Sum, Avg, Q
+from django.utils.dateparse import parse_date
 
+from .models import Sale, SaleItem
+from utils.models import ExchangeRate
 import io
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -20,32 +29,82 @@ from utils.models import ExchangeRate
 
 @login_required
 def sale_list(request):
-    """Vista para listar ventas"""
-    # Obtener ventas ordenadas por fecha (más recientes primero)
-    sales = Sale.objects.all().order_by('-date')
+    """
+    Vista mejorada para listar, filtrar y paginar ventas.
+    """
+    sales_qs = Sale.objects.select_related('customer', 'user').all().order_by('-date')
+
+    # --- Aplicar filtros desde la URL (GET) ---
+    search_query = request.GET.get('q', '')
+    date_from_str = request.GET.get('date_from', '')
+    date_to_str = request.GET.get('date_to', '')
+    credit_filter = request.GET.get('credit_filter', '')
+
+    if search_query:
+        sales_qs = sales_qs.filter(
+            Q(customer__name__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query) |
+            Q(notes__icontains=search_query) |
+            Q(id__icontains=search_query)
+        )
     
-    return render(request, 'sales/sale_list.html', {
-        'sales': sales
-    })
+    if date_from_str:
+        date_from = parse_date(date_from_str)
+        if date_from:
+            sales_qs = sales_qs.filter(date__gte=date_from)
+            
+    if date_to_str:
+        date_to = parse_date(date_to_str)
+        if date_to:
+            # Se suma un día para incluir todo el día de la fecha "hasta"
+            from datetime import timedelta
+            sales_qs = sales_qs.filter(date__lt=date_to + timedelta(days=1))
+
+    if credit_filter == 'cash':
+        sales_qs = sales_qs.filter(is_credit=False)
+    elif credit_filter == 'credit':
+        sales_qs = sales_qs.filter(is_credit=True)
+
+    # --- Calcular totales ANTES de la paginación ---
+    sales_count = sales_qs.count()
+    total_sales = sales_qs.aggregate(total=Sum('total_bs'))['total'] or 0
+    average_sale = total_sales / sales_count if sales_count > 0 else 0
+
+    # --- Aplicar Paginación ---
+    paginator = Paginator(sales_qs, 15)  # 15 ventas por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # El contexto que se envía al template
+    context = {
+        'page_obj': page_obj,  # Objeto de paginación con las ventas de la página actual
+        'sales_count': sales_count,
+        'total_sales': total_sales,
+        'average_sale': average_sale,
+        'search_query': search_query,
+        'date_from': date_from_str,
+        'date_to': date_to_str,
+        'credit_filter': credit_filter,
+    }
+    
+    # Asegúrate de que el template que se renderiza es el correcto
+    return render(request, 'sales/sale_list.html', context)
+
+
+# --- Resto de las vistas (sin cambios) ---
 
 @login_required
 def sale_create(request):
     """Vista para crear una nueva venta"""
-    # Esta vista simplemente muestra el formulario, el procesamiento se hace vía API
-    return render(request, 'sales/sale_form.html', {
-        'title': 'Nueva Venta'
-    })
+    return render(request, 'sales/sale_form.html', {'title': 'Nueva Venta'})
 
 @login_required
 def sale_detail(request, pk):
     """Vista para ver detalles de una venta"""
     sale = get_object_or_404(Sale, pk=pk)
-    items = sale.items.all()
-    
-    return render(request, 'sales/sale_detail.html', {
-        'sale': sale,
-        'items': items
-    })
+    return render(request, 'sales/sale_detail.html', {'sale': sale, 'items': sale.items.all()})
 
 @login_required
 def sale_receipt(request, pk):

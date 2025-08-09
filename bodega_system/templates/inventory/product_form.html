@@ -1,208 +1,846 @@
-<!-- templates/inventory/product_form.html -->
+<!-- templates/inventory/product_form.html - VERSIÓN MEJORADA -->
 {% extends 'base/base.html' %}
 
 {% block title %}{{ title }} - Sistema de Bodega{% endblock %}
 
-{% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">{{ title }}</h1>
-        <a href="{% url 'inventory:product_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-            </svg>
-            Volver
-        </a>
-    </div>
+{% block extra_css %}
+<style>
+    /* Variables CSS para consistencia */
+    :root {
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --input-border-focus: #3b82f6;
+        --input-text: #111827;
+        --input-placeholder: #9ca3af;
+        --label-text: #374151;
+        --error-color: #dc2626;
+        --success-color: #059669;
+    }
+
+    /* INPUTS CON MÁXIMA VISIBILIDAD */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    textarea,
+    select {
+        width: 100% !important;
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        color: var(--input-text) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--input-border) !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+    }
+
+    /* Placeholders más visibles */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--input-placeholder) !important;
+        opacity: 1 !important;
+        font-size: 15px !important;
+    }
+
+    /* Estados de focus */
+    input:focus,
+    textarea:focus,
+    select:focus {
+        outline: none !important;
+        border-color: var(--input-border-focus) !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        background-color: #fefefe !important;
+    }
+
+    /* Selects con mejor visibilidad */
+    select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+        background-position: right 12px center !important;
+        background-repeat: no-repeat !important;
+        background-size: 20px !important;
+        padding-right: 45px !important;
+    }
+
+    /* Labels más visibles */
+    label {
+        display: block !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: var(--label-text) !important;
+        margin-bottom: 8px !important;
+        line-height: 1.4 !important;
+    }
+
+    /* Estados de validación */
+    .invalid-input,
+    input.invalid-input,
+    select.invalid-input,
+    textarea.invalid-input {
+        border-color: var(--error-color) !important;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1), 0 2px 8px rgba(220, 38, 38, 0.15) !important;
+        background-color: #fef2f2 !important;
+    }
+
+    .valid-input,
+    input.valid-input,
+    select.valid-input,
+    textarea.valid-input {
+        border-color: var(--success-color) !important;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1), 0 2px 8px rgba(5, 150, 105, 0.15) !important;
+        background-color: #f0fdf4 !important;
+    }
+
+    /* Checkboxes y radios más visibles */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 18px !important;
+        height: 18px !important;
+        margin-right: 8px !important;
+        accent-color: #3b82f6 !important;
+        transform: scale(1.2) !important;
+    }
+
+    /* File inputs mejorados */
+    input[type="file"] {
+        padding: 12px !important;
+        border: 2px dashed var(--input-border) !important;
+        border-radius: 8px !important;
+        background-color: #f9fafb !important;
+        font-size: 14px !important;
+        color: var(--input-text) !important;
+    }
+
+    input[type="file"]:hover {
+        border-color: var(--input-border-focus) !important;
+        background-color: #f3f4f6 !important;
+    }
+
+    /* Grupos de formulario */
+    .form-group {
+        transition: all 0.3s ease;
+        margin-bottom: 24px !important;
+    }
     
-    <form method="post" enctype="multipart/form-data" class="space-y-6" x-data="productForm()">
-        {% csrf_token %}
+    .form-group:focus-within {
+        transform: translateY(-1px);
+    }
+
+    /* Contenedores con mejor contraste */
+    .price-calculator {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        padding: 24px !important;
+        border-radius: 12px !important;
+    }
+    
+    .bulk-pricing-section {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white !important;
+        padding: 24px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Mejoras específicas para campos anidados */
+    .bulk-pricing-section input,
+    .bulk-pricing-section select {
+        background-color: white !important;
+        color: #111827 !important;
+        border: 2px solid #e5e7eb !important;
+        font-weight: 500 !important;
+    }
+
+    .bulk-pricing-section input:focus,
+    .bulk-pricing-section select:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+    }
+
+    /* Mensajes de error más visibles */
+    .text-red-600 {
+        color: var(--error-color) !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+        margin-top: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    /* Botones mejorados */
+    .btn,
+    button[type="submit"],
+    button[type="button"],
+    .button,
+    a.button {
+        padding: 12px 24px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        border: 2px solid transparent !important;
+    }
+
+    /* Estados hover para inputs */
+    input:hover:not(:focus),
+    select:hover:not(:focus),
+    textarea:hover:not(:focus) {
+        border-color: #9ca3af !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Mejora para dispositivos móviles */
+    @media (max-width: 768px) {
+        input, select, textarea {
+            font-size: 16px !important; /* Evita zoom en iOS */
+            padding: 16px !important;
+        }
         
-        {% if form.non_field_errors %}
-        <div class="bg-red-50 text-red-800 p-4 rounded-md mb-6">
-            {{ form.non_field_errors }}
-        </div>
-        {% endif %}
-        
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Información básica -->
-            <div class="lg:col-span-2 bg-gray-50 p-4 rounded-md space-y-4">
-                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Información Básica</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                        {{ form.name }}
-                        {% if form.name.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                    
-                    <div>
-                        <label for="{{ form.barcode.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Código de Barras *</label>
-                        {{ form.barcode }}
-                        {% if form.barcode.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.barcode.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
-                        {{ form.category }}
-                        {% if form.category.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                    
-                    <div>
-                        <label for="{{ form.unit_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Unidad *</label>
-                        {{ form.unit_type }}
-                        {% if form.unit_type.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.unit_type.errors.0 }}</p>
-                        {% endif %}
-                        <p class="mt-1 text-xs text-gray-500">Seleccione "Kilogramo" para frutas y verduras</p>
-                    </div>
-                </div>
-                
+        label {
+            font-size: 15px !important;
+            margin-bottom: 10px !important;
+        }
+    }
+
+    /* Preview de imagen mejorado */
+    .image-preview {
+        transition: all 0.3s ease;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 8px !important;
+        padding: 4px !important;
+        background: white !important;
+    }
+    
+    .image-preview:hover {
+        transform: scale(1.05);
+        border-color: #6366f1 !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+    }
+
+    /* Indicadores de estado más visibles */
+    .bg-blue-50 {
+        background-color: #eff6ff !important;
+        border: 1px solid #bfdbfe !important;
+        border-radius: 6px !important;
+        padding: 12px !important;
+    }
+
+    .text-blue-600 {
+        color: #2563eb !important;
+        font-weight: 500 !important;
+    }
+
+    /* Títulos de sección más prominentes */
+    .bg-gradient-to-r {
+        padding: 20px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .bg-gradient-to-r h2 {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: white !important;
+        margin: 0 !important;
+    }
+
+    /* Textos de ayuda más legibles */
+    .text-xs {
+        font-size: 13px !important;
+        line-height: 1.4 !important;
+        color: #6b7280 !important;
+        margin-top: 6px !important;
+    }
+
+    /* Corrección para campos específicos de Django */
+    .form-control,
+    .django-select2,
+    .select2-container--default .select2-selection--single {
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        border: 2px solid var(--input-border) !important;
+        border-radius: 8px !important;
+        background-color: white !important;
+        color: var(--input-text) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
-                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                    {{ form.description }}
-                    {% if form.description.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
-                    {% endif %}
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ title }}</h1>
+                    <p class="text-gray-600">
+                        {% if product %}
+                            Actualizar información del producto en el inventario
+                        {% else %}
+                            Agregar nuevo producto al inventario
+                        {% endif %}
+                    </p>
                 </div>
-                
-                <div>
-                    <label for="{{ form.image.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Imagen</label>
-                    {{ form.image }}
-                    {% if form.image.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.image.errors.0 }}</p>
-                    {% endif %}
-                    
-                    {% if product and product.image %}
-                    <div class="mt-2">
-                        <p class="text-sm text-gray-500">Imagen actual:</p>
-                        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="mt-1 h-24 w-24 object-cover rounded">
-                    </div>
-                    {% endif %}
-                </div>
+                <a href="{% url 'inventory:product_list' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Volver al Inventario
+                </a>
             </div>
+        </div>
+
+        <!-- Formulario -->
+        <form method="post" enctype="multipart/form-data" 
+              class="space-y-8" 
+              x-data="enhancedProductForm()" 
+              @submit="onSubmit">
+            {% csrf_token %}
             
-            <!-- Precios e Inventario -->
-            <div class="bg-gray-50 p-4 rounded-md space-y-4">
-                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Precios e Inventario</h2>
-                
-                <div>
-                    <label for="{{ form.purchase_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio de Compra (Bs) *</label>
-                    {{ form.purchase_price_bs }}
-                    {% if form.purchase_price_bs.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.purchase_price_bs.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <div>
-                    <label for="{{ form.selling_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio de Venta (Bs) *</label>
-                    {{ form.selling_price_bs }}
-                    {% if form.selling_price_bs.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.selling_price_bs.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <div>
-                    <label for="{{ form.min_stock.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo *</label>
-                    {{ form.min_stock }}
-                    {% if form.min_stock.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.min_stock.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500">Para productos por peso, use decimales (ej: 2.5)</p>
-                </div>
-                
-                {% if show_initial_stock %}
-                <div>
-                    <label for="initial_stock" class="block text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
-                    <input 
-                        type="number" 
-                        id="initial_stock" 
-                        name="initial_stock" 
-                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        value="0"
-                        step="0.001"
-                        min="0">
-                    <p class="mt-1 text-xs text-gray-500">Para productos por peso, use decimales</p>
-                </div>
-                {% else %}
-                <div>
-                    <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
-                    <input 
-                        type="number" 
-                        id="stock" 
-                        value="{{ product.stock }}"
-                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md"
-                        disabled>
-                    <p class="mt-1 text-sm text-gray-500">Para ajustar el stock, use la opción "Ajustar Inventario".</p>
-                </div>
-                {% endif %}
-                
-                <div class="flex items-center mt-4">
-                    {{ form.is_active }}
-                    <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm text-gray-900">
-                        Producto activo
-                    </label>
+            <!-- Errores generales -->
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+                <div class="flex">
+                    <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                    <div class="text-red-700">{{ form.non_field_errors }}</div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Sección de Precios al Mayor -->
-        <div class="bg-yellow-50 p-4 rounded-md border border-yellow-200">
-            <div class="flex items-center mb-4">
-                {{ form.is_bulk_pricing }}
-                <label for="{{ form.is_bulk_pricing.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-900">
-                    Habilitar precios al mayor
-                </label>
+            {% endif %}
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <!-- Información Básica -->
+                <div class="xl:col-span-2">
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
+                            <h2 class="text-xl font-semibold text-white flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Información Básica
+                            </h2>
+                        </div>
+                        
+                        <div class="p-6 space-y-6">
+                            <!-- Nombre y Código de Barras -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Nombre del Producto *
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" 
+                                               id="{{ form.name.id_for_label }}"
+                                               name="{{ form.name.name }}"
+                                               value="{% if form.name.value %}{{ form.name.value }}{% endif %}"
+                                               class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                               placeholder="Ingrese el nombre del producto"
+                                               required>
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            <svg x-show="!errors.name" class="w-5 h-5 text-green-500 hidden" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    {% if form.name.errors %}
+                                        <p class="mt-1 text-sm text-red-600 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+                                            </svg>
+                                            {{ form.name.errors.0 }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="{{ form.barcode.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Código de Barras *
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" 
+                                               id="{{ form.barcode.id_for_label }}"
+                                               name="{{ form.barcode.name }}"
+                                               value="{% if form.barcode.value %}{{ form.barcode.value }}{% endif %}"
+                                               class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                               placeholder="Código único del producto">
+                                        <button type="button" 
+                                                @click="generateBarcode()" 
+                                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    {% if form.barcode.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ form.barcode.errors.0 }}</p>
+                                    {% endif %}
+                                    <p class="mt-1 text-xs text-gray-500">Haz clic en el icono para generar automáticamente</p>
+                                </div>
+                            </div>
+
+                            <!-- Categoría y Tipo de Unidad -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Categoría *
+                                    </label>
+                                    <select id="{{ form.category.id_for_label }}"
+                                            name="{{ form.category.name }}"
+                                            class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                            required>
+                                        <option value="">Seleccionar categoría...</option>
+                                        {% for choice in form.category.field.queryset %}
+                                        <option value="{{ choice.pk }}" {% if form.category.value == choice.pk %}selected{% endif %}>
+                                            {{ choice.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.category.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="{{ form.unit_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Tipo de Unidad *
+                                    </label>
+                                    <select id="{{ form.unit_type.id_for_label }}"
+                                            name="{{ form.unit_type.name }}"
+                                            class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                            required>
+                                        <option value="">Seleccionar tipo...</option>
+                                        {% for value, label in form.unit_type.field.choices %}
+                                        <option value="{{ value }}" {% if form.unit_type.value == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.unit_type.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ form.unit_type.errors.0 }}</p>
+                                    {% endif %}
+                                    <div class="mt-1 p-2 bg-blue-50 rounded-md">
+                                        <p class="text-xs text-blue-600 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
+                                            </svg>
+                                            Seleccione "Kilogramo" para productos que se vendan por peso
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Descripción -->
+                            <div class="form-group">
+                                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Descripción
+                                </label>
+                                <textarea id="{{ form.description.id_for_label }}"
+                                          name="{{ form.description.name }}"
+                                          rows="4"
+                                          class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900 resize-vertical"
+                                          placeholder="Información adicional sobre el producto...">{% if form.description.value %}{{ form.description.value }}{% endif %}</textarea>
+                                {% if form.description.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                                {% endif %}
+                                <p class="mt-1 text-xs text-gray-500">Información adicional sobre el producto</p>
+                            </div>
+
+                            <!-- Imagen del Producto -->
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Imagen del Producto
+                                </label>
+                                <div class="flex items-start space-x-4">
+                                    <div class="flex-1">
+                                        {{ form.image }}
+                                        {% if form.image.errors %}
+                                            <p class="mt-1 text-sm text-red-600">{{ form.image.errors.0 }}</p>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if product and product.image %}
+                                    <div class="image-preview">
+                                        <img src="{{ product.image.url }}" 
+                                             alt="{{ product.name }}" 
+                                             class="h-20 w-20 object-cover rounded-lg border-2 border-gray-200">
+                                        <p class="text-xs text-gray-500 mt-1 text-center">Actual</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Precios e Inventario -->
+                <div class="space-y-8">
+                    <!-- Precios -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="price-calculator p-6">
+                            <h2 class="text-xl font-semibold text-white flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                                </svg>
+                                Precios
+                            </h2>
+                        </div>
+                        
+                        <div class="p-6 space-y-4">
+                            <div class="form-group">
+                                <label for="{{ form.purchase_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Precio de Compra (Bs) *
+                                </label>
+                                <div class="relative">
+                                    <input type="number" 
+                                           id="{{ form.purchase_price_bs.id_for_label }}"
+                                           name="{{ form.purchase_price_bs.name }}"
+                                           value="{% if form.purchase_price_bs.value %}{{ form.purchase_price_bs.value }}{% endif %}"
+                                           class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                           placeholder="0.00"
+                                           step="0.01"
+                                           min="0"
+                                           required>
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                    </div>
+                                </div>
+                                {% if form.purchase_price_bs.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.purchase_price_bs.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.selling_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Precio de Venta (Bs) *
+                                </label>
+                                <div class="relative">
+                                    <input type="number" 
+                                           id="{{ form.selling_price_bs.id_for_label }}"
+                                           name="{{ form.selling_price_bs.name }}"
+                                           value="{% if form.selling_price_bs.value %}{{ form.selling_price_bs.value }}{% endif %}"
+                                           class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                           placeholder="0.00"
+                                           step="0.01"
+                                           min="0"
+                                           required>
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                    </div>
+                                </div>
+                                {% if form.selling_price_bs.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.selling_price_bs.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Calculadora de Margen -->
+                            <div class="bg-gray-50 p-4 rounded-lg" x-show="purchasePrice && sellingPrice">
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">Análisis de Margen</h4>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span class="text-gray-500">Margen:</span>
+                                        <span class="font-medium text-green-600" x-text="margin + ' Bs'"></span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500">% Ganancia:</span>
+                                        <span class="font-medium text-blue-600" x-text="marginPercentage + '%'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inventario -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+                            <h2 class="text-xl font-semibold text-white flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
+                                Inventario
+                            </h2>
+                        </div>
+                        
+                        <div class="p-6 space-y-4">
+                            <div class="form-group">
+                                <label for="{{ form.min_stock.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Stock Mínimo *
+                                </label>
+                                <input type="number" 
+                                       id="{{ form.min_stock.id_for_label }}"
+                                       name="{{ form.min_stock.name }}"
+                                       value="{% if form.min_stock.value %}{{ form.min_stock.value }}{% endif %}"
+                                       class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                       placeholder="0"
+                                       step="0.001"
+                                       min="0"
+                                       required>
+                                {% if form.min_stock.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.min_stock.errors.0 }}</p>
+                                {% endif %}
+                                <p class="mt-1 text-xs text-gray-500">Cantidad mínima antes de alerta de restock</p>
+                            </div>
+
+                            {% if show_initial_stock %}
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Stock Inicial
+                                </label>
+                                <input type="number" 
+                                       id="initial_stock" 
+                                       name="initial_stock" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                       value="0"
+                                       step="0.001"
+                                       min="0"
+                                       placeholder="0.000">
+                                <p class="mt-1 text-xs text-gray-500">Para productos por peso, use decimales (ej: 25.750)</p>
+                            </div>
+                            {% else %}
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Stock Actual
+                                </label>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-2xl font-bold text-blue-600">{{ product.stock }}</span>
+                                    <a href="{% url 'inventory:adjustment_create' %}?product={{ product.pk }}" 
+                                       class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-colors duration-200">
+                                        Ajustar Stock
+                                    </a>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-600">Use "Ajustar Inventario" para modificar el stock</p>
+                            </div>
+                            {% endif %}
+
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" 
+                                       id="{{ form.is_active.id_for_label }}"
+                                       name="{{ form.is_active.name }}"
+                                       {% if form.is_active.value %}checked{% endif %}
+                                       class="w-5 h-5 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-gray-700">
+                                    Producto activo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <div x-show="document.getElementById('{{ form.is_bulk_pricing.id_for_label }}').checked" 
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 transform scale-95"
-                 x-transition:enter-end="opacity-100 transform scale-100"
-                 class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label for="{{ form.bulk_min_quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Cantidad Mínima</label>
-                    {{ form.bulk_min_quantity }}
-                    {% if form.bulk_min_quantity.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.bulk_min_quantity.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-600">Cantidad mínima para aplicar precio al mayor</p>
+
+            <!-- Precios al Mayor -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden" x-data="{ bulkEnabled: document.getElementById('{{ form.is_bulk_pricing.id_for_label }}')?.checked || false }">
+                <div class="bulk-pricing-section p-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                            Precios al Mayor
+                        </h2>
+                        <label class="flex items-center">
+                            <input type="checkbox" 
+                                   id="{{ form.is_bulk_pricing.id_for_label }}"
+                                   name="{{ form.is_bulk_pricing.name }}"
+                                   {% if form.is_bulk_pricing.value %}checked{% endif %}
+                                   class="w-5 h-5 text-white bg-white border-2 border-white rounded focus:ring-blue-500 focus:ring-2 mr-3">
+                            <span class="ml-2 text-white font-medium">Habilitar</span>
+                        </label>
+                    </div>
                 </div>
                 
-                <div>
-                    <label for="{{ form.bulk_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Precio al Mayor (Bs)</label>
-                    {{ form.bulk_price_bs }}
-                    {% if form.bulk_price_bs.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.bulk_price_bs.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-600">Precio por unidad cuando se compra al mayor</p>
+                <div x-show="document.getElementById('{{ form.is_bulk_pricing.id_for_label }}').checked" 
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 transform scale-95"
+                     x-transition:enter-end="opacity-100 transform scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 transform scale-100"
+                     x-transition:leave-end="opacity-0 transform scale-95"
+                     class="p-6">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label for="{{ form.bulk_min_quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Cantidad Mínima para Mayor
+                            </label>
+                            <input type="number" 
+                                   id="{{ form.bulk_min_quantity.id_for_label }}"
+                                   name="{{ form.bulk_min_quantity.name }}"
+                                   value="{% if form.bulk_min_quantity.value %}{{ form.bulk_min_quantity.value }}{% endif %}"
+                                   class="w-full px-4 py-3 text-base border-2 border-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                   placeholder="0"
+                                   step="1"
+                                   min="1">
+                            {% if form.bulk_min_quantity.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.bulk_min_quantity.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-white">Cantidad mínima para aplicar precio al mayor</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.bulk_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Precio al Mayor (Bs)
+                            </label>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="{{ form.bulk_price_bs.id_for_label }}"
+                                       name="{{ form.bulk_price_bs.name }}"
+                                       value="{% if form.bulk_price_bs.value %}{{ form.bulk_price_bs.value }}{% endif %}"
+                                       class="w-full px-4 py-3 text-base border-2 border-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
+                                       placeholder="0.00"
+                                       step="0.01"
+                                       min="0">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                </div>
+                            </div>
+                            {% if form.bulk_price_bs.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.bulk_price_bs.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-white">Precio por unidad en ventas al mayor</p>
+                        </div>
+                    </div>
+
+                    <!-- Calculadora de Descuento al Mayor -->
+                    <div class="mt-4 p-4 bg-purple-50 rounded-lg" x-show="sellingPrice && bulkPrice">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Análisis de Descuento al Mayor</h4>
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-500">Descuento:</span>
+                                <span class="font-medium text-purple-600" x-text="bulkDiscount + ' Bs'"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">% Descuento:</span>
+                                <span class="font-medium text-purple-600" x-text="bulkDiscountPercentage + '%'"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Nuevo Margen:</span>
+                                <span class="font-medium text-green-600" x-text="bulkMarginPercentage + '%'"></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="flex justify-end space-x-3">
-            <a href="{% url 'inventory:product_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md">
-                Cancelar
-            </a>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                {% if product %}Actualizar{% else %}Guardar{% endif %}
-            </button>
-        </div>
-    </form>
+
+            <!-- Botones de Acción -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+                    <a href="{% url 'inventory:product_list' %}" 
+                       class="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200 text-center">
+                        Cancelar
+                    </a>
+                    <button type="submit" 
+                            class="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 flex items-center justify-center"
+                            :disabled="isSubmitting"
+                            :class="{ 'opacity-50 cursor-not-allowed': isSubmitting }">
+                        <svg x-show="isSubmitting" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="isSubmitting ? 'Guardando...' : '{% if product %}Actualizar Producto{% else %}Guardar Producto{% endif %}'"></span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
-function productForm() {
+function enhancedProductForm() {
     return {
-        // Funciones JavaScript para manejar la interactividad del formulario
+        isSubmitting: false,
+        errors: {},
+        
+        // Calculated properties
+        get purchasePrice() {
+            const value = document.getElementById('{{ form.purchase_price_bs.id_for_label }}')?.value;
+            return parseFloat(value) || 0;
+        },
+        
+        get sellingPrice() {
+            const value = document.getElementById('{{ form.selling_price_bs.id_for_label }}')?.value;
+            return parseFloat(value) || 0;
+        },
+        
+        get bulkPrice() {
+            const value = document.getElementById('{{ form.bulk_price_bs.id_for_label }}')?.value;
+            return parseFloat(value) || 0;
+        },
+        
+        get margin() {
+            return (this.sellingPrice - this.purchasePrice).toFixed(2);
+        },
+        
+        get marginPercentage() {
+            if (this.purchasePrice === 0) return '0';
+            return (((this.sellingPrice - this.purchasePrice) / this.purchasePrice) * 100).toFixed(1);
+        },
+        
+        get bulkDiscount() {
+            return (this.sellingPrice - this.bulkPrice).toFixed(2);
+        },
+        
+        get bulkDiscountPercentage() {
+            if (this.sellingPrice === 0) return '0';
+            return (((this.sellingPrice - this.bulkPrice) / this.sellingPrice) * 100).toFixed(1);
+        },
+        
+        get bulkMarginPercentage() {
+            if (this.purchasePrice === 0) return '0';
+            return (((this.bulkPrice - this.purchasePrice) / this.purchasePrice) * 100).toFixed(1);
+        },
+        
+        // Methods
+        generateBarcode() {
+            const timestamp = Date.now().toString();
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            const barcode = timestamp.slice(-8) + random;
+            document.getElementById('{{ form.barcode.id_for_label }}').value = barcode;
+        },
+        
+        onSubmit() {
+            this.isSubmitting = true;
+        },
+        
+        validateField(fieldName) {
+            // Real-time validation logic here
+            const field = document.getElementById(fieldName);
+            if (field) {
+                if (field.value.trim() === '' && field.hasAttribute('required')) {
+                    field.classList.add('invalid-input');
+                    field.classList.remove('valid-input');
+                } else {
+                    field.classList.remove('invalid-input');
+                    field.classList.add('valid-input');
+                }
+            }
+        },
+        
+        init() {
+            // Initialize real-time validation
+            document.querySelectorAll('input, select, textarea').forEach(field => {
+                field.addEventListener('blur', () => this.validateField(field.id));
+                field.addEventListener('input', () => {
+                    if (field.classList.contains('invalid-input')) {
+                        this.validateField(field.id);
+                    }
+                });
+            });
+        }
     }
 }
 </script>

@@ -1,243 +1,371 @@
-<!-- templates/inventory/product_list.html -->
+<!-- templates/inventory/product_list.html - VERSIÓN RESPONSIVA OPTIMIZADA -->
 {% extends 'base/base.html' %}
 
 {% block title %}Inventario - Sistema de Bodega{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Inventario de Productos</h1>
-        <div class="flex space-x-2">
-            <a href="{% url 'inventory:product_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+<!-- HEADER RESPONSIVO -->
+<div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Inventario de Productos</h1>
+            <p class="text-sm text-gray-600 mt-1 hidden sm:block">Gestión completa del inventario</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <a href="{% url 'inventory:product_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full sm:w-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                Nuevo Producto
+                <span class="hidden sm:inline">Nuevo Producto</span>
+                <span class="sm:hidden">Nuevo</span>
             </a>
-            <a href="{% url 'inventory:adjustment_create' %}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="{% url 'inventory:adjustment_create' %}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full sm:w-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
                 </svg>
-                Ajustar Inventario
+                <span class="hidden sm:inline">Ajustar Inventario</span>
+                <span class="sm:hidden">Ajustar</span>
             </a>
         </div>
     </div>
-    
-    <!-- Filtros -->
-    <div class="mb-6 bg-gray-50 p-4 rounded-md">
-        <form method="get" action="{% url 'inventory:product_list' %}">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label for="q" class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
-                    <input 
-                        type="text" 
-                        id="q" 
-                        name="q" 
-                        value="{{ search_query|default:'' }}" 
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        placeholder="Nombre, código, descripción...">
-                </div>
-                <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                    <select 
-                        id="category" 
-                        name="category" 
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                        <option value="">Todas las categorías</option>
-                        {% for category in categories %}
-                            <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
-                                {{ category.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                    <select 
-                        id="stock" 
-                        name="stock" 
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                        <option value="">Todos los niveles</option>
-                        <option value="low" {% if stock_filter == 'low' %}selected{% endif %}>Stock bajo</option>
-                        <option value="out" {% if stock_filter == 'out' %}selected{% endif %}>Sin stock</option>
-                    </select>
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md w-full">
-                        Filtrar
-                    </button>
-                </div>
+</div>
+
+<!-- FILTROS RESPONSIVOS -->
+<div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+    <form method="get" action="{% url 'inventory:product_list' %}" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div class="space-y-1">
+                <label for="q" class="block text-sm font-medium text-gray-700">Buscar</label>
+                <input 
+                    type="text" 
+                    id="q" 
+                    name="q" 
+                    value="{{ search_query|default:'' }}" 
+                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2"
+                    placeholder="Nombre, código, descripción...">
             </div>
-        </form>
-    </div>
-    
-    <!-- Tabla de productos -->
-    <div class="bg-white overflow-hidden border border-gray-200 rounded-md">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Producto
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Categoría
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Precio Compra
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Precio Venta
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Stock
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Estado
-                    </th>
-                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Acciones
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for product in page_obj %}
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center">
-                            {% if product.image %}
-                                <img class="h-10 w-10 rounded-full object-cover mr-3" src="{{ product.image.url }}" alt="{{ product.name }}">
-                            {% else %}
-                                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                            {% endif %}
-                            <div>
-                                <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                                <div class="text-xs text-gray-500">{{ product.barcode }}</div>
+            <div class="space-y-1">
+                <label for="category" class="block text-sm font-medium text-gray-700">Categoría</label>
+                <select 
+                    id="category" 
+                    name="category" 
+                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2">
+                    <option value="">Todas las categorías</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label for="stock" class="block text-sm font-medium text-gray-700">Stock</label>
+                <select 
+                    id="stock" 
+                    name="stock" 
+                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2">
+                    <option value="">Todos los niveles</option>
+                    <option value="low" {% if stock_filter == 'low' %}selected{% endif %}>Stock bajo</option>
+                    <option value="out" {% if stock_filter == 'out' %}selected{% endif %}>Sin stock</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- TABLA DESKTOP -->
+<div class="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Producto
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Categoría
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Precio Compra
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Precio Venta
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Stock
+                </th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                </th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                </th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for product in page_obj %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        {% if product.image %}
+                            <img class="h-10 w-10 rounded-full object-cover mr-3" src="{{ product.image.url }}" alt="{{ product.name }}">
+                        {% else %}
+                            <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
                             </div>
+                        {% endif %}
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
+                            <div class="text-xs text-gray-500">{{ product.barcode }}</div>
                         </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ product.category.name }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        Bs {{ product.purchase_price_bs|floatformat:2 }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        Bs {{ product.selling_price_bs|floatformat:2 }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        {% if product.stock <= 0 %}
-                            <span class="font-medium text-red-600">{{ product.stock }}</span>
-                        {% elif product.stock <= product.min_stock %}
-                            <span class="font-medium text-yellow-600">{{ product.stock }}</span>
-                        {% else %}
-                            <span class="font-medium text-green-600">{{ product.stock }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        {% if product.stock <= 0 %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                Sin stock
-                            </span>
-                        {% elif product.stock <= product.min_stock %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                Stock bajo
-                            </span>
-                        {% else %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                Disponible
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                        <a href="{% url 'inventory:product_detail' product.id %}" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Ver detalles">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ product.category.name }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    Bs {{ product.purchase_price_bs|floatformat:2 }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    Bs {{ product.selling_price_bs|floatformat:2 }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    {% if product.stock <= 0 %}
+                        <span class="font-medium text-red-600">{{ product.stock }}</span>
+                    {% elif product.stock <= product.min_stock %}
+                        <span class="font-medium text-yellow-600">{{ product.stock }}</span>
+                    {% else %}
+                        <span class="font-medium text-green-600">{{ product.stock }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    {% if product.stock <= 0 %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            Sin stock
+                        </span>
+                    {% elif product.stock <= product.min_stock %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Stock bajo
+                        </span>
+                    {% else %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Disponible
+                        </span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <div class="flex justify-center space-x-2">
+                        <a href="{% url 'inventory:product_detail' product.id %}" class="text-indigo-600 hover:text-indigo-900 p-1 rounded transition-colors" title="Ver detalles">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                         </a>
-                        <a href="{% url 'inventory:product_update' product.id %}" class="text-blue-600 hover:text-blue-900 mr-3" title="Editar">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <a href="{% url 'inventory:product_update' product.id %}" class="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors" title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </a>
-                        <a href="{% url 'inventory:adjustment_create' %}?product={{ product.id }}" class="text-green-600 hover:text-green-900" title="Ajustar stock">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <a href="{% url 'inventory:adjustment_create' %}?product={{ product.id }}" class="text-green-600 hover:text-green-900 p-1 rounded transition-colors" title="Ajustar stock">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                             </svg>
                         </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
-                        No hay productos que coincidan con los filtros seleccionados.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    
-    <!-- Paginación -->
-    {% if page_obj.has_other_pages %}
-    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4">
-        <div class="flex-1 flex justify-between sm:hidden">
-            {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Anterior
-                </a>
-            {% endif %}
-            {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Siguiente
-                </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                    No hay productos que coincidan con los filtros seleccionados.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- CARDS MÓVILES (REEMPLAZO DE TABLA) -->
+<div class="lg:hidden space-y-4">
+    {% for product in page_obj %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 transition-shadow hover:shadow-md">
+        <!-- Header del card -->
+        <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center flex-1 min-w-0">
+                {% if product.image %}
+                    <img class="h-12 w-12 rounded-full object-cover mr-3 flex-shrink-0" src="{{ product.image.url }}" alt="{{ product.name }}">
+                {% else %}
+                    <div class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center mr-3 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <h3 class="text-sm font-medium text-gray-900 truncate">{{ product.name }}</h3>
+                    <p class="text-xs text-gray-500">{{ product.barcode }}</p>
+                    <p class="text-xs text-gray-500">{{ product.category.name }}</p>
+                </div>
+            </div>
+            <!-- Badge de estado -->
+            {% if product.stock <= 0 %}
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 ml-3">
+                    Sin stock
+                </span>
+            {% elif product.stock <= product.min_stock %}
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 ml-3">
+                    Stock bajo
+                </span>
+            {% else %}
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 ml-3">
+                    Disponible
+                </span>
             {% endif %}
         </div>
-        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        
+        <!-- Información en grid -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
-                <p class="text-sm text-gray-700">
-                    Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ page_obj.paginator.count }}</span> productos
+                <span class="text-xs font-medium text-gray-500">Precio Compra:</span>
+                <p class="text-sm text-gray-900">Bs {{ product.purchase_price_bs|floatformat:2 }}</p>
+            </div>
+            <div>
+                <span class="text-xs font-medium text-gray-500">Precio Venta:</span>
+                <p class="text-sm font-bold text-gray-900">Bs {{ product.selling_price_bs|floatformat:2 }}</p>
+            </div>
+            <div>
+                <span class="text-xs font-medium text-gray-500">Stock Actual:</span>
+                <p class="text-sm font-bold 
+                    {% if product.stock <= 0 %}text-red-600
+                    {% elif product.stock <= product.min_stock %}text-yellow-600
+                    {% else %}text-green-600{% endif %}">
+                    {{ product.stock }}
                 </p>
             </div>
             <div>
-                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <span class="sr-only">Anterior</span>
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                    {% endif %}
-                    
-                    {% for i in page_obj.paginator.page_range %}
-                        {% if page_obj.number == i %}
-                            <span class="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600">
-                                {{ i }}
-                            </span>
-                        {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
-                            <a href="?page={{ i }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                {{ i }}
-                            </a>
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <span class="sr-only">Siguiente</span>
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </a>
-                    {% endif %}
-                </nav>
+                <span class="text-xs font-medium text-gray-500">Stock Mínimo:</span>
+                <p class="text-sm text-gray-900">{{ product.min_stock }}</p>
             </div>
         </div>
+        
+        <!-- Botones de acción -->
+        <div class="flex justify-end space-x-2 pt-3 border-t border-gray-200">
+            <a href="{% url 'inventory:product_detail' product.id %}" class="text-indigo-600 hover:text-indigo-900 p-2 rounded transition-colors" title="Ver">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+            </a>
+            <a href="{% url 'inventory:product_update' product.id %}" class="text-blue-600 hover:text-blue-900 p-2 rounded transition-colors" title="Editar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            </a>
+            <a href="{% url 'inventory:adjustment_create' %}?product={{ product.id }}" class="text-green-600 hover:text-green-900 p-2 rounded transition-colors" title="Ajustar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+            </a>
+        </div>
     </div>
-    {% endif %}
+    {% empty %}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-4v4H7V9h10z" />
+        </svg>
+        <h3 class="text-sm font-medium text-gray-900 mb-1">No hay productos</h3>
+        <p class="text-sm text-gray-500 mb-4">No se encontraron productos que coincidan con los filtros.</p>
+        <a href="{% url 'inventory:product_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center text-sm">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Crear primer producto
+        </a>
+    </div>
+    {% endfor %}
 </div>
+
+<!-- PAGINACIÓN RESPONSIVA -->
+{% if page_obj.has_other_pages %}
+<div class="bg-white px-4 py-3 flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 mt-6 rounded-lg shadow-sm">
+    <!-- Mobile: Botones simples -->
+    <div class="flex justify-between w-full sm:hidden mb-4">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" 
+               class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded text-sm inline-flex items-center">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Anterior
+            </a>
+        {% else %}
+            <div></div>
+        {% endif %}
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" 
+               class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded text-sm inline-flex items-center">
+                Siguiente
+                <svg class="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
+        {% endif %}
+    </div>
+    
+    <!-- Desktop: Paginación completa -->
+    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ page_obj.paginator.count }}</span> productos
+            </p>
+        </div>
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" 
+                       class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Anterior</span>
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </a>
+                {% endif %}
+                
+                {% for i in page_obj.paginator.page_range %}
+                    {% if page_obj.number == i %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600">
+                            {{ i }}
+                        </span>
+                    {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+                        <a href="?page={{ i }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" 
+                           class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            {{ i }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}" 
+                       class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Siguiente</span>
+                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

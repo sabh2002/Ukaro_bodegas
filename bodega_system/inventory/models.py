@@ -65,14 +65,14 @@ class Product(models.Model):
     )
     stock = models.DecimalField(
         max_digits=10, 
-        decimal_places=3,  # Permite 0.001 kg precision
+        decimal_places=2,  # Permite 0.001 kg precision
         default=0,
         verbose_name="Stock Actual"
     )
     
     min_stock = models.DecimalField(
         max_digits=10, 
-        decimal_places=3,
+        decimal_places=2,
         default=5,
         verbose_name="Stock Mínimo"
     )
@@ -87,7 +87,7 @@ class Product(models.Model):
     
     bulk_min_quantity = models.DecimalField(
         max_digits=10,
-        decimal_places=3,
+        decimal_places=2,
         null=True,
         blank=True,
         verbose_name="Cantidad Mínima al Mayor"
@@ -145,8 +145,8 @@ class Product(models.Model):
     
     @property
     def is_weight_based(self):
-        """Verifica si el producto se vende por peso"""
-        return self.unit_type in ['kg', 'gram']
+        """Verifica si el producto se vende por peso o volumen variable"""
+        return self.unit_type in ['kg', 'gram', 'liter', 'ml']
     
     def get_price_for_quantity(self, quantity):
         """Calcula precio según cantidad (considera precios al mayor)"""
@@ -173,9 +173,22 @@ class InventoryAdjustment(models.Model):
         choices=ADJUSTMENT_TYPES,
         verbose_name="Tipo de Ajuste"
     )
-    quantity = models.IntegerField(verbose_name="Cantidad")
-    previous_stock = models.IntegerField(verbose_name="Stock Previo")
-    new_stock = models.IntegerField(verbose_name="Nuevo Stock")
+    # CORREGIDO: Cambiar de IntegerField a DecimalField para soporte de decimales
+    quantity = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        verbose_name="Cantidad"
+    )
+    previous_stock = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        verbose_name="Stock Previo"
+    )
+    new_stock = models.DecimalField(
+        max_digits=10, 
+        decimal_places=3,
+        verbose_name="Nuevo Stock"
+    )
     reason = models.TextField(verbose_name="Razón")
     adjusted_by = models.ForeignKey(
         'accounts.User',
@@ -261,7 +274,7 @@ class ComboItem(models.Model):
     )
     quantity = models.DecimalField(
         max_digits=10,
-        decimal_places=3,
+        decimal_places=2,
         verbose_name="Cantidad"
     )
     
@@ -272,38 +285,3 @@ class ComboItem(models.Model):
     
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
-
-# También agregar al modelo SaleItem para manejar combos
-class SaleItem(models.Model):
-    # ... campos existentes ...
-    
-    # NUEVO: Referencias para combos
-    combo = models.ForeignKey(
-        ProductCombo,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='sale_items',
-        verbose_name="Combo"
-    )
-    
-    # MODIFICADO: Cantidad ahora decimal para peso
-    quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=3,
-        verbose_name="Cantidad"
-    )
-    
-    @property
-    def is_combo_sale(self):
-        """Verifica si es venta de combo"""
-        return self.combo is not None
-    
-    @property
-    def item_description(self):
-        """Descripción del ítem vendido"""
-        if self.is_combo_sale:
-            return f"COMBO: {self.combo.name}"
-        else:
-            unit = self.product.unit_display if self.product.unit_type != 'unit' else ''
-            return f"{self.product.name} ({self.quantity} {unit})"

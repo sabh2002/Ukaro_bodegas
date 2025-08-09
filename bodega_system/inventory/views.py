@@ -1,3 +1,5 @@
+# inventory/views.py - Fixed version
+
 from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -5,6 +7,7 @@ from django.contrib import messages
 from django.db.models import F, Sum, Count
 from django.core.paginator import Paginator
 from django.db import transaction
+from decimal import Decimal, InvalidOperation
 
 from .models import Category, Product, InventoryAdjustment, ProductCombo, ComboItem
 from .forms import (CategoryForm, ProductForm, InventoryAdjustmentForm, 
@@ -87,22 +90,29 @@ def product_create(request):
             
             # Registrar ajuste inicial si se especificó stock
             initial_stock = request.POST.get('initial_stock')
-            if initial_stock and int(initial_stock) > 0:
-                with transaction.atomic():
-                    # Actualizar stock
-                    product.stock = int(initial_stock)
-                    product.save()
+            if initial_stock:
+                try:
+                    # Convertir a Decimal para manejar decimales
+                    initial_stock_decimal = Decimal(str(initial_stock))
                     
-                    # Registrar ajuste
-                    InventoryAdjustment.objects.create(
-                        product=product,
-                        adjustment_type='set',
-                        quantity=int(initial_stock),
-                        previous_stock=0,
-                        new_stock=int(initial_stock),
-                        reason='Stock inicial',
-                        adjusted_by=request.user
-                    )
+                    if initial_stock_decimal > 0:
+                        with transaction.atomic():
+                            # Actualizar stock
+                            product.stock = initial_stock_decimal
+                            product.save()
+                            
+                            # Registrar ajuste
+                            InventoryAdjustment.objects.create(
+                                product=product,
+                                adjustment_type='set',
+                                quantity=initial_stock_decimal,
+                                previous_stock=Decimal('0'),
+                                new_stock=initial_stock_decimal,
+                                reason='Stock inicial',
+                                adjusted_by=request.user
+                            )
+                except (InvalidOperation, ValueError) as e:
+                    messages.warning(request, f'El stock inicial "{initial_stock}" no es válido. Se estableció en 0.')
             
             return redirect('inventory:product_detail', pk=product.pk)
     else:
@@ -298,6 +308,7 @@ def adjustment_create(request):
         'title': 'Nuevo Ajuste de Inventario'
     })
 
+# Resto de las vistas de combos (sin cambios significativos)
 @login_required
 def combo_list(request):
     """Vista para listar combos de productos"""

@@ -1,4 +1,4 @@
-# sales/models.py
+# sales/models.py - Modelo SaleItem corregido
 
 from django.db import models
 from django.urls import reverse
@@ -63,12 +63,26 @@ class SaleItem(models.Model):
         verbose_name="Venta"
     )
     product = models.ForeignKey(
-        Product,
+        'inventory.Product',
         on_delete=models.PROTECT,
         related_name='sale_items',
-        verbose_name="Producto"
+        verbose_name="Producto",
+        null=True,
+        blank=True
     )
-    quantity = models.IntegerField(
+    # NUEVO: Referencias para combos
+    combo = models.ForeignKey(
+        'inventory.ProductCombo',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='combo_sales',  # Cambiado para evitar conflictos
+        verbose_name="Combo"
+    )
+    # CORREGIDO: Cantidad ahora decimal para peso
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
         verbose_name="Cantidad"
     )
     price_bs = models.DecimalField(
@@ -82,9 +96,26 @@ class SaleItem(models.Model):
         verbose_name_plural = "Ítems de Venta"
     
     def __str__(self):
-        return f"{self.quantity} x {self.product.name}"
+        if self.is_combo_sale:
+            return f"{self.quantity} x COMBO: {self.combo.name}"
+        else:
+            return f"{self.quantity} x {self.product.name}"
     
     @property
     def subtotal(self):
         """Calcula el subtotal del ítem"""
         return self.quantity * self.price_bs
+    
+    @property
+    def is_combo_sale(self):
+        """Verifica si es venta de combo"""
+        return self.combo is not None
+    
+    @property
+    def item_description(self):
+        """Descripción del ítem vendido"""
+        if self.is_combo_sale:
+            return f"COMBO: {self.combo.name}"
+        else:
+            unit = self.product.unit_display if self.product.unit_type != 'unit' else ''
+            return f"{self.product.name} ({self.quantity} {unit})"

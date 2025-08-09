@@ -1,0 +1,643 @@
+<!-- templates/customers/credit_payment.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}{{ title }} - Sistema de Bodega{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Variables CSS para consistencia */
+    :root {
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --input-border-focus: #3b82f6;
+        --input-text: #111827;
+        --input-placeholder: #9ca3af;
+        --label-text: #374151;
+        --error-color: #dc2626;
+        --success-color: #059669;
+        --warning-color: #f59e0b;
+        --primary-color: #6366f1;
+    }
+
+    /* INPUTS CON MÁXIMA VISIBILIDAD */
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="datetime-local"],
+    textarea,
+    select {
+        width: 100% !important;
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        color: var(--input-text) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--input-border) !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+    }
+
+    /* Estados de focus */
+    input:focus,
+    textarea:focus,
+    select:focus {
+        outline: none !important;
+        border-color: var(--input-border-focus) !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        background-color: #fefefe !important;
+    }
+
+    /* Labels más visibles */
+    label {
+        display: block !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: var(--label-text) !important;
+        margin-bottom: 8px !important;
+        line-height: 1.4 !important;
+    }
+
+    /* Placeholders más visibles */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--input-placeholder) !important;
+        opacity: 1 !important;
+        font-size: 15px !important;
+    }
+
+    /* Estados hover */
+    input:hover:not(:focus),
+    select:hover:not(:focus),
+    textarea:hover:not(:focus) {
+        border-color: #9ca3af !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Estados de validación */
+    .invalid-input {
+        border-color: var(--error-color) !important;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+        background-color: #fef2f2 !important;
+    }
+
+    .valid-input {
+        border-color: var(--success-color) !important;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1) !important;
+        background-color: #f0fdf4 !important;
+    }
+
+    /* Contenedores de información */
+    .credit-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .credit-info-card * {
+        color: white !important;
+    }
+
+    .credit-info-card .text-blue-100 {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-weight: 500 !important;
+    }
+
+    .credit-info-card .font-semibold,
+    .credit-info-card .font-bold,
+    .credit-info-card .font-medium {
+        color: white !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .credit-info-card .icon-container {
+        background: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Mejorar contraste en la información del crédito */
+    .credit-info-card .bg-white {
+        background: rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .payment-summary {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white !important;
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .payment-summary * {
+        color: white !important;
+    }
+
+    .payment-summary .text-green-100 {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-weight: 500 !important;
+    }
+
+    .pending-amount {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white !important;
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .pending-amount * {
+        color: white !important;
+    }
+
+    .pending-amount .text-yellow-100 {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-weight: 500 !important;
+    }
+
+    /* Botones mejorados */
+    .btn {
+        padding: 12px 24px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        border: 2px solid transparent !important;
+    }
+
+    /* Animaciones */
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        input, select, textarea {
+            font-size: 16px !important;
+            padding: 16px !important;
+        }
+        
+        label {
+            font-size: 15px !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .credit-info-card,
+        .payment-summary,
+        .pending-amount {
+            padding: 16px !important;
+            margin-bottom: 16px !important;
+        }
+    }
+
+    /* Progress bar para el pago */
+    .payment-progress {
+        width: 100%;
+        height: 12px;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 6px;
+        overflow: hidden;
+        margin: 16px 0;
+    }
+
+    .payment-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 6px;
+        transition: width 0.8s ease-in-out;
+    }
+
+    /* Iconos mejorados */
+    .icon-container {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        margin-right: 16px;
+    }
+
+    /* Textos de error más visibles */
+    .text-red-600 {
+        color: var(--error-color) !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+        margin-top: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8 fade-in">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ title }}</h1>
+                    <p class="text-gray-600">Registrar pago para crédito de cliente</p>
+                </div>
+                <a href="{% url 'customers:credit_detail' pk=credit.pk %}" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Volver al Crédito
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Información del Crédito -->
+            <div class="lg:col-span-2">
+                <!-- Detalles del Cliente y Crédito -->
+                <div class="bg-indigo-600 text-white rounded-xl shadow-lg p-6 mb-8 fade-in">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-white bg-opacity-20 rounded-lg p-3 mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Información del Crédito</h2>
+                            <p class="text-indigo-100">Detalles del cliente y la deuda</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white bg-opacity-10 rounded-lg p-4">
+                            <h3 class="text-white font-semibold mb-2">📋 Cliente</h3>
+                            <p class="text-white text-lg font-bold">{{ credit.customer.name }}</p>
+                            {% if credit.customer.phone %}
+                            <p class="text-indigo-100">📞 {{ credit.customer.phone }}</p>
+                            {% endif %}
+                            {% if credit.customer.email %}
+                            <p class="text-indigo-100">📧 {{ credit.customer.email }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="bg-white bg-opacity-10 rounded-lg p-4">
+                            <h3 class="text-white font-semibold mb-2">💰 Monto Total</h3>
+                            <p class="text-white text-2xl font-bold">Bs {{ credit.amount_bs|floatformat:2 }}</p>
+                        </div>
+                        
+                        <div class="bg-white bg-opacity-10 rounded-lg p-4">
+                            <h3 class="text-white font-semibold mb-2">📅 Fecha de Venta</h3>
+                            <p class="text-white font-medium">{{ credit.sale.date|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        
+                        <div class="bg-white bg-opacity-10 rounded-lg p-4">
+                            <h3 class="text-white font-semibold mb-2">🧾 Venta #</h3>
+                            <p class="text-white font-medium">{{ credit.sale.id }}</p>
+                        </div>
+                    </div>
+
+                    {% if credit.notes %}
+                    <div class="mt-4 p-4 bg-white bg-opacity-10 rounded-lg">
+                        <h3 class="text-white font-semibold mb-2">📝 Notas</h3>
+                        <p class="text-white">{{ credit.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Formulario de Pago -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden fade-in">
+                    <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                            </svg>
+                            Registrar Nuevo Pago
+                        </h2>
+                    </div>
+                    
+                    <form method="post" class="p-6 space-y-6" x-data="creditPaymentForm()">
+                        {% csrf_token %}
+                        
+                        <!-- Errores generales -->
+                        {% if form.non_field_errors %}
+                        <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+                            <div class="flex">
+                                <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                                    </svg>
+                                <div class="text-red-700">{{ form.non_field_errors }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Monto del Pago -->
+                        <div class="form-group">
+                            <label for="{{ form.amount_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Monto del Pago (Bs) *
+                            </label>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="{{ form.amount_bs.id_for_label }}"
+                                       name="{{ form.amount_bs.name }}"
+                                       value="{% if form.amount_bs.value %}{{ form.amount_bs.value }}{% endif %}"
+                                       x-model="paymentAmount"
+                                       @input="calculateRemaining()"
+                                       class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white text-gray-900"
+                                       placeholder="0.00"
+                                       step="0.01"
+                                       min="0.01"
+                                       :max="pendingAmount"
+                                       required>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                </div>
+                            </div>
+                            {% if form.amount_bs.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.amount_bs.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-gray-500">Máximo: Bs {{ pending_amount|floatformat:2 }}</p>
+                            
+                            <!-- Botones de monto rápido -->
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" 
+                                        @click="setPaymentAmount(pendingAmount)"
+                                        class="px-3 py-1 text-xs bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors duration-200">
+                                    Pago Completo
+                                </button>
+                                <button type="button" 
+                                        @click="setPaymentAmount(pendingAmount * 0.5)"
+                                        class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors duration-200">
+                                    50%
+                                </button>
+                                <button type="button" 
+                                        @click="setPaymentAmount(pendingAmount * 0.25)"
+                                        class="px-3 py-1 text-xs bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200 transition-colors duration-200">
+                                    25%
+                                </button>
+                                <button type="button" 
+                                        @click="setPaymentAmount(pendingAmount * 0.1)"
+                                        class="px-3 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full hover:bg-yellow-200 transition-colors duration-200">
+                                    10%
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Método de Pago -->
+                        <!-- <div class="form-group">
+                            <label for="{{ form.payment_method.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Método de Pago *
+                            </label>
+                            <select id="{{ form.payment_method.id_for_label }}"
+                                    name="{{ form.payment_method.name }}"
+                                    class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white text-gray-900"
+                                    required>
+                                <option value="">Seleccionar método...</option>
+                                {% for value, label in form.payment_method.field.choices %}
+                                <option value="{{ value }}" {% if form.payment_method.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.payment_method.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.payment_method.errors.0 }}</p>
+                            {% endif %}
+                        </div> -->
+
+                        <!-- Fecha del Pago -->
+                        <div class="form-group">
+                            <label for="{{ form.payment_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Fecha del Pago *
+                            </label>
+                            <input type="datetime-local" 
+                                   id="{{ form.payment_date.id_for_label }}"
+                                   name="{{ form.payment_date.name }}"
+                                   value="{% if form.payment_date.value %}{{ form.payment_date.value|date:'Y-m-d\TH:i' }}{% endif %}"
+                                   class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white text-gray-900"
+                                   required>
+                            {% if form.payment_date.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.payment_date.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Notas del Pago -->
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Notas (Opcional)
+                            </label>
+                            <textarea id="{{ form.notes.id_for_label }}"
+                                      name="{{ form.notes.name }}"
+                                      rows="3"
+                                      class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white text-gray-900 resize-vertical"
+                                      placeholder="Información adicional sobre el pago...">{% if form.notes.value %}{{ form.notes.value }}{% endif %}</textarea>
+                            {% if form.notes.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Vista previa del pago -->
+                        <div x-show="paymentAmount > 0" 
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-green-800 mb-2">Vista Previa del Pago</h4>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-green-600">Monto a pagar:</span>
+                                    <span class="font-medium text-green-800" x-text="'Bs ' + parseFloat(paymentAmount || 0).toFixed(2)"></span>
+                                </div>
+                                <div>
+                                    <span class="text-green-600">Saldo restante:</span>
+                                    <span class="font-medium text-green-800" x-text="'Bs ' + calculateRemaining()"></span>
+                                </div>
+                            </div>
+                            <div x-show="parseFloat(paymentAmount || 0) >= pendingAmount" 
+                                 class="mt-2 p-2 bg-green-100 rounded border border-green-300">
+                                <p class="text-sm font-medium text-green-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                                    </svg>
+                                    ✅ Este pago completará el crédito
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200">
+                            <a href="{% url 'customers:credit_detail' pk=credit.pk %}" 
+                               class="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200 text-center">
+                                Cancelar
+                            </a>
+                            <button type="submit" 
+                                    class="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 flex items-center justify-center"
+                                    :disabled="!paymentAmount || paymentAmount <= 0"
+                                    :class="{ 'opacity-50 cursor-not-allowed': !paymentAmount || paymentAmount <= 0 }">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                                </svg>
+                                Registrar Pago
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Resumen de Pagos -->
+            <div class="space-y-6">
+                <!-- Estado del Pago -->
+                <div class="bg-green-600 text-white rounded-xl shadow-lg p-6 fade-in">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-white bg-opacity-20 rounded-lg p-3 mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Total Pagado</h3>
+                            <p class="text-green-100">Monto acumulado</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-3xl font-bold text-white mb-2">Bs {{ total_paid|floatformat:2 }}</p>
+                        <p class="text-green-100 text-sm">
+                            {% widthratio total_paid credit.amount_bs 100 as percentage %}
+                            {{ percentage|floatformat:1 }}% del total
+                        </p>
+                    </div>
+                    
+                    <!-- Barra de progreso -->
+                    <div class="mt-4 w-full bg-white bg-opacity-20 rounded-full h-3">
+                        <div class="bg-white h-3 rounded-full transition-all duration-500" 
+                             style="width: {% widthratio total_paid credit.amount_bs 100 %}%;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saldo Pendiente -->
+                <div class="bg-orange-500 text-white rounded-xl shadow-lg p-6 fade-in">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-white bg-opacity-20 rounded-lg p-3 mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Saldo Pendiente</h3>
+                            <p class="text-orange-100">Por pagar</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-3xl font-bold text-white mb-2">Bs {{ pending_amount|floatformat:2 }}</p>
+                        {% if pending_amount <= 0 %}
+                        <div class="bg-green-500 bg-opacity-30 rounded-lg p-3 mt-3">
+                            <p class="text-white font-medium flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                                </svg>
+                                ¡Crédito Pagado!
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Historial de Pagos Recientes -->
+                {% if credit.payments.exists %}
+                <div class="bg-white rounded-xl shadow-lg p-6 fade-in">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Pagos Recientes
+                    </h3>
+                    
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        {% for payment in credit.payments.all|slice:":5" %}
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900">Bs {{ payment.amount_bs|floatformat:2 }}</p>
+                                <p class="text-xs text-gray-500">{{ payment.payment_date|date:"d/m/Y H:i" }}</p>
+                                <p class="text-xs text-gray-600">{{ payment.get_payment_method_display }}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Pagado
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-t border-gray-200">
+                        <a href="{% url 'customers:credit_detail' pk=credit.pk %}" 
+                           class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                            Ver historial completo →
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function creditPaymentForm() {
+    return {
+        paymentAmount: '',
+        pendingAmount: {{ pending_amount|floatformat:2 }},
+        
+        setPaymentAmount(amount) {
+            this.paymentAmount = Math.min(amount, this.pendingAmount).toFixed(2);
+            // Actualizar el input
+            const input = document.getElementById('{{ form.amount_bs.id_for_label }}');
+            if (input) {
+                input.value = this.paymentAmount;
+                // Disparar evento input para activar validaciones
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        },
+        
+        calculateRemaining() {
+            const amount = parseFloat(this.paymentAmount) || 0;
+            const remaining = Math.max(0, this.pendingAmount - amount);
+            return remaining.toFixed(2);
+        },
+        
+        init() {
+            // Establecer fecha y hora actual como default
+            const now = new Date();
+            // Ajustar a zona horaria local
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            const dateTimeLocal = now.toISOString().slice(0, 16);
+            
+            const dateInput = document.getElementById('{{ form.payment_date.id_for_label }}');
+            if (dateInput && !dateInput.value) {
+                dateInput.value = dateTimeLocal;
+            }
+            
+            console.log('Formulario de pago inicializado. Saldo pendiente:', this.pendingAmount);
+        }
+    }
+}
+</script>
+{% endblock %}

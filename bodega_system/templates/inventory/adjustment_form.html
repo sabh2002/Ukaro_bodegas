@@ -1,174 +1,808 @@
-<!-- templates/inventory/adjustment_form.html -->
+<!-- templates/inventory/adjustment_form.html - VERSIÓN MEJORADA -->
 {% extends 'base/base.html' %}
 
 {% block title %}Ajuste de Inventario - Sistema de Bodega{% endblock %}
 
-{% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Ajuste de Inventario</h1>
-        <a href="{% url 'inventory:product_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-            </svg>
-            Volver
-        </a>
-    </div>
+{% block extra_css %}
+<style>
+    /* Variables CSS para consistencia */
+    :root {
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --input-border-focus: #3b82f6;
+        --input-text: #111827;
+        --input-placeholder: #9ca3af;
+        --label-text: #374151;
+        --error-color: #dc2626;
+        --success-color: #059669;
+    }
+
+    /* INPUTS CON MÁXIMA VISIBILIDAD */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    textarea,
+    select {
+        width: 100% !important;
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        color: var(--input-text) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--input-border) !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+    }
+
+    /* Placeholders más visibles */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--input-placeholder) !important;
+        opacity: 1 !important;
+        font-size: 15px !important;
+    }
+
+    /* Estados de focus */
+    input:focus,
+    textarea:focus,
+    select:focus {
+        outline: none !important;
+        border-color: var(--input-border-focus) !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        background-color: #fefefe !important;
+    }
+
+    /* Estados hover */
+    input:hover:not(:focus),
+    select:hover:not(:focus),
+    textarea:hover:not(:focus) {
+        border-color: #9ca3af !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Labels más visibles */
+    label {
+        display: block !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: var(--label-text) !important;
+        margin-bottom: 8px !important;
+        line-height: 1.4 !important;
+    }
+
+    /* Radio buttons mejorados */
+    input[type="radio"] {
+        width: 20px !important;
+        height: 20px !important;
+        margin-right: 12px !important;
+        accent-color: #3b82f6 !important;
+        transform: scale(1.2) !important;
+    }
+
+    /* Estados de validación */
+    .invalid-input,
+    input.invalid-input,
+    select.invalid-input,
+    textarea.invalid-input {
+        border-color: var(--error-color) !important;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1), 0 2px 8px rgba(220, 38, 38, 0.15) !important;
+        background-color: #fef2f2 !important;
+    }
+
+    .valid-input,
+    input.valid-input,
+    select.valid-input,
+    textarea.valid-input {
+        border-color: var(--success-color) !important;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1), 0 2px 8px rgba(5, 150, 105, 0.15) !important;
+        background-color: #f0fdf4 !important;
+    }
+
+    /* Mejoras específicas para elementos del formulario */
+    .product-card {
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
     
-    <form method="post" class="space-y-6">
-        {% csrf_token %}
+    .product-card:hover {
+        transform: translateY(-2px);
+        border-color: #6366f1;
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.1);
+    }
+    
+    .stock-indicator {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stock-indicator::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .stock-indicator:hover::before {
+        left: 100%;
+    }
+    
+    .search-results {
+        max-height: 300px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+    
+    .search-results::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .search-results::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+    
+    .search-results::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+    
+    .search-results::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+    
+    .adjustment-preview {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    }
+    
+    .quantity-input {
+        transition: all 0.3s ease;
+    }
+    
+    .quantity-input:focus {
+        transform: scale(1.02);
+    }
+
+    /* Mejoras para dispositivos móviles */
+    @media (max-width: 768px) {
+        input, select, textarea {
+            font-size: 16px !important; /* Evita zoom en iOS */
+            padding: 16px !important;
+        }
         
-        {% if form.non_field_errors %}
-        <div class="bg-red-50 text-red-800 p-4 rounded-md mb-6">
-            {{ form.non_field_errors }}
-        </div>
-        {% endif %}
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Selección de Producto -->
-            <div class="bg-gray-50 p-4 rounded-md space-y-4">
-                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Producto</h2>
-                
-                <div>
-                    <label for="{{ form.product.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Seleccione Producto</label>
-                    {{ form.product }}
-                    {% if form.product.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.product.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <!-- Información del producto seleccionado (se muestra con JavaScript) -->
-                <div id="product-info" class="hidden mt-4 p-3 bg-indigo-50 rounded-md">
-                    <div class="flex items-center">
-                        <div id="product-image" class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div id="product-name" class="text-sm font-medium text-indigo-800"></div>
-                            <div id="product-barcode" class="text-xs text-indigo-600"></div>
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-indigo-700">Stock Actual:</span>
-                            <span id="product-stock" class="font-medium text-indigo-800"></span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-indigo-700">Stock Mínimo:</span>
-                            <span id="product-min-stock" class="font-medium text-indigo-800"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Ajuste de Inventario -->
-            <div class="bg-gray-50 p-4 rounded-md space-y-4">
-                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Ajuste</h2>
-                
-                <div>
-                    <label for="{{ form.adjustment_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Ajuste</label>
-                    {{ form.adjustment_type }}
-                    {% if form.adjustment_type.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.adjustment_type.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <div>
-                    <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
-                    {{ form.quantity }}
-                    {% if form.quantity.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.quantity.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <div>
-                    <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Razón</label>
-                    {{ form.reason }}
-                    {% if form.reason.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.reason.errors.0 }}</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        
-        <div class="flex justify-end space-x-3">
-            <a href="{% url 'inventory:product_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md">
-                Cancelar
-            </a>
-            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
-                Realizar Ajuste
-            </button>
-        </div>
-    </form>
-</div>
+        label {
+            font-size: 15px !important;
+            margin-bottom: 10px !important;
+        }
+    }
+
+    /* Contenedores con mejor contraste */
+    .bg-gradient-to-r {
+        padding: 20px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .bg-gradient-to-r h2 {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: white !important;
+        margin: 0 !important;
+    }
+
+    /* Mensajes de error más visibles */
+    .text-red-600 {
+        color: var(--error-color) !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+        margin-top: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    /* Botones mejorados */
+    .btn,
+    button[type="submit"],
+    button[type="button"],
+    .button,
+    a.button {
+        padding: 12px 24px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        border: 2px solid transparent !important;
+    }
+
+    /* Textos de ayuda más legibles */
+    .text-xs {
+        font-size: 13px !important;
+        line-height: 1.4 !important;
+        color: #6b7280 !important;
+        margin-top: 6px !important;
+    }
+
+    /* Radio button labels con mejor estilo */
+    input[type="radio"] + div {
+        margin-left: 12px !important;
+    }
+
+    /* Dropdown de búsqueda mejorado */
+    .product-search-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #d1d5db;
+        border-radius: 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 50;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .search-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    .search-item:hover {
+        background-color: #f9fafb;
+    }
+    
+    .search-item:last-child {
+        border-bottom: none;
+    }
+</style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const productSelect = document.getElementById('{{ form.product.id_for_label }}');
-        const productInfo = document.getElementById('product-info');
-        const productName = document.getElementById('product-name');
-        const productBarcode = document.getElementById('product-barcode');
-        const productStock = document.getElementById('product-stock');
-        const productMinStock = document.getElementById('product-min-stock');
-        const productImage = document.getElementById('product-image');
-        
-        // Función para cargar información del producto
-        function loadProductInfo() {
-            const productId = productSelect.value;
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Ajuste de Inventario</h1>
+                    <p class="text-gray-600">Actualizar stock de productos en el inventario</p>
+                </div>
+                <a href="{% url 'inventory:product_list' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Volver al Inventario
+                </a>
+            </div>
+        </div>
+
+        <!-- Formulario -->
+        <form method="post" 
+              class="space-y-8" 
+              x-data="enhancedAdjustmentForm()" 
+              @submit="onSubmit">
+            {% csrf_token %}
             
-            if (!productId) {
-                productInfo.classList.add('hidden');
+            <!-- Errores generales -->
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+                <div class="flex">
+                    <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                    <div class="text-red-700">{{ form.non_field_errors }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Selección de Producto -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            Seleccionar Producto
+                        </h2>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- Búsqueda de Producto -->
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Buscar Producto
+                            </label>
+                            <div class="relative">
+                                <input type="text" 
+                                       x-model="searchQuery"
+                                       @input="searchProducts"
+                                       placeholder="Buscar por nombre o código de barras..."
+                                       class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <!-- Resultados de Búsqueda -->
+                            <div x-show="searchResults.length > 0" 
+                                 x-transition:enter="transition ease-out duration-200"
+                                 x-transition:enter-start="opacity-0 transform scale-95"
+                                 x-transition:enter-end="opacity-100 transform scale-100"
+                                 class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg search-results">
+                                <template x-for="product in searchResults" :key="product.id">
+                                    <div @click="selectProduct(product)"
+                                         class="p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="flex-shrink-0">
+                                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900" x-text="product.name"></p>
+                                                <p class="text-xs text-gray-500" x-text="product.barcode"></p>
+                                                <p class="text-xs text-gray-500" x-text="product.category"></p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-sm font-medium text-gray-900" x-text="'Stock: ' + product.stock"></p>
+                                                <p class="text-xs text-gray-500" x-text="'Bs ' + product.selling_price_bs"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Campo de selección tradicional (fallback) -->
+                        <div>
+                            <label for="{{ form.product.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                O seleccionar de la lista
+                            </label>
+                            {{ form.product }}
+                            {% if form.product.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.product.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Información del producto seleccionado -->
+                        <div x-show="selectedProduct" 
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="opacity-0 transform translate-y-4"
+                             x-transition:enter-end="opacity-100 transform translate-y-0"
+                             class="product-card bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-lg">
+                            
+                            <h3 class="text-lg font-medium text-gray-900 mb-3">Producto Seleccionado</h3>
+                            
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Nombre:</span>
+                                    <span class="font-medium text-gray-900" x-text="selectedProduct?.name || '--'"></span>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Código:</span>
+                                    <span class="font-mono text-sm text-gray-700" x-text="selectedProduct?.barcode || '--'"></span>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Stock Actual:</span>
+                                    <span class="stock-indicator px-3 py-1 rounded-full text-sm font-medium"
+                                          :class="{
+                                              'bg-red-100 text-red-800': selectedProduct?.stock <= 0,
+                                              'bg-yellow-100 text-yellow-800': selectedProduct?.stock > 0 && selectedProduct?.stock <= selectedProduct?.min_stock,
+                                              'bg-green-100 text-green-800': selectedProduct?.stock > selectedProduct?.min_stock
+                                          }"
+                                          x-text="selectedProduct?.stock || '0'">
+                                    </span>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Stock Mínimo:</span>
+                                    <span class="text-sm text-gray-700" x-text="selectedProduct?.min_stock || '--'"></span>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Tipo de Unidad:</span>
+                                    <span class="text-sm text-gray-700" x-text="selectedProduct?.unit_display || '--'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración del Ajuste -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-6">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                            Configurar Ajuste
+                        </h2>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- Tipo de Ajuste -->
+                        <div>
+                            <label for="{{ form.adjustment_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-3">
+                                Tipo de Ajuste
+                            </label>
+                            <div class="grid grid-cols-1 gap-3">
+                                {% for value, label in form.adjustment_type.field.choices %}
+                                <label class="relative flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors duration-200">
+                                    <input type="radio" 
+                                           name="{{ form.adjustment_type.name }}" 
+                                           value="{{ value }}"
+                                           class="sr-only"
+                                           @change="adjustmentType = '{{ value }}'">
+                                    <div class="flex items-center">
+                                        <div class="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0 mr-3"
+                                             :class="{ 'bg-indigo-600 border-indigo-600': adjustmentType === '{{ value }}' }">
+                                            <div x-show="adjustmentType === '{{ value }}'" class="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">{{ label }}</p>
+                                            <p class="text-xs text-gray-500">
+                                                {% if value == 'add' %}Aumentar la cantidad en stock
+                                                {% elif value == 'subtract' %}Reducir la cantidad en stock
+                                                {% elif value == 'set' %}Establecer una cantidad específica
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            {% if form.adjustment_type.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.adjustment_type.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Cantidad -->
+                        <div>
+                            <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Cantidad
+                            </label>
+                            <div class="relative">
+                                <input type="number" 
+                                       id="{{ form.quantity.id_for_label }}"
+                                       name="{{ form.quantity.name }}"
+                                       x-model="adjustmentQuantity"
+                                       class="quantity-input w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                                       step="0.001"
+                                       min="0"
+                                       placeholder="0.000">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <span class="text-sm text-gray-500" x-text="selectedProduct?.unit_display || 'unidad'"></span>
+                                </div>
+                            </div>
+                            {% if form.quantity.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.quantity.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Razón del Ajuste -->
+                        <div>
+                            <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Razón del Ajuste
+                            </label>
+                            {{ form.reason }}
+                            {% if form.reason.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.reason.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Vista Previa del Ajuste -->
+                        <div x-show="selectedProduct && adjustmentQuantity && adjustmentType" 
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="opacity-0 transform scale-95"
+                             x-transition:enter-end="opacity-100 transform scale-100"
+                             class="adjustment-preview p-4 rounded-lg text-white">
+                            
+                            <h3 class="text-lg font-medium mb-3">Vista Previa del Ajuste</h3>
+                            
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p class="opacity-80">Stock Actual</p>
+                                    <p class="text-xl font-bold" x-text="selectedProduct?.stock || '0'"></p>
+                                </div>
+                                
+                                <div>
+                                    <p class="opacity-80">Nuevo Stock</p>
+                                    <p class="text-xl font-bold" x-text="calculateNewStock()"></p>
+                                </div>
+                                
+                                <div class="col-span-2">
+                                    <p class="opacity-80">Cambio</p>
+                                    <p class="text-lg font-medium" 
+                                       :class="{
+                                           'text-green-200': parseFloat(calculateStockChange()) > 0,
+                                           'text-red-200': parseFloat(calculateStockChange()) < 0,
+                                           'text-white': parseFloat(calculateStockChange()) === 0
+                                       }">
+                                        <span x-text="parseFloat(calculateStockChange()) > 0 ? '+' : ''"></span>
+                                        <span x-text="calculateStockChange()"></span>
+                                        <span x-text="selectedProduct?.unit_display || 'unidad'"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Alerta si el nuevo stock es bajo -->
+                            <div x-show="parseFloat(calculateNewStock()) <= (selectedProduct?.min_stock || 0)" 
+                                 class="mt-3 p-2 bg-yellow-500 bg-opacity-20 rounded border border-yellow-300 border-opacity-30">
+                                <p class="text-sm font-medium">⚠️ El nuevo stock estará por debajo del mínimo recomendado</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+                    <a href="{% url 'inventory:product_list' %}" 
+                       class="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200 text-center">
+                        Cancelar
+                    </a>
+                    <button type="submit" 
+                            class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 flex items-center justify-center"
+                            :disabled="!selectedProduct || !adjustmentQuantity || !adjustmentType || isSubmitting"
+                            :class="{ 'opacity-50 cursor-not-allowed': !selectedProduct || !adjustmentQuantity || !adjustmentType || isSubmitting }">
+                        <svg x-show="isSubmitting" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="isSubmitting ? 'Realizando Ajuste...' : 'Realizar Ajuste'"></span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function enhancedAdjustmentForm() {
+    return {
+        isSubmitting: false,
+        searchQuery: '',
+        searchResults: [],
+        selectedProduct: null,
+        adjustmentType: '',
+        adjustmentQuantity: '',
+        searchTimeout: null,
+        showSearchResults: false,
+        
+        async searchProducts() {
+            // Limpiar timeout anterior
+            clearTimeout(this.searchTimeout);
+            
+            // Si la búsqueda es muy corta, limpiar resultados
+            if (this.searchQuery.length < 2) {
+                this.searchResults = [];
+                this.showSearchResults = false;
                 return;
             }
             
-            fetch(`/api/products/${productId}/`)
-                .then(response => {
+            // Debounce la búsqueda
+            this.searchTimeout = setTimeout(async () => {
+                try {
+                    console.log('Buscando productos:', this.searchQuery);
+                    
+                    const url = `/inventory/api/products/search/?q=${encodeURIComponent(this.searchQuery)}`;
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'same-origin'
+                    });
+                    
                     if (!response.ok) {
-                        throw new Error('Error al cargar información del producto');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    productName.textContent = data.name;
-                    productBarcode.textContent = data.barcode;
-                    
-                    // Establecer color según nivel de stock
-                    let stockClass = 'text-green-600';
-                    if (data.stock <= 0) {
-                        stockClass = 'text-red-600';
-                    } else if (data.stock <= data.min_stock) {
-                        stockClass = 'text-yellow-600';
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     
-                    productStock.textContent = data.stock;
-                    productStock.className = `font-medium ${stockClass}`;
+                    const data = await response.json();
+                    console.log('Resultados de búsqueda:', data);
                     
-                    productMinStock.textContent = data.min_stock;
+                    this.searchResults = data.products || [];
+                    this.showSearchResults = true;
                     
-                    // Mostrar imagen si existe
-                    if (data.image) {
-                        productImage.innerHTML = `<img src="${data.image}" alt="${data.name}" class="h-12 w-12 rounded-full object-cover">`;
-                    }
+                } catch (error) {
+                    console.error('Error en búsqueda de productos:', error);
+                    this.searchResults = [];
+                    this.showSearchResults = false;
                     
-                    productInfo.classList.remove('hidden');
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    productInfo.classList.add('hidden');
+                    // Mostrar error al usuario
+                    this.showNotification('Error al buscar productos: ' + error.message, 'error');
+                }
+            }, 300);
+        },
+        
+        async selectProduct(product) {
+            try {
+                console.log('Producto seleccionado:', product);
+                
+                this.selectedProduct = product;
+                this.searchResults = [];
+                this.searchQuery = product.name;
+                this.showSearchResults = false;
+                
+                // Actualizar el campo select tradicional
+                const selectField = document.getElementById('{{ form.product.id_for_label }}');
+                if (selectField) {
+                    selectField.value = product.id;
+                    // Disparar evento change
+                    selectField.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                // Cargar detalles completos del producto
+                await this.loadProductDetails(product.id);
+                
+            } catch (error) {
+                console.error('Error al seleccionar producto:', error);
+                this.showNotification('Error al seleccionar producto', 'error');
+            }
+        },
+        
+        async loadProductDetails(productId) {
+            try {
+                const url = `/inventory/api/products/${productId}/`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin'
                 });
-        }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const productDetails = await response.json();
+                console.log('Detalles del producto:', productDetails);
+                
+                this.selectedProduct = productDetails;
+                
+            } catch (error) {
+                console.error('Error al cargar detalles del producto:', error);
+                // No es crítico, usar los datos básicos que ya tenemos
+            }
+        },
         
-        // Cargar información al cambiar producto
-        productSelect.addEventListener('change', loadProductInfo);
+        calculateNewStock() {
+            if (!this.selectedProduct || !this.adjustmentQuantity || !this.adjustmentType) {
+                return this.selectedProduct?.stock || 0;
+            }
+            
+            const currentStock = parseFloat(this.selectedProduct.stock) || 0;
+            const quantity = parseFloat(this.adjustmentQuantity) || 0;
+            
+            switch (this.adjustmentType) {
+                case 'add':
+                    return (currentStock + quantity).toFixed(3);
+                case 'subtract':
+                    return Math.max(0, currentStock - quantity).toFixed(3);
+                case 'set':
+                    return quantity.toFixed(3);
+                default:
+                    return currentStock.toFixed(3);
+            }
+        },
         
-        // Cargar información inicial si hay un producto seleccionado
-        if (productSelect.value) {
-            loadProductInfo();
+        calculateStockChange() {
+            if (!this.selectedProduct || !this.adjustmentQuantity || !this.adjustmentType) {
+                return '0';
+            }
+            
+            const currentStock = parseFloat(this.selectedProduct.stock) || 0;
+            const newStock = parseFloat(this.calculateNewStock());
+            
+            return (newStock - currentStock).toFixed(3);
+        },
+        
+        onSubmit() {
+            this.isSubmitting = true;
+        },
+        
+        showNotification(message, type = 'info') {
+            // Función simple para mostrar notificaciones
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            // Si tienes un sistema de notificaciones, úsalo aquí
+            // Por ejemplo, si usas toastr:
+            // toastr[type](message);
+        },
+        
+        init() {
+            console.log('Inicializando formulario de ajuste de inventario');
+            
+            // Cargar producto inicial si está pre-seleccionado
+            const selectField = document.getElementById('{{ form.product.id_for_label }}');
+            if (selectField && selectField.value) {
+                this.loadProductById(selectField.value);
+            }
+            
+            // Escuchar cambios en el select tradicional
+            selectField?.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    this.loadProductById(e.target.value);
+                } else {
+                    this.selectedProduct = null;
+                    this.searchQuery = '';
+                }
+            });
+            
+            // Cerrar resultados cuando se hace clic fuera
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.relative')) {
+                    this.showSearchResults = false;
+                }
+            });
+            
+            // Manejar tecla Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.showSearchResults = false;
+                }
+            });
+        },
+        
+        async loadProductById(productId) {
+            try {
+                const url = `/inventory/api/products/${productId}/`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const product = await response.json();
+                this.selectedProduct = product;
+                this.searchQuery = product.name;
+                
+            } catch (error) {
+                console.error('Error al cargar producto:', error);
+                this.showNotification('Error al cargar información del producto', 'error');
+            }
         }
-    });
+    }
+}
 </script>
 {% endblock %}
