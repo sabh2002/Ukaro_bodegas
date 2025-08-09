@@ -1,0 +1,137 @@
+<!-- templates/403.html - PÁGINA DE ERROR DE PERMISOS -->
+{% extends 'base/base.html' %}
+
+{% block title %}Acceso Denegado - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="min-h-96 flex items-center justify-center">
+    <div class="max-w-md w-full space-y-8 text-center">
+        <!-- Icono de error -->
+        <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-red-100">
+            <svg class="h-12 w-12 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 0h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+        </div>
+
+        <!-- Título principal -->
+        <div>
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">403</h1>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Acceso Denegado</h2>
+        </div>
+
+        <!-- Mensaje personalizado según el rol -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+            {% if user.is_authenticated %}
+                {% if user.is_admin or user.is_superuser %}
+                <div class="flex items-center mb-4">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                        👑 Administrador
+                    </span>
+                </div>
+                <p class="text-red-800 font-medium mb-2">
+                    Error inesperado para administrador
+                </p>
+                <p class="text-red-700 text-sm">
+                    Como administrador, deberías tener acceso a esta página. Si este error persiste, contacta al soporte técnico.
+                </p>
+                {% elif user.is_employee %}
+                <div class="flex items-center mb-4">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        👤 Empleado
+                    </span>
+                </div>
+                <p class="text-red-800 font-medium mb-2">
+                    Acceso Restringido para Empleados
+                </p>
+                <p class="text-red-700 text-sm">
+                    Esta página está disponible solo para administradores. Como empleado, tienes acceso a:
+                </p>
+                <ul class="text-red-700 text-sm mt-3 space-y-1">
+                    <li>• Módulo de Ventas</li>
+                    <li>• Gestión de Clientes</li>
+                    <li>• Tu perfil personal</li>
+                </ul>
+                {% else %}
+                <p class="text-red-800 font-medium mb-2">
+                    Sin permisos asignados
+                </p>
+                <p class="text-red-700 text-sm">
+                    Tu cuenta no tiene los permisos necesarios para acceder a esta página. Contacta al administrador para obtener los permisos apropiados.
+                </p>
+                {% endif %}
+            {% else %}
+            <p class="text-red-800 font-medium mb-2">
+                Sesión no iniciada
+            </p>
+            <p class="text-red-700 text-sm">
+                Debes iniciar sesión para acceder a esta página.
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Acciones recomendadas -->
+        <div class="space-y-4">
+            {% if user.is_authenticated %}
+                {% if user.is_employee %}
+                <!-- Acciones para empleados -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a href="{% url 'sales:sale_create' %}" 
+                       class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Nueva Venta
+                    </a>
+                    <a href="{% url 'customers:customer_list' %}" 
+                       class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        Ver Clientes
+                    </a>
+                </div>
+                {% endif %}
+                
+                <!-- Botón para volver al dashboard -->
+                <a href="{% url 'dashboard' %}" 
+                   class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Volver al Dashboard
+                </a>
+                
+                <!-- Información de contacto para empleados -->
+                {% if user.is_employee %}
+                <div class="text-center">
+                    <p class="text-gray-600 text-sm">
+                        ¿Necesitas acceso a más funciones?
+                    </p>
+                    <p class="text-gray-500 text-xs mt-1">
+                        Contacta al administrador del sistema
+                    </p>
+                </div>
+                {% endif %}
+                
+            {% else %}
+                <!-- Usuario no autenticado -->
+                <a href="{% url 'accounts:login' %}" 
+                   class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    Iniciar Sesión
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Footer informativo -->
+        <div class="border-t border-gray-200 pt-6">
+            <p class="text-gray-500 text-xs">
+                Sistema de Bodega - Control de Acceso por Roles<br>
+                Si crees que esto es un error, contacta al administrador del sistema.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

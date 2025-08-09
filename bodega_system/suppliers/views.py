@@ -11,6 +11,15 @@ from django.core.paginator import Paginator
 from .models import Supplier, SupplierOrder, SupplierOrderItem
 from .forms import SupplierForm, SupplierOrderForm, SupplierOrderItemFormset, ReceiveOrderForm
 from inventory.models import Product, InventoryAdjustment
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q
+
+from .models import Supplier
+from .forms import SupplierForm
+from utils.decorators import admin_required
 
 @login_required
 def supplier_list(request):
@@ -361,7 +370,7 @@ def order_receive(request, pk):
         'title': 'Recibir Orden de Compra'
     })
 
-@login_required
+@admin_required
 def order_cancel(request, pk):
     """Vista para cancelar una orden de compra"""
     order = get_object_or_404(SupplierOrder, pk=pk)

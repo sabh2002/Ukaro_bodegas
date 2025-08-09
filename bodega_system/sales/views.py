@@ -1,4 +1,5 @@
-# sales/views.py
+# sales/views.py - CON RESTRICCIONES DE ROLES
+
 import io
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -9,13 +10,7 @@ from django.utils.dateparse import parse_date
 
 from .models import Sale, SaleItem
 from utils.models import ExchangeRate
-import io
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from django.contrib import messages
-from django.template.loader import get_template
-from django.utils import timezone
+from utils.decorators import admin_required, employee_or_admin_required, sales_access_required
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -24,15 +19,17 @@ from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
-from .models import Sale, SaleItem
-from utils.models import ExchangeRate
-
-@login_required
+@sales_access_required
 def sale_list(request):
     """
-    Vista mejorada para listar, filtrar y paginar ventas.
+    Vista para listar ventas - Solo Admin puede ver todas las ventas
+    Empleados solo pueden ver sus propias ventas
     """
     sales_qs = Sale.objects.select_related('customer', 'user').all().order_by('-date')
+    
+    # Si es empleado, solo mostrar sus propias ventas
+    if not (request.user.is_admin or request.user.is_superuser):
+        sales_qs = sales_qs.filter(user=request.user)
 
     # --- Aplicar filtros desde la URL (GET) ---
     search_query = request.GET.get('q', '')
@@ -58,7 +55,6 @@ def sale_list(request):
     if date_to_str:
         date_to = parse_date(date_to_str)
         if date_to:
-            # Se suma un día para incluir todo el día de la fecha "hasta"
             from datetime import timedelta
             sales_qs = sales_qs.filter(date__lt=date_to + timedelta(days=1))
 
@@ -73,13 +69,12 @@ def sale_list(request):
     average_sale = total_sales / sales_count if sales_count > 0 else 0
 
     # --- Aplicar Paginación ---
-    paginator = Paginator(sales_qs, 15)  # 15 ventas por página
+    paginator = Paginator(sales_qs, 15)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # El contexto que se envía al template
     context = {
-        'page_obj': page_obj,  # Objeto de paginación con las ventas de la página actual
+        'page_obj': page_obj,
         'sales_count': sales_count,
         'total_sales': total_sales,
         'average_sale': average_sale,
@@ -87,29 +82,50 @@ def sale_list(request):
         'date_from': date_from_str,
         'date_to': date_to_str,
         'credit_filter': credit_filter,
+        'is_admin': request.user.is_admin or request.user.is_superuser,
     }
     
-    # Asegúrate de que el template que se renderiza es el correcto
     return render(request, 'sales/sale_list.html', context)
 
-
-# --- Resto de las vistas (sin cambios) ---
-
-@login_required
+@sales_access_required
 def sale_create(request):
-    """Vista para crear una nueva venta"""
+    """Vista para crear una nueva venta - Empleados y Administradores"""
     return render(request, 'sales/sale_form.html', {'title': 'Nueva Venta'})
 
-@login_required
+@sales_access_required
 def sale_detail(request, pk):
-    """Vista para ver detalles de una venta"""
+    """
+    Vista para ver detalles de una venta
+    Empleados solo pueden ver sus propias ventas
+    """
     sale = get_object_or_404(Sale, pk=pk)
-    return render(request, 'sales/sale_detail.html', {'sale': sale, 'items': sale.items.all()})
+    
+    # Si es empleado, verificar que sea su venta
+    if not (request.user.is_admin or request.user.is_superuser):
+        if sale.user != request.user:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("No tienes permisos para ver esta venta.")
+    
+    return render(request, 'sales/sale_detail.html', {
+        'sale': sale, 
+        'items': sale.items.all(),
+        'is_admin': request.user.is_admin or request.user.is_superuser,
+    })
 
-@login_required
+@sales_access_required
 def sale_receipt(request, pk):
-    """Vista para generar recibo PDF de una venta"""
+    """
+    Vista para generar recibo PDF de una venta
+    Empleados solo pueden generar recibos de sus propias ventas
+    """
     sale = get_object_or_404(Sale, pk=pk)
+    
+    # Si es empleado, verificar que sea su venta
+    if not (request.user.is_admin or request.user.is_superuser):
+        if sale.user != request.user:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("No tienes permisos para generar el recibo de esta venta.")
+    
     items = sale.items.all()
     
     # Obtener tasa de cambio actual
@@ -148,8 +164,9 @@ def sale_receipt(request, pk):
     data = [["Producto", "Cantidad", "Precio Unit.", "Subtotal"]]
     
     for item in items:
+        product_name = item.product.name if item.product else f"COMBO: {item.combo.name}"
         data.append([
-            item.product.name, 
+            product_name, 
             str(item.quantity), 
             f"Bs {item.price_bs:.2f}", 
             f"Bs {item.subtotal:.2f}"

@@ -50,6 +50,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    'utils.middleware.PermissionDeniedMiddleware',
+    'utils.middleware.RoleBasedAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'bodega_system.urls'
@@ -105,7 +107,7 @@ LANGUAGE_CODE = 'es-ve'
 TIME_ZONE = 'America/Caracas'
 USE_I18N = True
 USE_L10N = True
-USE_TZ = True
+USE_TZ = False  # ← CAMBIAR DE True A False
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
@@ -124,9 +126,35 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = 'tailwind'
 CRISPY_TEMPLATE_PACK = 'tailwind'
 
 # Login URLs
-LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'dashboard'
-LOGOUT_REDIRECT_URL = 'accounts:login'
+# Configuración de logging para auditoría
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'access_logs.log',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'utils.middleware': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+# LOGIN_URL = 'accounts:login'
+# LOGIN_REDIRECT_URL = 'dashboard'
+# LOGOUT_REDIRECT_URL = 'accounts:login'
+LOGIN_URL = '/accounts/login/'  # ← Cambiado: agregar slash inicial
+LOGIN_REDIRECT_URL = '/'        # ← Dashboard después de login
+LOGOUT_REDIRECT_URL = '/accounts/login/'  # ← Tu login personalizado, no admin
 
 # REST Framework
 REST_FRAMEWORK = {

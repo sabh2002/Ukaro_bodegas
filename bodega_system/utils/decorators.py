@@ -1,10 +1,9 @@
-# utils/decorators.py - DECORADORES DE PERMISOS
+# utils/decorators.py - DECORADORES DE PERMISOS CORREGIDO
 
 from functools import wraps
 from django.shortcuts import redirect
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
-
 
 def is_admin(user):
     """Verifica si el usuario es administrador"""

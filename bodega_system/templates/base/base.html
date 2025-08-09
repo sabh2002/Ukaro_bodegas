@@ -1,4 +1,4 @@
-<!-- templates/base/base.html - VERSIÓN RESPONSIVA OPTIMIZADA -->
+<!-- templates/base/base.html - CON RESTRICCIONES DE ROLES -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -81,6 +81,24 @@
         .form-mobile textarea {
             @apply text-base; /* Evita zoom en iOS */
         }
+
+        /* Indicador de rol */
+        .role-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .role-admin {
+            background-color: #fbbf24;
+            color: #92400e;
+        }
+        
+        .role-employee {
+            background-color: #34d399;
+            color: #065f46;
+        }
     </style>
     
     {% block extra_head %}{% endblock %}
@@ -110,14 +128,23 @@
                     </a>
                 </div>
                 
-                <!-- Tasa de cambio - Solo en desktop -->
-                {% if latest_exchange_rate %}
-                <div class="hidden md:block">
+                <!-- Tasa de cambio y rol - Solo en desktop -->
+                <div class="hidden md:flex items-center space-x-4">
+                    {% if user.is_authenticated %}
+                    <!-- Indicador de rol -->
+                    {% if user.is_admin or user.is_superuser %}
+                    <span class="role-badge role-admin">ADMINISTRADOR</span>
+                    {% elif user.is_employee %}
+                    <span class="role-badge role-employee">EMPLEADO</span>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% if latest_exchange_rate %}
                     <div class="text-xs bg-blue-500 px-3 py-1 rounded-full">
                         <span class="hidden lg:inline">Tasa: </span>{{ latest_exchange_rate.bs_to_usd }} Bs/USD
                     </div>
+                    {% endif %}
                 </div>
-                {% endif %}
                 
                 <!-- Menú de usuario optimizado -->
                 {% if user.is_authenticated %}
@@ -125,7 +152,6 @@
                     <!-- Nombre de usuario - Solo en tablet+ -->
                     <span class="text-sm hidden md:inline-block truncate max-w-32 lg:max-w-none">
                         {{ user.get_full_name|default:user.username }}
-                        <span class="hidden lg:inline">({{ user.role }})</span>
                     </span>
                     
                     <!-- Menú de usuario -->
@@ -153,7 +179,14 @@
                              class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg z-50 py-1 border border-gray-200">
                             <div class="px-4 py-3 border-b border-gray-200">
                                 <p class="text-sm font-medium text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
-                                <p class="text-xs text-gray-500">{{ user.role }}</p>
+                                <div class="flex items-center justify-between mt-1">
+                                    <p class="text-xs text-gray-500">{{ user.role }}</p>
+                                    {% if user.is_admin or user.is_superuser %}
+                                    <span class="role-badge role-admin text-xs">ADMIN</span>
+                                    {% elif user.is_employee %}
+                                    <span class="role-badge role-employee text-xs">EMPLEADO</span>
+                                    {% endif %}
+                                </div>
                                 {% if latest_exchange_rate %}
                                 <p class="text-xs text-blue-600 mt-1 md:hidden">Tasa: {{ latest_exchange_rate.bs_to_usd }} Bs/USD</p>
                                 {% endif %}
@@ -201,7 +234,7 @@
              class="fixed inset-0 z-40 mobile-overlay lg:hidden">
         </div>
         
-        <!-- Sidebar optimizado -->
+        <!-- Sidebar optimizado CON RESTRICCIONES DE ROLES -->
         <aside class="sidebar-transition fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-80 lg:w-64 bg-blue-800 text-white shadow-xl transform lg:transform-none"
                :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
                x-trap="sidebarOpen">
@@ -225,7 +258,14 @@
                         </div>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-medium truncate">{{ user.get_full_name|default:user.username }}</p>
-                            <p class="text-xs text-blue-200">{{ user.role }}</p>
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs text-blue-200">{{ user.role }}</p>
+                                {% if user.is_admin or user.is_superuser %}
+                                <span class="role-badge role-admin text-xs">ADMIN</span>
+                                {% elif user.is_employee %}
+                                <span class="role-badge role-employee text-xs">EMPLEADO</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -239,7 +279,7 @@
                 </div>
                 {% endif %}
                 
-                <!-- Navegación optimizada -->
+                <!-- Navegación optimizada CON RESTRICCIONES -->
                 <nav class="flex-1 py-4 overflow-y-auto custom-scrollbar">
                     <ul class="space-y-1 px-3">
                         <li>
@@ -253,6 +293,7 @@
                             </a>
                         </li>
                         
+                        <!-- VENTAS - Empleados y Administradores -->
                         <li>
                             <a href="{% url 'sales:sale_create' %}" 
                                @click="if (isMobile) sidebarOpen = false"
@@ -272,7 +313,30 @@
                                     <path fill-rule="evenodd" d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v7h-2l-1 2H8l-1-2H5V5z" clip-rule="evenodd" />
                                 </svg>
                                 <span class="font-medium">Ventas</span>
+                                {% if not user.is_admin and not user.is_superuser %}
+                                <span class="ml-auto text-xs bg-blue-600 px-2 py-1 rounded">Mis ventas</span>
+                                {% endif %}
                             </a>
+                        </li>
+                        
+                        <!-- CLIENTES - Empleados y Administradores -->
+                        <li>
+                            <a href="{% url 'customers:customer_list' %}" 
+                               @click="if (isMobile) sidebarOpen = false"
+                               class="flex items-center py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors group text-left w-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-200 group-hover:text-white flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 12.094A5.973 5.973 0 004 15v1H1v-1a3 3 0 013.75-2.906z" />
+                                </svg>
+                                <span class="font-medium">Clientes</span>
+                            </a>
+                        </li>
+                        
+                        <!-- SOLO ADMINISTRADORES - RESTO DE MÓDULOS -->
+                        {% if user.is_admin or user.is_superuser %}
+                        <li class="border-t border-blue-700 pt-2 mt-2">
+                            <div class="text-xs text-blue-300 font-medium px-4 py-2 uppercase tracking-wide">
+                                👑 Solo Administradores
+                            </div>
                         </li>
                         
                         <li>
@@ -309,17 +373,6 @@
                         </li>
                         
                         <li>
-                            <a href="{% url 'customers:customer_list' %}" 
-                               @click="if (isMobile) sidebarOpen = false"
-                               class="flex items-center py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors group text-left w-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-blue-200 group-hover:text-white flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 12.094A5.973 5.973 0 004 15v1H1v-1a3 3 0 013.75-2.906z" />
-                                </svg>
-                                <span class="font-medium">Clientes</span>
-                            </a>
-                        </li>
-                        
-                        <li>
                             <a href="{% url 'finances:dashboard' %}" 
                                @click="if (isMobile) sidebarOpen = false"
                                class="flex items-center py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors group text-left w-full">
@@ -330,8 +383,7 @@
                             </a>
                         </li>
                         
-                        {% if user.is_admin or user.is_superuser %}
-                        <li class="border-t border-blue-700 pt-2 mt-2">
+                        <li>
                             <a href="{% url 'accounts:user_list' %}" 
                                @click="if (isMobile) sidebarOpen = false"
                                class="flex items-center py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors group text-left w-full">

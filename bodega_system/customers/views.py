@@ -1,4 +1,4 @@
-# customers/views.py
+# customers/views.py - CON RESTRICCIONES DE ROLES
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -10,10 +10,11 @@ from django.core.paginator import Paginator
 from .models import Customer, CustomerCredit, CreditPayment
 from .forms import CustomerForm, CreditForm, CreditPaymentForm
 from sales.models import Sale
+from utils.decorators import admin_required, employee_or_admin_required, customer_access_required
 
-@login_required
+@customer_access_required
 def customer_list(request):
-    """Vista para listar clientes"""
+    """Vista para listar clientes - Empleados y Administradores"""
     # Filtros
     search_query = request.GET.get('q')
     credit_filter = request.GET.get('credit')
@@ -32,7 +33,6 @@ def customer_list(request):
     if credit_filter == 'with_credit':
         customers = customers.filter(credit_limit_bs__gt=0)
     elif credit_filter == 'with_pending':
-        # Clientes con créditos pendientes
         customers_with_pending = CustomerCredit.objects.filter(
             is_paid=False
         ).values_list('customer_id', flat=True).distinct()
@@ -43,7 +43,7 @@ def customer_list(request):
     customers = customers.order_by('name')
     
     # Paginación
-    paginator = Paginator(customers, 20)  # 20 clientes por página
+    paginator = Paginator(customers, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -51,11 +51,12 @@ def customer_list(request):
         'page_obj': page_obj,
         'search_query': search_query,
         'credit_filter': credit_filter,
+        'is_admin': request.user.is_admin or request.user.is_superuser,
     })
 
-@login_required
+@customer_access_required
 def customer_detail(request, pk):
-    """Vista para ver detalles de un cliente"""
+    """Vista para ver detalles de un cliente - Empleados y Administradores"""
     customer = get_object_or_404(Customer, pk=pk)
     
     # Obtener créditos
@@ -64,15 +65,20 @@ def customer_detail(request, pk):
     # Obtener historial de ventas
     sales = Sale.objects.filter(customer=customer).order_by('-date')[:10]
     
+    # Si es empleado, solo mostrar sus propias ventas
+    if not (request.user.is_admin or request.user.is_superuser):
+        sales = sales.filter(user=request.user)
+    
     return render(request, 'customers/customer_detail.html', {
         'customer': customer,
         'credits': credits,
         'sales': sales,
+        'is_admin': request.user.is_admin or request.user.is_superuser,
     })
 
-@login_required
+@customer_access_required
 def customer_create(request):
-    """Vista para crear un nuevo cliente"""
+    """Vista para crear un nuevo cliente - Empleados y Administradores"""
     if request.method == 'POST':
         form = CustomerForm(request.POST)
         if form.is_valid():
@@ -87,9 +93,9 @@ def customer_create(request):
         'title': 'Nuevo Cliente'
     })
 
-@login_required
+@customer_access_required
 def customer_update(request, pk):
-    """Vista para actualizar un cliente"""
+    """Vista para actualizar un cliente - Empleados y Administradores"""
     customer = get_object_or_404(Customer, pk=pk)
     
     if request.method == 'POST':
@@ -107,9 +113,9 @@ def customer_update(request, pk):
         'title': 'Editar Cliente'
     })
 
-@login_required
+@admin_required
 def customer_delete(request, pk):
-    """Vista para eliminar un cliente"""
+    """Vista para eliminar un cliente - Solo Administradores"""
     customer = get_object_or_404(Customer, pk=pk)
     
     # Verificar si hay ventas o créditos asociados
@@ -130,9 +136,9 @@ def customer_delete(request, pk):
         'customer': customer
     })
 
-@login_required
+@admin_required
 def credit_list(request):
-    """Vista para listar créditos de clientes"""
+    """Vista para listar créditos de clientes - Solo Administradores"""
     # Filtros
     customer_id = request.GET.get('customer')
     status = request.GET.get('status')
@@ -156,7 +162,7 @@ def credit_list(request):
     credits = credits.order_by('-date_created')
     
     # Paginación
-    paginator = Paginator(credits, 20)  # 20 créditos por página
+    paginator = Paginator(credits, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -172,9 +178,9 @@ def credit_list(request):
         'status': status,
     })
 
-@login_required
+@admin_required
 def credit_detail(request, pk):
-    """Vista para ver detalles de un crédito"""
+    """Vista para ver detalles de un crédito - Solo Administradores"""
     credit = get_object_or_404(CustomerCredit, pk=pk)
     
     # Obtener pagos
@@ -191,22 +197,17 @@ def credit_detail(request, pk):
         'pending_amount': pending_amount,
     })
 
-@login_required
+@admin_required
 def credit_create(request):
-    """Vista para crear un nuevo crédito"""
+    """Vista para crear un nuevo crédito - Solo Administradores"""
     if request.method == 'POST':
         form = CreditForm(request.POST)
         if form.is_valid():
             credit = form.save(commit=False)
-            
-            # Si no hay venta asociada, crear una venta manual
-            # En un caso real, la mayoría de los créditos se crearán desde el módulo de ventas
-            
             credit.save()
             messages.success(request, f'Crédito creado exitosamente para {credit.customer.name}.')
             return redirect('customers:credit_detail', pk=credit.pk)
     else:
-        # Pre-seleccionar cliente si se pasa por URL
         customer_id = request.GET.get('customer')
         initial = {}
         if customer_id:
@@ -223,9 +224,9 @@ def credit_create(request):
         'title': 'Nuevo Crédito'
     })
 
-@login_required
+@customer_access_required
 def credit_payment(request, pk):
-    """Vista para registrar pago de un crédito"""
+    """Vista para registrar pago de un crédito - Empleados y Administradores"""
     credit = get_object_or_404(CustomerCredit, pk=pk)
     
     # Verificar si el crédito ya está pagado
@@ -251,7 +252,7 @@ def credit_payment(request, pk):
             else:
                 messages.success(request, 'Pago registrado exitosamente.')
             
-            return redirect('customers:credit_detail', pk=credit.pk)
+            return redirect('customers:customer_detail', pk=credit.customer.pk)
     else:
         form = CreditPaymentForm(credit=credit)
     

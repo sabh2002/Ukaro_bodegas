@@ -5,7 +5,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from .models import User
 from .forms import UserForm, UserUpdateForm, ProfileForm
-
+from django.contrib.auth import logout
+from django.shortcuts import redirect
 def is_admin(user):
     """Verifica si el usuario es administrador"""
     return user.is_admin or user.is_superuser
@@ -88,3 +89,7 @@ def user_delete(request, pk):
     return render(request, 'accounts/user_confirm_delete.html', {
         'user_obj': user
     })
+def custom_logout(request):
+    """Vista de logout personalizada que redirige inmediatamente"""
+    logout(request)
+    return redirect('/accounts/login/')

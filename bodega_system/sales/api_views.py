@@ -1,4 +1,4 @@
-# sales/api_views.py - API corregida para soporte de decimales
+# sales/api_views.py - API CON RESTRICCIONES DE ROLES
 
 import json
 from decimal import Decimal, InvalidOperation
@@ -7,15 +7,17 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied
 
 from .models import Sale, SaleItem
 from inventory.models import Product, InventoryAdjustment, ProductCombo
 from customers.models import Customer, CustomerCredit
+from utils.decorators import sales_access_required
 
 @require_POST
-@login_required
+@sales_access_required
 def create_sale_api(request):
-    """API mejorada para crear ventas con peso y combos"""
+    """API para crear ventas - Solo empleados y administradores"""
     try:
         data = json.loads(request.body)
         
@@ -31,7 +33,7 @@ def create_sale_api(request):
             # Crear venta
             sale = Sale.objects.create(
                 customer=customer,
-                user=request.user,
+                user=request.user,  # La venta siempre se asigna al usuario actual
                 total_bs=Decimal(str(data.get('total_bs', 0))),
                 is_credit=data.get('is_credit', False),
                 notes=data.get('notes', '')
@@ -52,11 +54,27 @@ def create_sale_api(request):
                         transaction.set_rollback(True)
                         return JsonResponse({'error': result['error']}, status=400)
             
+            # Si es venta a crédito, crear el registro de crédito
+            if sale.is_credit and customer:
+                from datetime import datetime, timedelta
+                due_date = datetime.now().date() + timedelta(days=30)  # 30 días por defecto
+                
+                CustomerCredit.objects.create(
+                    customer=customer,
+                    sale=sale,
+                    amount_bs=sale.total_bs,
+                    date_due=due_date,
+                    notes=f'Crédito por venta #{sale.id}'
+                )
+            
             return JsonResponse({
                 'id': sale.id,
-                'message': 'Venta creada exitosamente'
+                'message': 'Venta creada exitosamente',
+                'user': request.user.get_full_name() or request.user.username
             })
             
+    except PermissionDenied:
+        return JsonResponse({'error': 'No tienes permisos para crear ventas'}, status=403)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -65,26 +83,16 @@ def process_regular_sale(sale, item_data, user):
     try:
         product = get_object_or_404(Product, pk=item_data['product_id'])
         
-        # DEBUGGING: Mostrar datos recibidos
-        print(f"=== PROCESANDO VENTA REGULAR ===")
-        print(f"Producto: {product.name}")
-        print(f"Datos recibidos: {item_data}")
-        print(f"Cantidad recibida (raw): {repr(item_data['quantity'])}")
-        print(f"Tipo de cantidad: {type(item_data['quantity'])}")
-        
         # Convertir cantidad a Decimal para manejar decimales correctamente
         try:
-            # Asegurar que convertimos correctamente sin importar el tipo
             if isinstance(item_data['quantity'], str):
                 quantity_str = item_data['quantity'].replace(',', '.')
             else:
                 quantity_str = str(item_data['quantity'])
             
             quantity = Decimal(quantity_str)
-            print(f"Cantidad convertida a Decimal: {quantity}")
             
         except (InvalidOperation, ValueError) as e:
-            print(f"Error al convertir cantidad: {e}")
             return {
                 'success': False,
                 'error': f'Cantidad inválida para {product.name}: {item_data["quantity"]}'
@@ -109,8 +117,6 @@ def process_regular_sale(sale, item_data, user):
         # Calcular precio (considerar precios al mayor)
         unit_price = product.get_price_for_quantity(quantity)
         
-        print(f"Creando SaleItem con cantidad: {quantity} (tipo: {type(quantity)})")
-        
         # Crear ítem de venta
         sale_item = SaleItem.objects.create(
             sale=sale,
@@ -119,14 +125,10 @@ def process_regular_sale(sale, item_data, user):
             price_bs=unit_price
         )
         
-        print(f"SaleItem creado con ID: {sale_item.id}, cantidad guardada: {sale_item.quantity}")
-        
         # Actualizar inventario
         previous_stock = product.stock
         product.stock -= quantity
         product.save()
-        
-        print(f"Stock actualizado: {previous_stock} -> {product.stock}")
         
         # Registrar ajuste de inventario
         adjustment = InventoryAdjustment.objects.create(
@@ -135,19 +137,13 @@ def process_regular_sale(sale, item_data, user):
             quantity=quantity,
             previous_stock=previous_stock,
             new_stock=product.stock,
-            reason=f'Venta #{sale.id}',
+            reason=f'Venta #{sale.id} - {user.get_full_name() or user.username}',
             adjusted_by=user
         )
-        
-        print(f"Ajuste creado con cantidad: {adjustment.quantity}")
-        print(f"=== FIN PROCESAMIENTO ===")
         
         return {'success': True}
         
     except Exception as e:
-        print(f"Error en process_regular_sale: {e}")
-        import traceback
-        traceback.print_exc()
         return {'success': False, 'error': str(e)}
 
 def process_combo_sale(sale, item_data, user):
@@ -206,7 +202,7 @@ def process_combo_sale(sale, item_data, user):
                 quantity=quantity_to_remove,
                 previous_stock=previous_stock,
                 new_stock=product.stock,
-                reason=f'Venta combo #{sale.id} - {combo.name}',
+                reason=f'Venta combo #{sale.id} - {combo.name} - {user.get_full_name() or user.username}',
                 adjusted_by=user
             )
         

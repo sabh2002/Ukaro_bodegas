@@ -1,4 +1,4 @@
-# inventory/views.py - Fixed version
+# inventory/views.py - CON RESTRICCIONES DE ROLES (Solo Administradores)
 
 from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
@@ -12,11 +12,12 @@ from decimal import Decimal, InvalidOperation
 from .models import Category, Product, InventoryAdjustment, ProductCombo, ComboItem
 from .forms import (CategoryForm, ProductForm, InventoryAdjustmentForm, 
                    ProductComboForm, ComboItemFormset)
+from utils.decorators import admin_required
 
-# Vistas de Productos
-@login_required
+# Vistas de Productos - Solo Administradores
+@admin_required
 def product_list(request):
-    """Vista para listar productos"""
+    """Vista para listar productos - Solo Administradores"""
     # Filtros
     category_id = request.GET.get('category')
     search_query = request.GET.get('q')
@@ -47,7 +48,7 @@ def product_list(request):
     products = products.order_by('category__name', 'name')
     
     # Paginación
-    paginator = Paginator(products, 20)  # 20 productos por página
+    paginator = Paginator(products, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -62,9 +63,9 @@ def product_list(request):
         'stock_filter': stock_filter,
     })
 
-@login_required
+@admin_required
 def product_detail(request, pk):
-    """Vista para ver detalles de un producto"""
+    """Vista para ver detalles de un producto - Solo Administradores"""
     product = get_object_or_404(Product, pk=pk)
     
     # Obtener historial de ajustes
@@ -79,9 +80,9 @@ def product_detail(request, pk):
         'sales': sales,
     })
 
-@login_required
+@admin_required
 def product_create(request):
-    """Vista para crear un nuevo producto"""
+    """Vista para crear un nuevo producto - Solo Administradores"""
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
@@ -92,16 +93,13 @@ def product_create(request):
             initial_stock = request.POST.get('initial_stock')
             if initial_stock:
                 try:
-                    # Convertir a Decimal para manejar decimales
                     initial_stock_decimal = Decimal(str(initial_stock))
                     
                     if initial_stock_decimal > 0:
                         with transaction.atomic():
-                            # Actualizar stock
                             product.stock = initial_stock_decimal
                             product.save()
                             
-                            # Registrar ajuste
                             InventoryAdjustment.objects.create(
                                 product=product,
                                 adjustment_type='set',
@@ -124,9 +122,9 @@ def product_create(request):
         'show_initial_stock': True,
     })
 
-@login_required
+@admin_required
 def product_update(request, pk):
-    """Vista para actualizar un producto"""
+    """Vista para actualizar un producto - Solo Administradores"""
     product = get_object_or_404(Product, pk=pk)
     
     if request.method == 'POST':
@@ -145,15 +143,13 @@ def product_update(request, pk):
         'show_initial_stock': False,
     })
 
-@login_required
+@admin_required
 def product_delete(request, pk):
-    """Vista para eliminar un producto"""
+    """Vista para eliminar un producto - Solo Administradores"""
     product = get_object_or_404(Product, pk=pk)
     
     if request.method == 'POST':
         product_name = product.name
-        
-        # En lugar de eliminar, marcar como inactivo
         product.is_active = False
         product.save()
         
@@ -164,13 +160,12 @@ def product_delete(request, pk):
         'product': product
     })
 
-# Vistas de Categorías
-@login_required
+# Vistas de Categorías - Solo Administradores
+@admin_required
 def category_list(request):
-    """Vista para listar categorías"""
+    """Vista para listar categorías - Solo Administradores"""
     categories = Category.objects.all().order_by('name')
     
-    # Contar productos por categoría
     categories_with_count = []
     for category in categories:
         product_count = Product.objects.filter(category=category).count()
@@ -183,9 +178,9 @@ def category_list(request):
         'categories': categories_with_count
     })
 
-@login_required
+@admin_required
 def category_detail(request, pk):
-    """Vista para ver detalles de una categoría"""
+    """Vista para ver detalles de una categoría - Solo Administradores"""
     category = get_object_or_404(Category, pk=pk)
     products = Product.objects.filter(category=category).order_by('name')
     
@@ -194,9 +189,9 @@ def category_detail(request, pk):
         'products': products
     })
 
-@login_required
+@admin_required
 def category_create(request):
-    """Vista para crear una nueva categoría"""
+    """Vista para crear una nueva categoría - Solo Administradores"""
     if request.method == 'POST':
         form = CategoryForm(request.POST)
         if form.is_valid():
@@ -211,9 +206,9 @@ def category_create(request):
         'title': 'Nueva Categoría'
     })
 
-@login_required
+@admin_required
 def category_update(request, pk):
-    """Vista para actualizar una categoría"""
+    """Vista para actualizar una categoría - Solo Administradores"""
     category = get_object_or_404(Category, pk=pk)
     
     if request.method == 'POST':
@@ -231,12 +226,11 @@ def category_update(request, pk):
         'title': 'Editar Categoría'
     })
 
-@login_required
+@admin_required
 def category_delete(request, pk):
-    """Vista para eliminar una categoría"""
+    """Vista para eliminar una categoría - Solo Administradores"""
     category = get_object_or_404(Category, pk=pk)
     
-    # Verificar si hay productos asociados
     if Product.objects.filter(category=category).exists():
         messages.error(request, f'No se puede eliminar la categoría "{category.name}" porque tiene productos asociados.')
         return redirect('inventory:category_list')
@@ -251,13 +245,12 @@ def category_delete(request, pk):
         'category': category
     })
 
-# Vistas de Ajustes de Inventario
-@login_required
+# Vistas de Ajustes de Inventario - Solo Administradores
+@admin_required
 def adjustment_list(request):
-    """Vista para listar ajustes de inventario"""
+    """Vista para listar ajustes de inventario - Solo Administradores"""
     adjustments = InventoryAdjustment.objects.all().order_by('-adjusted_at')
     
-    # Filtros
     product_id = request.GET.get('product')
     adjustment_type = request.GET.get('type')
     
@@ -267,8 +260,7 @@ def adjustment_list(request):
     if adjustment_type:
         adjustments = adjustments.filter(adjustment_type=adjustment_type)
     
-    # Paginación
-    paginator = Paginator(adjustments, 20)  # 20 ajustes por página
+    paginator = Paginator(adjustments, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -278,9 +270,9 @@ def adjustment_list(request):
         'selected_type': adjustment_type,
     })
 
-@login_required
+@admin_required
 def adjustment_create(request):
-    """Vista para crear un nuevo ajuste de inventario"""
+    """Vista para crear un nuevo ajuste de inventario - Solo Administradores"""
     if request.method == 'POST':
         form = InventoryAdjustmentForm(request.POST, user=request.user)
         if form.is_valid():
@@ -291,7 +283,6 @@ def adjustment_create(request):
             except forms.ValidationError as e:
                 messages.error(request, str(e))
     else:
-        # Pre-seleccionar producto si se pasa por URL
         product_id = request.GET.get('product')
         initial = {}
         if product_id:
@@ -308,18 +299,15 @@ def adjustment_create(request):
         'title': 'Nuevo Ajuste de Inventario'
     })
 
-# Resto de las vistas de combos (sin cambios significativos)
-@login_required
+# Vistas de Combos - Solo Administradores
+@admin_required
 def combo_list(request):
-    """Vista para listar combos de productos"""
-    # Filtros
+    """Vista para listar combos de productos - Solo Administradores"""
     search_query = request.GET.get('q')
     active_filter = request.GET.get('active')
     
-    # Consulta base
     combos = ProductCombo.objects.all()
     
-    # Aplicar filtros
     if search_query:
         combos = combos.filter(name__icontains=search_query)
     
@@ -328,10 +316,8 @@ def combo_list(request):
     elif active_filter == 'inactive':
         combos = combos.filter(is_active=False)
     
-    # Ordenar
     combos = combos.order_by('name')
     
-    # Paginación
     paginator = Paginator(combos, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -342,9 +328,9 @@ def combo_list(request):
         'active_filter': active_filter,
     })
 
-@login_required
+@admin_required
 def combo_detail(request, pk):
-    """Vista para ver detalles de un combo"""
+    """Vista para ver detalles de un combo - Solo Administradores"""
     combo = get_object_or_404(ProductCombo, pk=pk)
     items = combo.items.all().select_related('product')
     
@@ -353,9 +339,9 @@ def combo_detail(request, pk):
         'items': items,
     })
 
-@login_required
+@admin_required
 def combo_create(request):
-    """Vista para crear un nuevo combo"""
+    """Vista para crear un nuevo combo - Solo Administradores"""
     if request.method == 'POST':
         form = ProductComboForm(request.POST)
         formset = ComboItemFormset(request.POST)
@@ -380,9 +366,9 @@ def combo_create(request):
         'title': 'Nuevo Combo de Productos'
     })
 
-@login_required
+@admin_required
 def combo_update(request, pk):
-    """Vista para actualizar un combo"""
+    """Vista para actualizar un combo - Solo Administradores"""
     combo = get_object_or_404(ProductCombo, pk=pk)
     
     if request.method == 'POST':
@@ -409,9 +395,9 @@ def combo_update(request, pk):
         'title': 'Editar Combo de Productos'
     })
 
-@login_required
+@admin_required
 def combo_delete(request, pk):
-    """Vista para eliminar un combo"""
+    """Vista para eliminar un combo - Solo Administradores"""
     combo = get_object_or_404(ProductCombo, pk=pk)
     
     if request.method == 'POST':
@@ -424,9 +410,9 @@ def combo_delete(request, pk):
         'combo': combo
     })
 
-@login_required
+@admin_required
 def combo_toggle_status(request, pk):
-    """Vista para activar/desactivar un combo"""
+    """Vista para activar/desactivar un combo - Solo Administradores"""
     combo = get_object_or_404(ProductCombo, pk=pk)
     
     combo.is_active = not combo.is_active

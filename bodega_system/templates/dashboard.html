@@ -1,22 +1,40 @@
-<!-- templates/dashboard.html - VERSIÓN RESPONSIVA OPTIMIZADA -->
+<!-- templates/dashboard.html - CON RESTRICCIONES DE ROLES -->
 {% extends 'base/base.html' %}
 
 {% block title %}Dashboard - Sistema de Bodega{% endblock %}
 
 {% block content %}
-<!-- HEADER PRINCIPAL -->
+<!-- HEADER PRINCIPAL CON INDICADOR DE ROL -->
 <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
     <div class="text-center sm:text-left">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Dashboard</h1>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
+            <!-- Indicador de rol visible -->
+            <div class="mt-2 sm:mt-0">
+                {% if user.is_admin or user.is_superuser %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                    Administrador
+                </span>
+                {% elif user.is_employee %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                     Empleado
+                </span>
+                {% endif %}
+            </div>
+        </div>
         <p class="text-gray-600 text-sm sm:text-base">
-            Bienvenido al Sistema de Gestión de Bodega de Leida. Aquí encontrará un resumen de la actividad reciente.
+            {% if user.is_admin or user.is_superuser %}
+            Bienvenido al Sistema de Gestión de Bodega de Leida. Como administrador, tienes acceso completo a todas las funciones.
+            {% else %}
+            Bienvenido al Sistema de Ventas. Como empleado, puedes gestionar ventas y clientes.
+            {% endif %}
         </p>
     </div>
 </div>
 
-<!-- MÉTRICAS PRINCIPALES - GRID RESPONSIVO -->
+<!-- MÉTRICAS PRINCIPALES - ADAPTADAS POR ROL -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-    <!-- Ventas del Día -->
+    <!-- Ventas del Día - Para todos -->
     <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex-1">
@@ -27,7 +45,9 @@
                         </svg>
                     </div>
                     <div>
-                        <div class="text-xs sm:text-sm font-medium opacity-90">Ventas del Día</div>
+                        <div class="text-xs sm:text-sm font-medium opacity-90">
+                            {% if user.is_admin or user.is_superuser %}Ventas del Día{% else %}Mis Ventas Hoy{% endif %}
+                        </div>
                         <div class="text-lg sm:text-xl lg:text-2xl font-bold">Bs {{ sales_total|default:"0.00"|floatformat:2 }}</div>
                     </div>
                 </div>
@@ -35,7 +55,7 @@
         </div>
     </div>
     
-    <!-- Ventas Realizadas -->
+    <!-- Ventas Realizadas - Para todos -->
     <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex-1">
@@ -46,7 +66,9 @@
                         </svg>
                     </div>
                     <div>
-                        <div class="text-xs sm:text-sm font-medium opacity-90">Ventas Realizadas</div>
+                        <div class="text-xs sm:text-sm font-medium opacity-90">
+                            {% if user.is_admin or user.is_superuser %}Ventas Realizadas{% else %}Mis Ventas{% endif %}
+                        </div>
                         <div class="text-lg sm:text-xl lg:text-2xl font-bold">{{ sales_count|default:"0" }}</div>
                     </div>
                 </div>
@@ -54,7 +76,8 @@
         </div>
     </div>
     
-    <!-- Stock Bajo -->
+    <!-- Stock Bajo - Solo Administradores -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex-1">
@@ -72,8 +95,29 @@
             </div>
         </div>
     </div>
+    {% else %}
+    <!-- Clientes Atendidos Hoy - Para Empleados -->
+    <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
+        <div class="flex items-center justify-between">
+            <div class="flex-1">
+                <div class="flex items-center mb-2">
+                    <div class="bg-purple-400 bg-opacity-30 rounded-full p-2 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-xs sm:text-sm font-medium opacity-90">Clientes Atendidos</div>
+                        <div class="text-lg sm:text-xl lg:text-2xl font-bold">{{ customers_served_today|default:"0" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     
-    <!-- Créditos Pendientes -->
+    <!-- Créditos Pendientes - Solo Administradores o Total Clientes para Empleados -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex-1">
@@ -91,11 +135,30 @@
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
+        <div class="flex items-center justify-between">
+            <div class="flex-1">
+                <div class="flex items-center mb-2">
+                    <div class="bg-blue-400 bg-opacity-30 rounded-full p-2 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-xs sm:text-sm font-medium opacity-90">Total Clientes</div>
+                        <div class="text-lg sm:text-xl lg:text-2xl font-bold">{{ total_customers|default:"0" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
-<!-- ACCIONES RÁPIDAS - GRID RESPONSIVO -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-    <!-- Tarjeta de Ventas -->
+<!-- ACCIONES RÁPIDAS - ADAPTADAS POR ROL -->
+<div class="grid grid-cols-1 sm:grid-cols-2 {% if user.is_admin or user.is_superuser %}lg:grid-cols-3{% else %}lg:grid-cols-2{% endif %} gap-4 sm:gap-6 mb-6 sm:mb-8">
+    <!-- Tarjeta de Ventas - Para todos -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
         <div class="bg-indigo-600 px-4 sm:px-6 py-3 sm:py-4">
             <div class="flex items-center">
@@ -108,11 +171,15 @@
         <div class="p-4 sm:p-6">
             <div class="space-y-3 mb-4">
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-sm">Total de Hoy:</span>
+                    <span class="text-gray-600 text-sm">
+                        {% if user.is_admin or user.is_superuser %}Total de Hoy:{% else %}Mis Ventas Hoy:{% endif %}
+                    </span>
                     <span class="font-bold text-sm sm:text-base">Bs {{ sales_total|default:"0.00"|floatformat:2 }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-sm">Ventas del Día:</span>
+                    <span class="text-gray-600 text-sm">
+                        {% if user.is_admin or user.is_superuser %}Ventas del Día:{% else %}Cantidad de Ventas:{% endif %}
+                    </span>
                     <span class="font-bold text-sm sm:text-base">{{ sales_count|default:"0" }}</span>
                 </div>
             </div>
@@ -121,13 +188,53 @@
                     Nueva Venta
                 </a>
                 <a href="{% url 'sales:sale_list' %}" class="block text-center text-indigo-600 hover:text-indigo-800 text-sm py-2">
-                    Ver todas las ventas
+                    {% if user.is_admin or user.is_superuser %}Ver todas las ventas{% else %}Ver mis ventas{% endif %}
                 </a>
             </div>
         </div>
     </div>
     
-    <!-- Tarjeta de Inventario -->
+    <!-- Tarjeta de Clientes - Para todos -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
+        <div class="bg-blue-600 px-4 sm:px-6 py-3 sm:py-4">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <h2 class="text-white font-bold text-sm sm:text-base">Clientes</h2>
+            </div>
+        </div>
+        <div class="p-4 sm:p-6">
+            <div class="space-y-3 mb-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 text-sm">Total Clientes:</span>
+                    <span class="font-bold text-sm sm:text-base">{{ total_customers|default:"0" }}</span>
+                </div>
+                {% if user.is_admin or user.is_superuser %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 text-sm">Créditos Pendientes:</span>
+                    <span class="font-bold text-red-600 text-sm sm:text-base">{{ pending_credits|default:"0" }}</span>
+                </div>
+                {% else %}
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 text-sm">Clientes Atendidos:</span>
+                    <span class="font-bold text-green-600 text-sm sm:text-base">{{ customers_served_today|default:"0" }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="space-y-2">
+                <a href="{% url 'customers:customer_list' %}" class="block text-center bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-md transition-colors text-sm font-medium">
+                    Gestionar Clientes
+                </a>
+                <a href="{% url 'customers:customer_create' %}" class="block text-center text-blue-600 hover:text-blue-800 text-sm py-2">
+                    Añadir nuevo cliente
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tarjeta de Inventario - Solo Administradores -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
         <div class="bg-green-600 px-4 sm:px-6 py-3 sm:py-4">
             <div class="flex items-center">
@@ -158,38 +265,55 @@
             </div>
         </div>
     </div>
-    
-    <!-- Tarjeta de Clientes -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow sm:col-span-2 lg:col-span-1">
-        <div class="bg-blue-600 px-4 sm:px-6 py-3 sm:py-4">
-            <div class="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <h2 class="text-white font-bold text-sm sm:text-base">Clientes</h2>
-            </div>
-        </div>
-        <div class="p-4 sm:p-6">
-            <div class="space-y-3 mb-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-sm">Total Clientes:</span>
-                    <span class="font-bold text-sm sm:text-base">{{ total_customers|default:"0" }}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-gray-600 text-sm">Créditos Pendientes:</span>
-                    <span class="font-bold text-red-600 text-sm sm:text-base">{{ pending_credits|default:"0" }}</span>
-                </div>
-            </div>
-            <div class="space-y-2">
-                <a href="{% url 'customers:customer_list' %}" class="block text-center bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-md transition-colors text-sm font-medium">
-                    Gestionar Clientes
-                </a>
-            </div>
-        </div>
-    </div>
+    {% endif %}
 </div>
 
-<!-- ACCESOS RÁPIDOS ADICIONALES - SOLO MÓVIL -->
+<!-- ACCESOS RÁPIDOS ADICIONALES PARA EMPLEADOS - SOLO MÓVIL -->
+{% if not user.is_admin and not user.is_superuser %}
+<div class="lg:hidden mb-6">
+    <h3 class="text-lg font-medium text-gray-800 mb-4">Accesos Rápidos</h3>
+    <div class="grid grid-cols-2 gap-3">
+        <a href="{% url 'sales:sale_create' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+            <div class="bg-indigo-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+            </div>
+            <span class="text-sm font-medium text-gray-700">Nueva Venta</span>
+        </a>
+        
+        <a href="{% url 'customers:customer_create' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+            <div class="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+            <span class="text-sm font-medium text-gray-700">Nuevo Cliente</span>
+        </a>
+        
+        <a href="{% url 'sales:sale_list' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+            <div class="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </div>
+            <span class="text-sm font-medium text-gray-700">Mis Ventas</span>
+        </a>
+        
+        <a href="{% url 'customers:customer_list' %}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center hover:shadow-md transition-shadow">
+            <div class="bg-purple-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            </div>
+            <span class="text-sm font-medium text-gray-700">Lista Clientes</span>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ACCESOS RÁPIDOS ADICIONALES PARA ADMINISTRADORES - SOLO MÓVIL -->
+{% if user.is_admin or user.is_superuser %}
 <div class="lg:hidden mb-6">
     <h3 class="text-lg font-medium text-gray-800 mb-4">Accesos Rápidos</h3>
     <div class="grid grid-cols-2 gap-3">
@@ -230,8 +354,10 @@
         </a>
     </div>
 </div>
+{% endif %}
 
-<!-- SECCIÓN DE GRÁFICOS Y ESTADÍSTICAS - SOLO DESKTOP/TABLET -->
+<!-- SECCIÓN DE GRÁFICOS Y ESTADÍSTICAS - SOLO ADMINISTRADORES EN DESKTOP/TABLET -->
+{% if user.is_admin or user.is_superuser %}
 <div class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Gráfico de Ventas (Placeholder) -->
     <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
@@ -271,9 +397,10 @@
         </div>
     </div>
 </div>
+{% endif %}
 
-<!-- ALERTA DE STOCK BAJO - SOLO SI HAY PRODUCTOS CON STOCK BAJO -->
-{% if low_stock_products > 0 %}
+<!-- ALERTA DE STOCK BAJO - SOLO ADMINISTRADORES -->
+{% if user.is_admin or user.is_superuser and low_stock_products > 0 %}
 <div class="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
     <div class="flex items-start">
         <div class="flex-shrink-0">
@@ -295,6 +422,27 @@
                     </svg>
                     Ver Productos
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- MENSAJE DE INFORMACIÓN PARA EMPLEADOS -->
+{% if not user.is_admin and not user.is_superuser %}
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="flex items-start">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+        </div>
+        <div class="ml-3 flex-1">
+            <h3 class="text-sm font-medium text-blue-800">
+                💡 Información para Empleados
+            </h3>
+            <div class="mt-2 text-sm text-blue-700">
+                <p>Como empleado, tienes acceso a las funciones de ventas y gestión de clientes. Si necesitas acceso a otras funciones, contacta al administrador.</p>
             </div>
         </div>
     </div>
