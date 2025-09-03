@@ -1,4 +1,4 @@
-# sales/models.py - Modelo SaleItem corregido
+# sales/models.py - VENTAS CON HISTORIAL DE TASA DE CAMBIO
 
 from django.db import models
 from django.urls import reverse
@@ -24,11 +24,27 @@ class Sale(models.Model):
         auto_now_add=True,
         verbose_name="Fecha"
     )
+    
+    # ⭐ MANTENER: Total en Bs para mostrar en interfaz
     total_bs = models.DecimalField(
         max_digits=12, 
         decimal_places=2,
         verbose_name="Total (Bs)"
     )
+    
+    # ⭐ NUEVO: Total en USD y tasa utilizada para historial
+    total_usd = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        verbose_name="Total (USD)"
+    )
+    exchange_rate_used = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        verbose_name="Tasa de Cambio Utilizada",
+        help_text="Tasa Bs/USD utilizada en esta venta"
+    )
+    
     is_credit = models.BooleanField(
         default=False,
         verbose_name="Es Crédito"
@@ -54,6 +70,7 @@ class Sale(models.Model):
         """Devuelve la cantidad de ítems en la venta"""
         return self.items.aggregate(models.Sum('quantity'))['quantity__sum'] or 0
 
+
 class SaleItem(models.Model):
     """Modelo para los ítems de una venta"""
     sale = models.ForeignKey(
@@ -70,52 +87,57 @@ class SaleItem(models.Model):
         null=True,
         blank=True
     )
-    # NUEVO: Referencias para combos
+    # MANTENER: Referencias para combos (pendiente)
     combo = models.ForeignKey(
         'inventory.ProductCombo',
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='combo_sales',  # Cambiado para evitar conflictos
+        related_name='combo_sales',
         verbose_name="Combo"
     )
-    # CORREGIDO: Cantidad ahora decimal para peso
+    
     quantity = models.DecimalField(
-        max_digits=10,
+        max_digits=10, 
         decimal_places=3,
         verbose_name="Cantidad"
     )
+    
+    # ⭐ MANTENER: Precio en Bs para mostrar en recibos
     price_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=10, 
         decimal_places=2,
-        verbose_name="Precio (Bs)"
+        verbose_name="Precio Unitario (Bs)"
+    )
+    
+    # ⭐ NUEVO: Precio en USD para historial
+    price_usd = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        verbose_name="Precio Unitario (USD)"
     )
     
     class Meta:
         verbose_name = "Ítem de Venta"
         verbose_name_plural = "Ítems de Venta"
+        ordering = ['id']
     
     def __str__(self):
-        if self.is_combo_sale:
-            return f"{self.quantity} x COMBO: {self.combo.name}"
-        else:
-            return f"{self.quantity} x {self.product.name}"
+        product_name = self.product.name if self.product else f"COMBO: {self.combo.name}"
+        return f"{product_name} - {self.quantity}"
     
     @property
-    def subtotal(self):
-        """Calcula el subtotal del ítem"""
+    def subtotal_bs(self):
+        """Subtotal en bolívares"""
         return self.quantity * self.price_bs
     
     @property
-    def is_combo_sale(self):
-        """Verifica si es venta de combo"""
-        return self.combo is not None
+    def subtotal_usd(self):
+        """Subtotal en dólares"""
+        return self.quantity * self.price_usd
     
+    # Mantener compatibilidad con templates existentes
     @property
-    def item_description(self):
-        """Descripción del ítem vendido"""
-        if self.is_combo_sale:
-            return f"COMBO: {self.combo.name}"
-        else:
-            unit = self.product.unit_display if self.product.unit_type != 'unit' else ''
-            return f"{self.product.name} ({self.quantity} {unit})"
+    def subtotal(self):
+        """Alias para subtotal_bs (compatibilidad)"""
+        return self.subtotal_bs

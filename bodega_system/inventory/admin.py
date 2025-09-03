@@ -1,4 +1,4 @@
-# inventory/admin.py - Admin actualizado
+# inventory/admin.py - ADMIN ACTUALIZADO PARA USD
 
 from django.contrib import admin
 from simple_history.admin import SimpleHistoryAdmin
@@ -9,25 +9,36 @@ class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'description')
     search_fields = ('name',)
 
+
 @admin.register(Product)
 class ProductAdmin(SimpleHistoryAdmin):
-    list_display = ('name', 'barcode', 'category', 'unit_type', 'purchase_price_bs', 
-                    'selling_price_bs', 'stock', 'stock_status', 'is_active')
+    """Admin para productos con precios en USD"""
+    list_display = (
+        'name', 'barcode', 'category', 'unit_type', 
+        # ⭐ CAMBIO: Mostrar precios USD
+        'purchase_price_usd', 'selling_price_usd', 
+        'get_current_price_bs',  # Mostrar equivalente en Bs
+        'stock', 'stock_status', 'is_active'
+    )
     list_filter = ('category', 'unit_type', 'is_active', 'is_bulk_pricing')
     search_fields = ('name', 'barcode', 'description')
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at', 'get_current_price_bs', 'get_current_purchase_price_bs')
+    
     fieldsets = (
         ('Información Básica', {
             'fields': ('name', 'barcode', 'category', 'description', 'image', 'unit_type')
         }),
-        ('Precios', {
-            'fields': ('purchase_price_bs', 'selling_price_bs')
+        ('Precios (USD)', {
+            'fields': (
+                'purchase_price_usd', 'selling_price_usd',
+                'get_current_purchase_price_bs', 'get_current_price_bs'
+            )
         }),
         ('Inventario', {
             'fields': ('stock', 'min_stock', 'is_active')
         }),
-        ('Precios al Mayor', {
-            'fields': ('is_bulk_pricing', 'bulk_min_quantity', 'bulk_price_bs'),
+        ('Precios al Mayor (USD)', {
+            'fields': ('is_bulk_pricing', 'bulk_min_quantity', 'bulk_price_usd'),
             'classes': ('collapse',)
         }),
         ('Metadatos', {
@@ -35,6 +46,23 @@ class ProductAdmin(SimpleHistoryAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_current_price_bs(self, obj):
+        """Mostrar precio actual en Bs"""
+        price_bs = obj.get_current_price_bs()
+        if price_bs > 0:
+            return f"Bs {price_bs:,.2f}"
+        return "No disponible"
+    get_current_price_bs.short_description = "Precio Venta (Bs)"
+    
+    def get_current_purchase_price_bs(self, obj):
+        """Mostrar precio de compra actual en Bs"""
+        price_bs = obj.get_current_purchase_price_bs()
+        if price_bs > 0:
+            return f"Bs {price_bs:,.2f}"
+        return "No disponible"
+    get_current_purchase_price_bs.short_description = "Precio Compra (Bs)"
+
 
 @admin.register(InventoryAdjustment)
 class InventoryAdjustmentAdmin(admin.ModelAdmin):
@@ -44,42 +72,43 @@ class InventoryAdjustmentAdmin(admin.ModelAdmin):
     search_fields = ('product__name', 'reason')
     readonly_fields = ('adjusted_at',)
 
-# NUEVOS ADMIN PARA COMBOS
+
+# ADMIN PARA COMBOS (Pendiente de actualizar a USD)
 
 class ComboItemInline(admin.TabularInline):
     model = ComboItem
     extra = 1
     autocomplete_fields = ['product']
 
+
 @admin.register(ProductCombo)
 class ProductComboAdmin(admin.ModelAdmin):
-    list_display = ('name', 'combo_price_bs', 'total_individual_price', 
-                    'savings_amount', 'savings_percentage', 'is_active', 'created_at')
+    """Admin para combos - PENDIENTE actualizar a USD"""
+    list_display = (
+        'name', 'combo_price_bs', 'is_active', 'created_at'
+    )
     list_filter = ('is_active', 'created_at')
     search_fields = ('name', 'description')
-    readonly_fields = ('created_at', 'total_individual_price', 'savings_amount', 'savings_percentage')
     inlines = [ComboItemInline]
+    readonly_fields = ('created_at',)
+    
     fieldsets = (
         ('Información Básica', {
-            'fields': ('name', 'description', 'combo_price_bs', 'is_active')
+            'fields': ('name', 'description')
         }),
-        ('Análisis Financiero', {
-            'fields': ('total_individual_price', 'savings_amount', 'savings_percentage'),
-            'classes': ('collapse',)
+        ('Precios', {
+            'fields': ('combo_price_bs',),
+            'description': 'PENDIENTE: Actualizar a USD'
         }),
-        ('Metadatos', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
+        ('Estado', {
+            'fields': ('is_active', 'created_at')
         }),
     )
 
+
 @admin.register(ComboItem)
 class ComboItemAdmin(admin.ModelAdmin):
-    list_display = ('combo', 'product', 'quantity', 'product_unit_type')
-    list_filter = ('combo', 'product__category', 'product__unit_type')
+    list_display = ('combo', 'product', 'quantity')
+    list_filter = ('combo',)
     search_fields = ('combo__name', 'product__name')
     autocomplete_fields = ['combo', 'product']
-    
-    def product_unit_type(self, obj):
-        return obj.product.get_unit_type_display()
-    product_unit_type.short_description = 'Unidad'

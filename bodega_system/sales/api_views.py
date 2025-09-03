@@ -1,4 +1,4 @@
-# sales/api_views.py - API CON RESTRICCIONES DE ROLES
+# sales/api_views.py - API CON CÁLCULO USD A BS
 
 import json
 from decimal import Decimal, InvalidOperation
@@ -12,17 +12,25 @@ from django.core.exceptions import PermissionDenied
 from .models import Sale, SaleItem
 from inventory.models import Product, InventoryAdjustment, ProductCombo
 from customers.models import Customer, CustomerCredit
+from utils.models import ExchangeRate
 from utils.decorators import sales_access_required
 
 @require_POST
 @sales_access_required
 def create_sale_api(request):
-    """API para crear ventas - Solo empleados y administradores"""
+    """API para crear ventas con cálculo automático USD → Bs"""
     try:
         data = json.loads(request.body)
         
         if not data.get('items'):
             return JsonResponse({'error': 'No hay productos en la venta'}, status=400)
+        
+        # ⭐ OBTENER TASA DE CAMBIO ACTUAL
+        current_exchange_rate = ExchangeRate.get_latest_rate()
+        if not current_exchange_rate:
+            return JsonResponse({
+                'error': 'No hay tasa de cambio configurada. Contacte al administrador.'
+            }, status=400)
         
         # Obtener cliente si se especificó
         customer = None
@@ -30,11 +38,40 @@ def create_sale_api(request):
             customer = get_object_or_404(Customer, pk=data['customer_id'])
         
         with transaction.atomic():
-            # Crear venta
+            # ⭐ CALCULAR TOTALES EN USD Y BS
+            total_usd = Decimal('0.00')
+            total_bs = Decimal('0.00')
+            
+            # Pre-calcular total para validar
+            for item_data in data['items']:
+                if item_data.get('is_combo', False):
+                    # TODO: Implementar combos en USD después
+                    combo = get_object_or_404(ProductCombo, pk=item_data['combo_id'])
+                    quantity = Decimal(str(item_data.get('combo_quantity', 1)))
+                    # Por ahora usar precio en Bs (se actualizará después)
+                    item_total_bs = combo.combo_price_bs * quantity
+                    total_bs += item_total_bs
+                else:
+                    product = get_object_or_404(Product, pk=item_data['product_id'])
+                    quantity = Decimal(str(item_data['quantity']))
+                    
+                    # ⭐ CALCULAR PRECIO USD Y BS
+                    price_usd = product.get_price_usd_for_quantity(quantity)
+                    price_bs = price_usd * current_exchange_rate.bs_to_usd
+                    
+                    item_total_usd = price_usd * quantity
+                    item_total_bs = price_bs * quantity
+                    
+                    total_usd += item_total_usd
+                    total_bs += item_total_bs
+            
+            # ⭐ CREAR VENTA CON AMBOS TOTALES Y TASA UTILIZADA
             sale = Sale.objects.create(
                 customer=customer,
-                user=request.user,  # La venta siempre se asigna al usuario actual
-                total_bs=Decimal(str(data.get('total_bs', 0))),
+                user=request.user,
+                total_usd=total_usd,
+                total_bs=total_bs,
+                exchange_rate_used=current_exchange_rate.bs_to_usd,
                 is_credit=data.get('is_credit', False),
                 notes=data.get('notes', '')
             )
@@ -42,14 +79,14 @@ def create_sale_api(request):
             # Procesar ítems de venta
             for item_data in data['items']:
                 if item_data.get('is_combo', False):
-                    # Procesar venta de combo
-                    result = process_combo_sale(sale, item_data, request.user)
+                    # Procesar venta de combo (mantener lógica actual)
+                    result = process_combo_sale(sale, item_data, request.user, current_exchange_rate)
                     if not result['success']:
                         transaction.set_rollback(True)
                         return JsonResponse({'error': result['error']}, status=400)
                 else:
-                    # Procesar venta normal (incluyendo por peso)
-                    result = process_regular_sale(sale, item_data, request.user)
+                    # ⭐ PROCESAR VENTA REGULAR CON USD
+                    result = process_regular_sale(sale, item_data, request.user, current_exchange_rate)
                     if not result['success']:
                         transaction.set_rollback(True)
                         return JsonResponse({'error': result['error']}, status=400)
@@ -57,7 +94,7 @@ def create_sale_api(request):
             # Si es venta a crédito, crear el registro de crédito
             if sale.is_credit and customer:
                 from datetime import datetime, timedelta
-                due_date = datetime.now().date() + timedelta(days=30)  # 30 días por defecto
+                due_date = datetime.now().date() + timedelta(days=30)
                 
                 CustomerCredit.objects.create(
                     customer=customer,
@@ -70,6 +107,9 @@ def create_sale_api(request):
             return JsonResponse({
                 'id': sale.id,
                 'message': 'Venta creada exitosamente',
+                'total_usd': float(sale.total_usd),
+                'total_bs': float(sale.total_bs),
+                'exchange_rate': float(sale.exchange_rate_used),
                 'user': request.user.get_full_name() or request.user.username
             })
             
@@ -78,12 +118,13 @@ def create_sale_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-def process_regular_sale(sale, item_data, user):
-    """Procesa venta regular (por unidad o peso)"""
+
+def process_regular_sale(sale, item_data, user, exchange_rate):
+    """Procesa venta regular con cálculo USD → Bs"""
     try:
         product = get_object_or_404(Product, pk=item_data['product_id'])
         
-        # Convertir cantidad a Decimal para manejar decimales correctamente
+        # Convertir cantidad a Decimal
         try:
             if isinstance(item_data['quantity'], str):
                 quantity_str = item_data['quantity'].replace(',', '.')
@@ -92,20 +133,20 @@ def process_regular_sale(sale, item_data, user):
             
             quantity = Decimal(quantity_str)
             
-        except (InvalidOperation, ValueError) as e:
+        except (InvalidOperation, ValueError):
             return {
                 'success': False,
                 'error': f'Cantidad inválida para {product.name}: {item_data["quantity"]}'
             }
         
-        # Validar que la cantidad sea positiva
+        # Validar cantidad positiva
         if quantity <= 0:
             return {
                 'success': False,
                 'error': f'La cantidad debe ser mayor que 0 para {product.name}'
             }
         
-        # Validar stock (considerando decimales para peso)
+        # Validar stock
         if product.stock < quantity:
             return {
                 'success': False,
@@ -114,15 +155,17 @@ def process_regular_sale(sale, item_data, user):
                         f'Requerido: {quantity} {product.unit_display}'
             }
         
-        # Calcular precio (considerar precios al mayor)
-        unit_price = product.get_price_for_quantity(quantity)
+        # ⭐ CALCULAR PRECIOS USD Y BS
+        price_usd = product.get_price_usd_for_quantity(quantity)
+        price_bs = price_usd * exchange_rate.bs_to_usd
         
-        # Crear ítem de venta
+        # ⭐ CREAR ÍTEM CON AMBOS PRECIOS
         sale_item = SaleItem.objects.create(
             sale=sale,
             product=product,
             quantity=quantity,
-            price_bs=unit_price
+            price_usd=price_usd,
+            price_bs=price_bs
         )
         
         # Actualizar inventario
@@ -131,7 +174,7 @@ def process_regular_sale(sale, item_data, user):
         product.save()
         
         # Registrar ajuste de inventario
-        adjustment = InventoryAdjustment.objects.create(
+        InventoryAdjustment.objects.create(
             product=product,
             adjustment_type='remove',
             quantity=quantity,
@@ -146,12 +189,13 @@ def process_regular_sale(sale, item_data, user):
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
-def process_combo_sale(sale, item_data, user):
-    """Procesa venta de combo"""
+
+def process_combo_sale(sale, item_data, user, exchange_rate):
+    """Procesa venta de combo - MANTENER LÓGICA ACTUAL (pendiente actualizar)"""
     try:
         combo = get_object_or_404(ProductCombo, pk=item_data['combo_id'])
         
-        # Convertir cantidad de combo a entero (los combos se venden por unidades enteras)
+        # Convertir cantidad de combo a entero
         try:
             combo_quantity = int(item_data.get('combo_quantity', 1))
         except (ValueError, TypeError):
@@ -178,11 +222,12 @@ def process_combo_sale(sale, item_data, user):
                             f'Requerido: {required_quantity}'
                 }
         
-        # Crear ítem de venta para el combo
+        # ⭐ CREAR ÍTEM DE COMBO (mantener precio en Bs por ahora)
         SaleItem.objects.create(
             sale=sale,
             combo=combo,
             quantity=combo_quantity,
+            price_usd=Decimal('0.00'),  # TODO: Calcular cuando combos estén en USD
             price_bs=combo.combo_price_bs
         )
         

@@ -1,10 +1,11 @@
-# utils/api_views.py
+# utils/api_views.py - API ACTUALIZADA PARA USD
 
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .models import ExchangeRate
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -22,15 +23,24 @@ def exchange_rate_view(request):
             'error': 'No hay tasa de cambio disponible'
         }, status=404)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def product_by_barcode(request, barcode):
-    """API para buscar producto por código de barras"""
+    """API para buscar producto por código de barras - CORREGIDA PARA USD"""
     try:
         # Importación aquí para evitar importación circular
         from inventory.models import Product
         
         product = get_object_or_404(Product, barcode=barcode, is_active=True)
+        
+        # ⭐ OBTENER TASA DE CAMBIO ACTUAL
+        latest_rate = ExchangeRate.get_latest_rate()
+        
+        # ⭐ CALCULAR PRECIOS EN BS AUTOMÁTICAMENTE
+        selling_price_bs = 0
+        if latest_rate:
+            selling_price_bs = float(product.selling_price_usd * latest_rate.bs_to_usd)
         
         return JsonResponse({
             'id': product.id,
@@ -38,13 +48,22 @@ def product_by_barcode(request, barcode):
             'barcode': product.barcode,
             'category_id': product.category_id,
             'category_name': product.category.name,
-            'selling_price_bs': float(product.selling_price_bs),
-            'stock': product.stock,
+            # ⭐ PRECIO USD (para admin)
+            'selling_price_usd': float(product.selling_price_usd),
+            # ⭐ PRECIO BS CALCULADO (para ventas)
+            'selling_price_bs': selling_price_bs,
+            'stock': float(product.stock),
+            'unit_type': product.unit_display,
+            'unit_code': product.unit_type,  # Código para lógica
+            'is_weight_based': product.is_weight_based,
+            # Información adicional
+            'exchange_rate': float(latest_rate.bs_to_usd) if latest_rate else None,
         })
     except Exception as e:
         return JsonResponse({
             'error': str(e)
         }, status=404)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

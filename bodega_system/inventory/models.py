@@ -1,15 +1,14 @@
-from django.db import models
-
-# Create your models here.
-# inventory/models.py
+# inventory/models.py - PRODUCTOS CON PRECIOS EN USD
 
 from django.db import models
 from django.urls import reverse
 from simple_history.models import HistoricalRecords
+from decimal import Decimal
+
 
 class Category(models.Model):
-    """Categoría de productos"""
-    name = models.CharField(max_length=50, verbose_name="Nombre")
+    """Modelo para categorías de productos"""
+    name = models.CharField(max_length=100, verbose_name="Nombre")
     description = models.TextField(blank=True, verbose_name="Descripción")
     
     class Meta:
@@ -19,32 +18,30 @@ class Category(models.Model):
     
     def __str__(self):
         return self.name
-    
-    def get_absolute_url(self):
-        return reverse('inventory:category_detail', args=[str(self.id)])
+
 
 class Product(models.Model):
+    """Modelo para productos con precios en USD"""
+    
     UNIT_TYPES = (
         ('unit', 'Unidad'),
         ('kg', 'Kilogramo'),
-        ('gram', 'Gramo'),
+        ('gram', 'Gramo'), 
         ('liter', 'Litro'),
         ('ml', 'Mililitro'),
     )
-    """Producto en inventario"""
-    name = models.CharField(max_length=100, verbose_name="Nombre")
-    barcode = models.CharField(max_length=50, unique=True, verbose_name="Código de Barras")
+    
+    name = models.CharField(max_length=200, verbose_name="Nombre")
+    barcode = models.CharField(
+        max_length=50, 
+        unique=True, 
+        verbose_name="Código de Barras"
+    )
     category = models.ForeignKey(
         Category, 
-        on_delete=models.PROTECT, 
+        on_delete=models.PROTECT,
         related_name='products',
         verbose_name="Categoría"
-    )
-    unit_type = models.CharField(
-        max_length=10,
-        choices=UNIT_TYPES,
-        default='unit',
-        verbose_name="Tipo de Unidad"
     )
     description = models.TextField(blank=True, verbose_name="Descripción")
     image = models.ImageField(
@@ -53,38 +50,49 @@ class Product(models.Model):
         null=True,
         verbose_name="Imagen"
     )
-    purchase_price_bs = models.DecimalField(
-        max_digits=12, 
-        decimal_places=2,
-        verbose_name="Precio de Compra (Bs)"
-    )
-    selling_price_bs = models.DecimalField(
-        max_digits=12, 
-        decimal_places=2,
-        verbose_name="Precio de Venta (Bs)"
-    )
-    stock = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2,  # Permite 0.001 kg precision
-        default=0,
-        verbose_name="Stock Actual"
+    unit_type = models.CharField(
+        max_length=10, 
+        choices=UNIT_TYPES, 
+        default='unit',
+        verbose_name="Tipo de Unidad"
     )
     
-    min_stock = models.DecimalField(
+    # ⭐ CAMBIO PRINCIPAL: Precios en USD
+    purchase_price_usd = models.DecimalField(
         max_digits=10, 
         decimal_places=2,
+        verbose_name="Precio de Compra (USD)"
+    )
+    selling_price_usd = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        verbose_name="Precio de Venta (USD)"
+    )
+    
+    # Inventario
+    stock = models.DecimalField(
+        max_digits=10, 
+        decimal_places=3,
+        default=0,
+        verbose_name="Stock"
+    )
+    min_stock = models.DecimalField(
+        max_digits=10, 
+        decimal_places=3,
         default=5,
         verbose_name="Stock Mínimo"
     )
+    
+    # Metadatos
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Creado el")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Actualizado el")
     is_active = models.BooleanField(default=True, verbose_name="Activo")
     
+    # Precios al mayor (en USD también)
     is_bulk_pricing = models.BooleanField(
         default=False,
         verbose_name="Precio al Mayor"
     )
-    
     bulk_min_quantity = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -92,14 +100,14 @@ class Product(models.Model):
         blank=True,
         verbose_name="Cantidad Mínima al Mayor"
     )
-    
-    bulk_price_bs = models.DecimalField(
-        max_digits=12,
+    bulk_price_usd = models.DecimalField(
+        max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        verbose_name="Precio al Mayor (Bs)"
+        verbose_name="Precio al Mayor (USD)"
     )
+    
     # Historial para auditoría
     history = HistoricalRecords()
     
@@ -125,17 +133,17 @@ class Product(models.Model):
             return "Stock normal"
     
     @property
-    def profit_margin_bs(self):
-        """Calcular margen de ganancia en Bs"""
-        if self.purchase_price_bs > 0:
-            return self.selling_price_bs - self.purchase_price_bs
+    def profit_margin_usd(self):
+        """Calcular margen de ganancia en USD"""
+        if self.purchase_price_usd > 0:
+            return self.selling_price_usd - self.purchase_price_usd
         return 0
     
     @property
     def profit_margin_percentage(self):
         """Calcular porcentaje de margen de ganancia"""
-        if self.purchase_price_bs > 0:
-            return (self.profit_margin_bs / self.purchase_price_bs) * 100
+        if self.purchase_price_usd > 0:
+            return (self.profit_margin_usd / self.purchase_price_usd) * 100
         return 0
     
     @property
@@ -148,11 +156,35 @@ class Product(models.Model):
         """Verifica si el producto se vende por peso o volumen variable"""
         return self.unit_type in ['kg', 'gram', 'liter', 'ml']
     
-    def get_price_for_quantity(self, quantity):
-        """Calcula precio según cantidad (considera precios al mayor)"""
+    def get_price_usd_for_quantity(self, quantity):
+        """Calcula precio USD según cantidad (considera precios al mayor)"""
         if self.is_bulk_pricing and self.bulk_min_quantity and quantity >= self.bulk_min_quantity:
-            return self.bulk_price_bs
-        return self.selling_price_bs
+            return self.bulk_price_usd
+        return self.selling_price_usd
+    
+    def get_price_bs_for_quantity(self, quantity, exchange_rate):
+        """Calcula precio en Bs basado en USD y tasa de cambio"""
+        price_usd = self.get_price_usd_for_quantity(quantity)
+        return price_usd * exchange_rate
+    
+    def get_current_price_bs(self):
+        """Obtiene precio actual en Bs usando la tasa de cambio más reciente"""
+        from utils.models import ExchangeRate
+        
+        latest_rate = ExchangeRate.get_latest_rate()
+        if latest_rate:
+            return self.selling_price_usd * latest_rate.bs_to_usd
+        return Decimal('0.00')
+    
+    def get_current_purchase_price_bs(self):
+        """Obtiene precio de compra actual en Bs"""
+        from utils.models import ExchangeRate
+        
+        latest_rate = ExchangeRate.get_latest_rate()
+        if latest_rate:
+            return self.purchase_price_usd * latest_rate.bs_to_usd
+        return Decimal('0.00')
+
 
 class InventoryAdjustment(models.Model):
     """Ajuste de inventario"""
@@ -173,7 +205,6 @@ class InventoryAdjustment(models.Model):
         choices=ADJUSTMENT_TYPES,
         verbose_name="Tipo de Ajuste"
     )
-    # CORREGIDO: Cambiar de IntegerField a DecimalField para soporte de decimales
     quantity = models.DecimalField(
         max_digits=10, 
         decimal_places=2,
@@ -205,20 +236,21 @@ class InventoryAdjustment(models.Model):
     
     def __str__(self):
         return f"{self.get_adjustment_type_display()} - {self.product.name} - {self.quantity}"
-    
+
 
 class ProductCombo(models.Model):
-    """Modelo para combos de productos"""
+    """Modelo para combos de productos - PENDIENTE PARA DESPUÉS"""
     name = models.CharField(
-        max_length=100,
+        max_length=200,
         verbose_name="Nombre del Combo"
     )
     description = models.TextField(
         blank=True,
         verbose_name="Descripción"
     )
+    # TODO: Cambiar a USD después
     combo_price_bs = models.DecimalField(
-        max_digits=12,
+        max_digits=10,
         decimal_places=2,
         verbose_name="Precio del Combo (Bs)"
     )
@@ -226,10 +258,7 @@ class ProductCombo(models.Model):
         default=True,
         verbose_name="Activo"
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="Creado el"
-    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Creado el")
     
     class Meta:
         verbose_name = "Combo de Productos"
@@ -237,30 +266,11 @@ class ProductCombo(models.Model):
         ordering = ['name']
     
     def __str__(self):
-        return f"{self.name} - Bs {self.combo_price_bs}"
-    
-    @property
-    def total_individual_price(self):
-        """Calcula precio total si se compraran individualmente"""
-        total = 0
-        for item in self.items.all():
-            total += item.product.selling_price_bs * item.quantity
-        return total
-    
-    @property
-    def savings_amount(self):
-        """Calcula cuánto se ahorra con el combo"""
-        return self.total_individual_price - self.combo_price_bs
-    
-    @property
-    def savings_percentage(self):
-        """Calcula porcentaje de ahorro"""
-        if self.total_individual_price > 0:
-            return (self.savings_amount / self.total_individual_price) * 100
-        return 0
+        return self.name
+
 
 class ComboItem(models.Model):
-    """Ítems que componen un combo"""
+    """Ítems que componen un combo - PENDIENTE PARA DESPUÉS"""
     combo = models.ForeignKey(
         ProductCombo,
         on_delete=models.CASCADE,
@@ -274,7 +284,7 @@ class ComboItem(models.Model):
     )
     quantity = models.DecimalField(
         max_digits=10,
-        decimal_places=2,
+        decimal_places=3,
         verbose_name="Cantidad"
     )
     
@@ -284,4 +294,4 @@ class ComboItem(models.Model):
         unique_together = ['combo', 'product']
     
     def __str__(self):
-        return f"{self.quantity} x {self.product.name}"
+        return f"{self.combo.name} - {self.product.name} ({self.quantity})"

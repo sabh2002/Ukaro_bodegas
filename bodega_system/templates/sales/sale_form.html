@@ -1,4 +1,3 @@
-
 {% extends 'base/base.html' %}
 
 {% block title %}Nueva Venta - Sistema de Bodega{% endblock %}
@@ -54,13 +53,14 @@
 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
     <h1 class="text-2xl font-bold text-gray-800 mb-4">Nueva Venta</h1>
     
-    <div x-data="salesApp">
+    <div x-data="salesApp()" x-init="init()">
         <!-- Debug Panel (solo en modo desarrollo) -->
         <div x-show="showDebug" class="debug-info mb-4">
             <h4 class="font-medium mb-2">Debug Info:</h4>
             <div>Último producto escaneado: <span x-text="lastScannedProduct"></span></div>
             <div>Items actuales: <span x-text="items.length"></span></div>
             <div>Total calculado: <span x-text="total"></span></div>
+            <div>Tasa de cambio: <span x-text="exchangeRate"></span></div>
         </div>
 
         <!-- Panel de búsqueda de productos -->
@@ -72,13 +72,14 @@
                         type="text" 
                         id="barcode" 
                         x-model="barcode"
-                        @keydown.enter.prevent="scanBarcode"
+                        @keydown.enter.prevent="scanBarcode()"
                         class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 rounded-md"
                         placeholder="Escanee o ingrese el código de barras"
                         autocomplete="off">
                     <div class="absolute inset-y-0 right-0 flex items-center">
                         <button 
-                            @click="scanBarcode"
+                            @click="scanBarcode()"
+                            type="button"
                             class="h-full py-0 px-3 border-transparent bg-transparent text-gray-500 sm:text-sm rounded-r-md hover:text-indigo-600">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
@@ -88,6 +89,7 @@
                 </div>
                 <button 
                     @click="showDebug = !showDebug"
+                    type="button"
                     class="mt-1 text-xs text-gray-500 hover:text-gray-700">
                     Toggle Debug
                 </button>
@@ -100,8 +102,8 @@
                         type="text" 
                         id="customer_search" 
                         x-model="customerSearch"
-                        @input="searchCustomers"
-                        @keydown.enter.prevent="selectFirstCustomer"
+                        @input="searchCustomers()"
+                        @keydown.enter.prevent="selectFirstCustomer()"
                         @keydown.down.prevent="navigateCustomer(1)"
                         @keydown.up.prevent="navigateCustomer(-1)"
                         class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 rounded-md"
@@ -129,10 +131,10 @@
                 <div x-show="selectedCustomer" x-cloak class="mt-2 p-2 bg-indigo-50 rounded-md">
                     <div class="flex justify-between items-center">
                         <div>
-                            <span class="text-sm font-medium text-indigo-700" x-text="selectedCustomer.name"></span>
-                            <span x-show="selectedCustomer.phone" class="text-xs text-gray-500 block" x-text="selectedCustomer.phone"></span>
+                            <span class="text-sm font-medium text-indigo-700" x-text="selectedCustomer?.name || ''"></span>
+                            <span x-show="selectedCustomer?.phone" class="text-xs text-gray-500 block" x-text="selectedCustomer?.phone || ''"></span>
                         </div>
-                        <button @click="clearCustomer" class="text-indigo-600 hover:text-indigo-800">
+                        <button @click="clearCustomer()" type="button" class="text-indigo-600 hover:text-indigo-800">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -149,21 +151,21 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Ingresar Cantidad</h3>
                     <div class="mt-4">
                         <div class="text-sm text-gray-600 mb-2">
-                            Producto: <span class="font-medium" x-text="pendingProduct?.name"></span>
+                            Producto: <span class="font-medium" x-text="pendingProduct?.name || ''"></span>
                         </div>
                         <div class="text-sm text-gray-600 mb-2">
                             <span class="font-medium text-orange-600" x-text="getQuantityLabel(pendingProduct?.unit_code)"></span>
                         </div>
                         <div class="text-xs text-gray-500 mb-4">
-                            Stock disponible: <span x-text="pendingProduct?.stock"></span> <span x-text="pendingProduct?.unit_type"></span>
+                            Stock disponible: <span x-text="pendingProduct?.stock || 0"></span> <span x-text="pendingProduct?.unit_type || ''"></span>
                         </div>
                         <input 
                             type="text" 
                             inputmode="decimal"
                             x-model="quantityInput"
                             x-ref="quantityInputField"
-                            @keydown.enter.prevent="confirmQuantity"
-                            @keydown.escape.prevent="cancelQuantity"
+                            @keydown.enter.prevent="confirmQuantity()"
+                            @keydown.escape.prevent="cancelQuantity()"
                             class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md text-center"
                             :placeholder="getQuantityPlaceholder(pendingProduct?.unit_code)">
                         <div class="text-xs text-gray-500 mt-1">
@@ -172,12 +174,14 @@
                     </div>
                     <div class="items-center px-4 py-3">
                         <button 
-                            @click="confirmQuantity"
+                            @click="confirmQuantity()"
+                            type="button"
                             class="px-4 py-2 bg-indigo-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 mr-2">
                             Agregar
                         </button>
                         <button 
-                            @click="cancelQuantity"
+                            @click="cancelQuantity()"
+                            type="button"
                             class="mt-3 px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400">
                             Cancelar
                         </button>
@@ -232,6 +236,7 @@
                                 <div class="flex items-center justify-end space-x-2">
                                     <button 
                                         @click="decrementQuantity(index)" 
+                                        type="button"
                                         class="bg-gray-200 text-gray-700 rounded-full w-6 h-6 flex items-center justify-center hover:bg-gray-300">
                                         -
                                     </button>
@@ -249,6 +254,7 @@
                                     </div>
                                     <button 
                                         @click="incrementQuantity(index)" 
+                                        type="button"
                                         class="bg-indigo-100 text-indigo-700 rounded-full w-6 h-6 flex items-center justify-center hover:bg-indigo-200">
                                         +
                                     </button>
@@ -264,6 +270,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button 
                                     @click="removeItem(index)" 
+                                    type="button"
                                     class="text-red-600 hover:text-red-800">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -308,7 +315,8 @@
                     </div>
                     <div>
                         <button 
-                            @click="resetSale"
+                            @click="resetSale()"
+                            type="button"
                             class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -333,16 +341,17 @@
                         <span class="text-base font-bold text-indigo-800" x-text="formatCurrency(total)"></span>
                     </div>
                     
-                    <div x-show="exchangeRate" class="flex justify-between text-xs text-gray-500">
+                    <div x-show="exchangeRate > 0" class="flex justify-between text-xs text-gray-500">
                         <span>Equivalente en USD:</span>
                         <span x-text="formatCurrency(total / exchangeRate, '$')"></span>
                     </div>
                 </div>
                 
                 <button 
-                    @click="completeSale"
+                    @click="completeSale()"
                     :disabled="items.length === 0"
                     :class="{'opacity-50 cursor-not-allowed': items.length === 0}"
+                    type="button"
                     class="w-full bg-indigo-600 border border-transparent rounded-md shadow-sm py-3 px-4 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     <div class="flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -360,11 +369,13 @@
 {% block extra_js %}
 <script>
     function getCsrfToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        return csrfToken ? csrfToken.value : '';
     }
     
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('salesApp', () => ({
+    function salesApp() {
+        return {
+            // Estados básicos
             items: [],
             barcode: '',
             customerSearch: '',
@@ -373,7 +384,7 @@
             selectedCustomer: null,
             isCredit: false,
             notes: '',
-            exchangeRate: {{ latest_exchange_rate.bs_to_usd|default:0 }},
+            exchangeRate: {% if latest_exchange_rate %}{{ latest_exchange_rate.bs_to_usd }}{% else %}0{% endif %},
             
             // Variables para el modal de cantidad
             showQuantityModal: false,
@@ -387,10 +398,13 @@
             async scanBarcode() {
                 if (!this.barcode.trim()) return;
                 
+                console.log('Escaneando código:', this.barcode);
+                
                 try {
-                    const response = await fetch(`/api/products/barcode/${this.barcode}/`);
+                    const response = await fetch(`/api/products/barcode/${encodeURIComponent(this.barcode)}/`);
                     
                     if (!response.ok) {
+                        console.error('Respuesta no OK:', response.status);
                         alert('Producto no encontrado');
                         return;
                     }
@@ -400,7 +414,7 @@
                     console.log('Producto encontrado:', product);
                     
                     // Solo mostrar modal para productos por peso/volumen
-                    if (product.is_weight_based || product.unit_code === 'liter' || product.unit_code === 'ml') {
+                    if (product.is_weight_based) {
                         this.pendingProduct = product;
                         this.quantityInput = '';
                         this.showQuantityModal = true;
@@ -525,48 +539,40 @@
                 const item = this.items[index];
                 let quantityStr = (item.quantity || '').toString().trim();
                 
-                // Si está vacío o es solo "0" sin punto decimal, establecer cantidad mínima
                 if (quantityStr === '' || quantityStr === '0') {
                     if (item.is_weight_based) {
-                        item.quantity = '0.001'; // Cantidad mínima para productos por peso
+                        item.quantity = '0.001';
                     } else {
-                        item.quantity = '1'; // Cantidad mínima para productos por unidad
+                        item.quantity = '1';
                     }
                     return;
                 }
                 
-                // Si termina en punto, permitirlo temporalmente (ej: "2.")
                 if (quantityStr.endsWith('.')) {
                     return;
                 }
                 
                 let quantity = parseFloat(quantityStr.replace(',', '.'));
                 
-                // Si no es un número válido, restaurar a cantidad mínima
                 if (isNaN(quantity)) {
                     item.quantity = item.is_weight_based ? '0.001' : '1';
                     return;
                 }
                 
-                // Si es menor que la cantidad mínima, establecer cantidad mínima
                 const minQuantity = item.is_weight_based ? 0.001 : 1;
                 if (quantity < minQuantity) {
                     item.quantity = minQuantity.toString();
                     return;
                 }
                 
-                // Validar stock disponible
                 if (quantity > item.stock) {
                     alert(`Stock insuficiente para ${item.name}. Disponible: ${item.stock} ${item.unit_type}`);
                     item.quantity = item.stock.toString();
                     return;
                 }
                 
-                // Normalizar el valor (quitar comas, formatear decimales)
                 item.quantity = quantity.toString();
             },
-            
-            // Eliminar la función validateAndUpdateQuantity ya que no la usamos más
             
             async searchCustomers() {
                 if (!this.customerSearch) {
@@ -578,7 +584,7 @@
                     const response = await fetch(`/api/customers/search/?q=${encodeURIComponent(this.customerSearch)}`);
                     const data = await response.json();
                     
-                    this.customerResults = data.customers;
+                    this.customerResults = data.customers || [];
                     this.customerSelectedIndex = this.customerResults.length > 0 ? 0 : -1;
                 } catch (error) {
                     console.error('Error:', error);
@@ -651,27 +657,19 @@
                     return;
                 }
                 
-                // Preparar datos de la venta con debugging detallado
                 const saleData = {
-                    items: this.items.map(item => {
-                        const quantity = parseFloat(item.quantity);
-                        console.log(`Procesando item: ${item.name}, cantidad original: "${item.quantity}", cantidad parseada: ${quantity}`);
-                        
-                        return {
-                            product_id: item.id,
-                            quantity: quantity,
-                            price_bs: parseFloat(item.price_bs)
-                        };
-                    }),
+                    items: this.items.map(item => ({
+                        product_id: item.id,
+                        quantity: parseFloat(item.quantity),
+                        price_bs: parseFloat(item.price_bs)
+                    })),
                     customer_id: this.selectedCustomer ? this.selectedCustomer.id : null,
                     is_credit: this.isCredit,
                     notes: this.notes,
                     total_bs: this.total
                 };
                 
-                console.log('=== DATOS DE VENTA COMPLETOS ===');
-                console.log(JSON.stringify(saleData, null, 2));
-                console.log('=== FIN DATOS DE VENTA ===');
+                console.log('Datos de venta:', saleData);
                 
                 try {
                     const response = await fetch('{% url "sales:create_sale_api" %}', {
@@ -692,12 +690,10 @@
                     const result = await response.json();
                     console.log('Respuesta del servidor:', result);
                     
-                    // Abrir recibo en nueva ventana
                     if (result.id) {
                         window.open(`/sales/${result.id}/receipt/`, '_blank');
                         this.resetSale();
                         
-                        // Enfocar el input para seguir escaneando
                         setTimeout(() => {
                             document.getElementById('barcode').focus();
                         }, 100);
@@ -720,10 +716,16 @@
             init() {
                 // Enfocar el input al cargar la página
                 setTimeout(() => {
-                    document.getElementById('barcode').focus();
+                    const barcodeInput = document.getElementById('barcode');
+                    if (barcodeInput) {
+                        barcodeInput.focus();
+                    }
                 }, 100);
+                
+                console.log('Sales app inicializado');
+                console.log('Tasa de cambio:', this.exchangeRate);
             }
-        }));
-    });
+        };
+    }
 </script>
 {% endblock %}

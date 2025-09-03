@@ -1,4 +1,4 @@
-<!-- templates/inventory/product_form.html - VERSIÓN MEJORADA -->
+<!-- templates/inventory/product_form.html - VERSIÓN USD CON FUNCIONALIDAD AVANZADA -->
 {% extends 'base/base.html' %}
 
 {% block title %}{{ title }} - Sistema de Bodega{% endblock %}
@@ -15,6 +15,8 @@
         --label-text: #374151;
         --error-color: #dc2626;
         --success-color: #059669;
+        --usd-color: #10b981;
+        --bs-color: #f59e0b;
     }
 
     /* INPUTS CON MÁXIMA VISIBILIDAD */
@@ -134,9 +136,9 @@
         transform: translateY(-1px);
     }
 
-    /* Contenedores con mejor contraste */
-    .price-calculator {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* Contenedores con mejor contraste - ACTUALIZADO PARA USD */
+    .price-calculator-usd {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: white !important;
         padding: 24px !important;
         border-radius: 12px !important;
@@ -201,6 +203,43 @@
     textarea:hover:not(:focus) {
         border-color: #9ca3af !important;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* NUEVOS ESTILOS PARA CONVERSIÓN USD/BS */
+    .currency-converter {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white !important;
+        padding: 16px !important;
+        border-radius: 8px !important;
+        margin-top: 12px !important;
+    }
+
+    .currency-rate {
+        font-size: 12px !important;
+        opacity: 0.9 !important;
+        margin-bottom: 8px !important;
+    }
+
+    .currency-conversion {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+        font-size: 13px !important;
+    }
+
+    .conversion-item {
+        text-align: center !important;
+    }
+
+    .conversion-label {
+        font-size: 11px !important;
+        opacity: 0.8 !important;
+        margin-bottom: 2px !important;
+    }
+
+    .conversion-value {
+        font-weight: 700 !important;
+        font-size: 15px !important;
     }
 
     /* Mejora para dispositivos móviles */
@@ -308,7 +347,7 @@
         <!-- Formulario -->
         <form method="post" enctype="multipart/form-data" 
               class="space-y-8" 
-              x-data="enhancedProductForm()" 
+              x-data="enhancedProductFormUSD()" 
               @submit="onSubmit">
             {% csrf_token %}
             
@@ -490,75 +529,109 @@
 
                 <!-- Precios e Inventario -->
                 <div class="space-y-8">
-                    <!-- Precios -->
+                    <!-- PRECIOS EN USD -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                        <div class="price-calculator p-6">
+                        <div class="price-calculator-usd p-6">
                             <h2 class="text-xl font-semibold text-white flex items-center">
                                 <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
                                 </svg>
-                                Precios
+                                Precios (USD)
                             </h2>
                         </div>
                         
                         <div class="p-6 space-y-4">
                             <div class="form-group">
-                                <label for="{{ form.purchase_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Precio de Compra (Bs) *
+                                <label for="{{ form.purchase_price_usd.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Precio de Compra (USD) *
                                 </label>
                                 <div class="relative">
                                     <input type="number" 
-                                           id="{{ form.purchase_price_bs.id_for_label }}"
-                                           name="{{ form.purchase_price_bs.name }}"
-                                           value="{% if form.purchase_price_bs.value %}{{ form.purchase_price_bs.value }}{% endif %}"
+                                           id="{{ form.purchase_price_usd.id_for_label }}"
+                                           name="{{ form.purchase_price_usd.name }}"
+                                           value="{% if form.purchase_price_usd.value %}{{ form.purchase_price_usd.value }}{% endif %}"
+                                           x-model="purchasePrice"
+                                           @input="calculateMarginAndConversions()"
                                            class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
                                            placeholder="0.00"
                                            step="0.01"
                                            min="0"
                                            required>
                                     <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                        <span class="text-gray-500 text-sm font-medium">USD</span>
                                     </div>
                                 </div>
-                                {% if form.purchase_price_bs.errors %}
-                                    <p class="mt-1 text-sm text-red-600">{{ form.purchase_price_bs.errors.0 }}</p>
+                                {% if form.purchase_price_usd.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.purchase_price_usd.errors.0 }}</p>
                                 {% endif %}
                             </div>
 
                             <div class="form-group">
-                                <label for="{{ form.selling_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Precio de Venta (Bs) *
+                                <label for="{{ form.selling_price_usd.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Precio de Venta (USD) *
                                 </label>
                                 <div class="relative">
                                     <input type="number" 
-                                           id="{{ form.selling_price_bs.id_for_label }}"
-                                           name="{{ form.selling_price_bs.name }}"
-                                           value="{% if form.selling_price_bs.value %}{{ form.selling_price_bs.value }}{% endif %}"
+                                           id="{{ form.selling_price_usd.id_for_label }}"
+                                           name="{{ form.selling_price_usd.name }}"
+                                           value="{% if form.selling_price_usd.value %}{{ form.selling_price_usd.value }}{% endif %}"
+                                           x-model="sellingPrice"
+                                           @input="calculateMarginAndConversions()"
                                            class="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
                                            placeholder="0.00"
                                            step="0.01"
                                            min="0"
                                            required>
                                     <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                        <span class="text-gray-500 text-sm font-medium">USD</span>
                                     </div>
                                 </div>
-                                {% if form.selling_price_bs.errors %}
-                                    <p class="mt-1 text-sm text-red-600">{{ form.selling_price_bs.errors.0 }}</p>
+                                {% if form.selling_price_usd.errors %}
+                                    <p class="mt-1 text-sm text-red-600">{{ form.selling_price_usd.errors.0 }}</p>
                                 {% endif %}
                             </div>
 
+                            <!-- CONVERSIÓN AUTOMÁTICA A BS -->
+                            {% if latest_exchange_rate %}
+                            <div class="currency-converter" x-show="purchasePrice > 0 || sellingPrice > 0">
+                                <div class="currency-rate">
+                                    Tasa actual: {{ latest_exchange_rate.bs_to_usd }} Bs/USD ({{ latest_exchange_rate.date|date:"d/m/Y" }})
+                                </div>
+                                <div class="currency-conversion">
+                                    <div class="conversion-item" x-show="purchasePrice > 0">
+                                        <div class="conversion-label">Precio Compra</div>
+                                        <div class="conversion-value" x-text="'Bs ' + (purchasePrice * {{ latest_exchange_rate.bs_to_usd }}).toFixed(2)"></div>
+                                    </div>
+                                    <div class="conversion-item" x-show="sellingPrice > 0">
+                                        <div class="conversion-label">Precio Venta</div>
+                                        <div class="conversion-value" x-text="'Bs ' + (sellingPrice * {{ latest_exchange_rate.bs_to_usd }}).toFixed(2)"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/>
+                                    </svg>
+                                    <span class="text-yellow-800 text-sm font-medium">
+                                        No hay tasa de cambio configurada. Configure la tasa para ver equivalentes en Bs.
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
+
                             <!-- Calculadora de Margen -->
-                            <div class="bg-gray-50 p-4 rounded-lg" x-show="purchasePrice && sellingPrice">
-                                <h4 class="text-sm font-medium text-gray-700 mb-2">Análisis de Margen</h4>
+                            <div class="bg-gray-50 p-4 rounded-lg" x-show="purchasePrice > 0 && sellingPrice > 0">
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">Análisis de Margen (USD)</h4>
                                 <div class="grid grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <span class="text-gray-500">Margen:</span>
-                                        <span class="font-medium text-green-600" x-text="margin + ' Bs'"></span>
+                                        <span class="font-medium text-green-600" x-text="'$' + margin.toFixed(2)"></span>
                                     </div>
                                     <div>
                                         <span class="text-gray-500">% Ganancia:</span>
-                                        <span class="font-medium text-blue-600" x-text="marginPercentage + '%'"></span>
+                                        <span class="font-medium text-blue-600" x-text="marginPercentage.toFixed(1) + '%'"></span>
                                     </div>
                                 </div>
                             </div>
@@ -642,7 +715,7 @@
                 </div>
             </div>
 
-            <!-- Precios al Mayor -->
+            <!-- PRECIOS AL MAYOR EN USD -->
             <div class="bg-white rounded-xl shadow-lg overflow-hidden" x-data="{ bulkEnabled: document.getElementById('{{ form.is_bulk_pricing.id_for_label }}')?.checked || false }">
                 <div class="bulk-pricing-section p-6">
                     <div class="flex items-center justify-between">
@@ -650,20 +723,21 @@
                             <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
-                            Precios al Mayor
+                            Precios al Mayor (USD)
                         </h2>
                         <label class="flex items-center">
                             <input type="checkbox" 
                                    id="{{ form.is_bulk_pricing.id_for_label }}"
                                    name="{{ form.is_bulk_pricing.name }}"
                                    {% if form.is_bulk_pricing.value %}checked{% endif %}
+                                   x-model="bulkEnabled"
                                    class="w-5 h-5 text-white bg-white border-2 border-white rounded focus:ring-blue-500 focus:ring-2 mr-3">
                             <span class="ml-2 text-white font-medium">Habilitar</span>
                         </label>
                     </div>
                 </div>
                 
-                <div x-show="document.getElementById('{{ form.is_bulk_pricing.id_for_label }}').checked" 
+                <div x-show="bulkEnabled" 
                      x-transition:enter="transition ease-out duration-300"
                      x-transition:enter-start="opacity-0 transform scale-95"
                      x-transition:enter-end="opacity-100 transform scale-100"
@@ -688,48 +762,69 @@
                             {% if form.bulk_min_quantity.errors %}
                                 <p class="mt-1 text-sm text-red-600">{{ form.bulk_min_quantity.errors.0 }}</p>
                             {% endif %}
-                            <p class="mt-1 text-xs text-white">Cantidad mínima para aplicar precio al mayor</p>
+                            <p class="mt-1 text-xs text-gray-600">Cantidad mínima para aplicar precio al mayor</p>
                         </div>
 
                         <div class="form-group">
-                            <label for="{{ form.bulk_price_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                                Precio al Mayor (Bs)
+                            <label for="{{ form.bulk_price_usd.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                Precio al Mayor (USD)
                             </label>
                             <div class="relative">
                                 <input type="number" 
-                                       id="{{ form.bulk_price_bs.id_for_label }}"
-                                       name="{{ form.bulk_price_bs.name }}"
-                                       value="{% if form.bulk_price_bs.value %}{{ form.bulk_price_bs.value }}{% endif %}"
+                                       id="{{ form.bulk_price_usd.id_for_label }}"
+                                       name="{{ form.bulk_price_usd.name }}"
+                                       value="{% if form.bulk_price_usd.value %}{{ form.bulk_price_usd.value }}{% endif %}"
+                                       x-model="bulkPrice"
+                                       @input="calculateMarginAndConversions()"
                                        class="w-full px-4 py-3 text-base border-2 border-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-gray-900"
                                        placeholder="0.00"
                                        step="0.01"
                                        min="0">
                                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                    <span class="text-gray-500 text-sm font-medium">Bs</span>
+                                    <span class="text-gray-500 text-sm font-medium">USD</span>
                                 </div>
                             </div>
-                            {% if form.bulk_price_bs.errors %}
-                                <p class="mt-1 text-sm text-red-600">{{ form.bulk_price_bs.errors.0 }}</p>
+                            {% if form.bulk_price_usd.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.bulk_price_usd.errors.0 }}</p>
                             {% endif %}
-                            <p class="mt-1 text-xs text-white">Precio por unidad en ventas al mayor</p>
+                            <p class="mt-1 text-xs text-gray-600">Precio por unidad en ventas al mayor</p>
                         </div>
                     </div>
 
+                    <!-- CONVERSIÓN PRECIO AL MAYOR -->
+                    {% if latest_exchange_rate %}
+                    <div class="currency-converter mt-4" x-show="bulkPrice > 0">
+                        <div class="currency-rate">
+                            Precio al mayor en Bs: 
+                        </div>
+                        <div class="currency-conversion">
+                            <div class="conversion-item">
+                                <div class="conversion-label">Precio Mayor</div>
+                                <div class="conversion-value" x-text="'Bs ' + (bulkPrice * {{ latest_exchange_rate.bs_to_usd }}).toFixed(2)"></div>
+                            </div>
+                            <div class="conversion-item" x-show="sellingPrice > 0">
+                                <div class="conversion-label">Descuento</div>
+                                <div class="conversion-value" x-text="bulkDiscountPercentage.toFixed(1) + '%'"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Calculadora de Descuento al Mayor -->
-                    <div class="mt-4 p-4 bg-purple-50 rounded-lg" x-show="sellingPrice && bulkPrice">
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Análisis de Descuento al Mayor</h4>
+                    <div class="mt-4 p-4 bg-purple-50 rounded-lg" x-show="sellingPrice > 0 && bulkPrice > 0">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Análisis de Descuento al Mayor (USD)</h4>
                         <div class="grid grid-cols-3 gap-4 text-sm">
                             <div>
                                 <span class="text-gray-500">Descuento:</span>
-                                <span class="font-medium text-purple-600" x-text="bulkDiscount + ' Bs'"></span>
+                                <span class="font-medium text-purple-600" x-text="'$' + bulkDiscount.toFixed(2)"></span>
                             </div>
                             <div>
                                 <span class="text-gray-500">% Descuento:</span>
-                                <span class="font-medium text-purple-600" x-text="bulkDiscountPercentage + '%'"></span>
+                                <span class="font-medium text-purple-600" x-text="bulkDiscountPercentage.toFixed(1) + '%'"></span>
                             </div>
                             <div>
                                 <span class="text-gray-500">Nuevo Margen:</span>
-                                <span class="font-medium text-green-600" x-text="bulkMarginPercentage + '%'"></span>
+                                <span class="font-medium text-green-600" x-text="bulkMarginPercentage.toFixed(1) + '%'"></span>
                             </div>
                         </div>
                     </div>
@@ -760,48 +855,38 @@
 </div>
 
 <script>
-function enhancedProductForm() {
+function enhancedProductFormUSD() {
     return {
         isSubmitting: false,
         errors: {},
         
-        // Calculated properties
-        get purchasePrice() {
-            const value = document.getElementById('{{ form.purchase_price_bs.id_for_label }}')?.value;
-            return parseFloat(value) || 0;
-        },
+        // Valores reactivos
+        purchasePrice: {{ form.purchase_price_usd.value|default:0 }},
+        sellingPrice: {{ form.selling_price_usd.value|default:0 }},
+        bulkPrice: {{ form.bulk_price_usd.value|default:0 }},
         
-        get sellingPrice() {
-            const value = document.getElementById('{{ form.selling_price_bs.id_for_label }}')?.value;
-            return parseFloat(value) || 0;
-        },
-        
-        get bulkPrice() {
-            const value = document.getElementById('{{ form.bulk_price_bs.id_for_label }}')?.value;
-            return parseFloat(value) || 0;
-        },
-        
+        // Calculated properties para márgenes
         get margin() {
-            return (this.sellingPrice - this.purchasePrice).toFixed(2);
+            return this.sellingPrice - this.purchasePrice;
         },
         
         get marginPercentage() {
-            if (this.purchasePrice === 0) return '0';
-            return (((this.sellingPrice - this.purchasePrice) / this.purchasePrice) * 100).toFixed(1);
+            if (this.purchasePrice === 0) return 0;
+            return ((this.sellingPrice - this.purchasePrice) / this.purchasePrice) * 100;
         },
         
         get bulkDiscount() {
-            return (this.sellingPrice - this.bulkPrice).toFixed(2);
+            return this.sellingPrice - this.bulkPrice;
         },
         
         get bulkDiscountPercentage() {
-            if (this.sellingPrice === 0) return '0';
-            return (((this.sellingPrice - this.bulkPrice) / this.sellingPrice) * 100).toFixed(1);
+            if (this.sellingPrice === 0) return 0;
+            return ((this.sellingPrice - this.bulkPrice) / this.sellingPrice) * 100;
         },
         
         get bulkMarginPercentage() {
-            if (this.purchasePrice === 0) return '0';
-            return (((this.bulkPrice - this.purchasePrice) / this.purchasePrice) * 100).toFixed(1);
+            if (this.purchasePrice === 0) return 0;
+            return ((this.bulkPrice - this.purchasePrice) / this.purchasePrice) * 100;
         },
         
         // Methods
@@ -812,12 +897,17 @@ function enhancedProductForm() {
             document.getElementById('{{ form.barcode.id_for_label }}').value = barcode;
         },
         
+        calculateMarginAndConversions() {
+            // Los cálculos se hacen automáticamente por las computed properties
+            // Esta función se puede usar para futuras validaciones en tiempo real
+        },
+        
         onSubmit() {
             this.isSubmitting = true;
         },
         
         validateField(fieldName) {
-            // Real-time validation logic here
+            // Real-time validation logic
             const field = document.getElementById(fieldName);
             if (field) {
                 if (field.value.trim() === '' && field.hasAttribute('required')) {
@@ -840,6 +930,9 @@ function enhancedProductForm() {
                     }
                 });
             });
+            
+            // Calcular márgenes iniciales
+            this.calculateMarginAndConversions();
         }
     }
 }
