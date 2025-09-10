@@ -18,6 +18,31 @@ from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q, Sum
+from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
+from datetime import datetime, timedelta
+from decimal import Decimal
+import io
+
+# Reportes PDF
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+
+# Modelos locales
+from .models import Sale, SaleItem
+from inventory.models import Product
+from customers.models import Customer
+from utils.models import ExchangeRate  # ← IMPORTACIÓN CRÍTICA
+from utils.decorators import sales_access_required
+
 
 @sales_access_required
 def sale_list(request):
@@ -90,7 +115,32 @@ def sale_list(request):
 @sales_access_required
 def sale_create(request):
     """Vista para crear una nueva venta - Empleados y Administradores"""
-    return render(request, 'sales/sale_form.html', {'title': 'Nueva Venta'})
+    
+    # Obtener tasa de cambio de forma segura
+    try:
+        latest_rate = ExchangeRate.get_latest_rate()
+        exchange_rate = float(latest_rate.bs_to_usd) if latest_rate else 1.0
+    except (AttributeError, ValueError, TypeError):
+        exchange_rate = 1.0
+    
+    # Preparar datos JSON seguros para JavaScript
+    data_for_js = {
+        'exchangeRate': exchange_rate,
+        'csrfToken': None,  # Se obtiene desde el template
+        'apiUrls': {
+            'createSale': '/sales/api/create/',
+            'searchProducts': '/api/products/search/',
+            'searchCustomers': '/api/customers/search/',
+        }
+    }
+    
+    context = {
+        'title': 'Nueva Venta',
+        'data_for_js': data_for_js,
+        'latest_exchange_rate': latest_rate,  # Mantener para compatibilidad
+    }
+    
+    return render(request, 'sales/sale_form.html', context)
 
 @sales_access_required
 def sale_detail(request, pk):

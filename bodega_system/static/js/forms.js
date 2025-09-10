@@ -1,5 +1,6 @@
-// static/inventory/js/forms.js
+// static/js/forms.js
 // Funciones JavaScript comunes para formularios del sistema de inventario
+// VERSIÓN CORREGIDA: SIN AUTO-INICIALIZACIÓN QUE CONFLICTÚE CON ALPINE.JS
 
 /**
  * Configuración global
@@ -18,7 +19,8 @@ const InventoryForms = {
     // Estado global
     state: {
         currentUser: null,
-        csrfToken: null
+        csrfToken: null,
+        isInitialized: false
     }
 };
 
@@ -71,11 +73,11 @@ InventoryForms.utils = {
     
     // Obtener token CSRF
     getCsrfToken() {
-        if (!this.csrfToken) {
+        if (!this.state.csrfToken) {
             const tokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
-            this.csrfToken = tokenElement ? tokenElement.value : null;
+            this.state.csrfToken = tokenElement ? tokenElement.value : null;
         }
-        return this.csrfToken;
+        return this.state.csrfToken;
     }
 };
 
@@ -469,7 +471,10 @@ InventoryForms.product = {
             const result = await InventoryForms.api.searchProducts(query);
             
             if (result.success && result.data.products) {
-                this.displaySearchResults(result.data.products, resultsContainer, onSelect);
+                this.displayProductResults(result.data.products, resultsContainer, onSelect);
+            } else {
+                resultsContainer.innerHTML = '<div class="no-results">No se encontraron productos</div>';
+                resultsContainer.style.display = 'block';
             }
         }, InventoryForms.config.debounceDelay);
         
@@ -477,7 +482,7 @@ InventoryForms.product = {
             debouncedSearch(e.target.value);
         });
         
-        // Ocultar resultados cuando se hace click fuera
+        // Ocultar resultados al hacer clic fuera
         document.addEventListener('click', (e) => {
             if (!inputElement.contains(e.target) && !resultsContainer.contains(e.target)) {
                 resultsContainer.style.display = 'none';
@@ -485,37 +490,33 @@ InventoryForms.product = {
         });
     },
     
-    // Mostrar resultados de búsqueda
-    displaySearchResults(products, container, onSelect) {
+    // Mostrar resultados de productos
+    displayProductResults(products, container, onSelect) {
         container.innerHTML = '';
         
-        if (products.length === 0) {
-            container.innerHTML = '<div class="search-no-results">No se encontraron productos</div>';
-        } else {
-            products.forEach(product => {
-                const item = document.createElement('div');
-                item.className = 'search-result-item';
-                item.innerHTML = `
-                    <div class="product-info">
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-details">
-                            <span class="product-barcode">${product.barcode}</span>
-                            <span class="product-category">${product.category}</span>
-                        </div>
-                        <div class="product-price">
-                            Stock: ${product.stock} | ${InventoryForms.utils.formatPrice(product.selling_price_bs)}
-                        </div>
+        products.forEach(product => {
+            const item = document.createElement('div');
+            item.className = 'product-search-item';
+            item.innerHTML = `
+                <div class="product-info">
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-details">
+                        <span class="product-barcode">Código: ${product.barcode}</span>
+                        <span class="product-price">Bs ${product.selling_price_bs}</span>
+                        <span class="product-stock ${product.stock <= 0 ? 'out-of-stock' : product.stock <= product.min_stock ? 'low-stock' : ''}">
+                            Stock: ${product.stock}
+                        </span>
                     </div>
-                `;
-                
-                item.addEventListener('click', () => {
-                    onSelect(product);
-                    container.style.display = 'none';
-                });
-                
-                container.appendChild(item);
+                </div>
+            `;
+            
+            item.addEventListener('click', () => {
+                onSelect(product);
+                container.style.display = 'none';
             });
-        }
+            
+            container.appendChild(item);
+        });
         
         container.style.display = 'block';
     },
@@ -551,23 +552,32 @@ InventoryForms.product = {
 };
 
 /**
- * Inicialización
+ * INICIALIZACIÓN MANUAL (NO AUTOMÁTICA)
+ * Ya no se ejecuta automáticamente - debe llamarse explícitamente cuando sea necesario
  */
 InventoryForms.init = function() {
+    // Evitar doble inicialización
+    if (this.state.isInitialized) {
+        console.warn('InventoryForms ya está inicializado');
+        return;
+    }
+    
     // Configurar CSRF token
     this.utils.getCsrfToken();
     
-    // Configurar validación automática para todos los formularios
-    document.querySelectorAll('form[data-validate="true"]').forEach(form => {
+    // Solo buscar formularios que explícitamente requieren InventoryForms
+    // NO todos los formularios de la página
+    document.querySelectorAll('form[data-inventory-forms="true"]').forEach(form => {
         this.setupFormValidation(form);
     });
     
-    // Configurar auto-save para formularios largos
-    document.querySelectorAll('form[data-autosave="true"]').forEach(form => {
+    // Configurar auto-save solo para formularios marcados específicamente
+    document.querySelectorAll('form[data-autosave="true"][data-inventory-forms="true"]').forEach(form => {
         this.setupAutoSave(form);
     });
     
-    console.log('InventoryForms initialized successfully');
+    this.state.isInitialized = true;
+    console.log('InventoryForms initialized successfully (manual mode)');
 };
 
 // Configurar validación de formulario
@@ -575,17 +585,21 @@ InventoryForms.setupFormValidation = function(form) {
     const fields = form.querySelectorAll('[data-validate]');
     
     fields.forEach(field => {
-        const rules = JSON.parse(field.dataset.validate);
-        
-        field.addEventListener('blur', () => {
-            this.validation.validateField(field, rules);
-        });
-        
-        field.addEventListener('input', () => {
-            if (field.classList.contains('error')) {
+        try {
+            const rules = JSON.parse(field.dataset.validate);
+            
+            field.addEventListener('blur', () => {
                 this.validation.validateField(field, rules);
-            }
-        });
+            });
+            
+            field.addEventListener('input', () => {
+                if (field.classList.contains('error')) {
+                    this.validation.validateField(field, rules);
+                }
+            });
+        } catch (e) {
+            console.warn('Error parsing validation rules for field:', field, e);
+        }
     });
 };
 
@@ -604,37 +618,51 @@ InventoryForms.setupAutoSave = function(form) {
 
 // Auto-guardar formulario
 InventoryForms.autoSaveForm = function(form) {
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-    
-    // Guardar en localStorage
-    const key = `autosave_${form.id || 'form'}_${Date.now()}`;
-    localStorage.setItem(key, JSON.stringify(data));
-    
-    // Limpiar auto-saves antiguos (más de 1 día)
-    this.cleanOldAutoSaves();
+    try {
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Guardar en localStorage solo si está disponible
+        if (typeof Storage !== 'undefined') {
+            const key = `autosave_${form.id || 'form'}_${Date.now()}`;
+            localStorage.setItem(key, JSON.stringify(data));
+            
+            // Limpiar auto-saves antiguos
+            this.cleanOldAutoSaves();
+        }
+    } catch (e) {
+        console.warn('Error al auto-guardar formulario:', e);
+    }
 };
 
 // Limpiar auto-saves antiguos
 InventoryForms.cleanOldAutoSaves = function() {
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    if (typeof Storage === 'undefined') return;
     
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('autosave_')) {
-            const timestamp = parseInt(key.split('_').pop());
-            if (timestamp < oneDayAgo) {
-                localStorage.removeItem(key);
+    try {
+        const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+        
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('autosave_')) {
+                const timestamp = parseInt(key.split('_').pop());
+                if (timestamp < oneDayAgo) {
+                    localStorage.removeItem(key);
+                }
             }
-        }
-    });
+        });
+    } catch (e) {
+        console.warn('Error al limpiar auto-saves:', e);
+    }
 };
 
-// Inicializar cuando el DOM esté listo
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => InventoryForms.init());
-} else {
-    InventoryForms.init();
-}
+// ⚠️ CRÍTICO: REMOVER AUTO-INICIALIZACIÓN
+// La línea que causaba el conflicto con Alpine.js ha sido eliminada
+// Ya NO se ejecuta automáticamente
 
 // Exportar para uso global
 window.InventoryForms = InventoryForms;
+
+// Función de conveniencia para inicializar manualmente cuando sea necesario
+window.initInventoryForms = function() {
+    InventoryForms.init();
+};
