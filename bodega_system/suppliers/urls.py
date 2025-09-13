@@ -15,4 +15,10 @@ urlpatterns = [
     path('orders/', views.order_list, name='order_list'),
     path('orders/add/', views.order_create, name='order_create'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
+    path('orders/<int:pk>/edit/', views.order_update, name='order_update'),
+    path('orders/<int:pk>/receive/', views.order_receive, name='order_receive'),
+    path('orders/<int:pk>/cancel/', views.order_cancel, name='order_cancel'),
+    
+    # API endpoints
+    path('api/product-lookup/<str:barcode>/', views.product_lookup_api, name='product_lookup_api'),
 ]

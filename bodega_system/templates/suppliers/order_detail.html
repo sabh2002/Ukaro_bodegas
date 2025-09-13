@@ -118,21 +118,23 @@
                         <p class="text-xl font-bold text-indigo-900">{{ items|length }}</p>
                     </div>
                     <div>
-                        <p class="text-sm text-indigo-800">Total:</p>
-                        <p class="text-xl font-bold text-indigo-900">Bs {{ total|floatformat:2 }}</p>
+                        <p class="text-sm text-green-800">Total USD:</p>
+                        <p class="text-xl font-bold text-green-900">${{ total_usd|floatformat:2 }}</p>
                     </div>
                 </div>
                 
-                {% if latest_exchange_rate %}
                 <div class="mt-4 pt-2 border-t border-indigo-200">
                     <div class="flex justify-between items-center">
-                        <p class="text-sm font-medium text-indigo-800">Equivalente USD:</p>
-                        <p class="text-lg font-bold text-indigo-900">
-                            $ {{ total|div:latest_exchange_rate.bs_to_usd|floatformat:2 }}
-                        </p>
+                        <p class="text-sm font-medium text-indigo-800">Total Bs:</p>
+                        <p class="text-lg font-bold text-indigo-900">Bs {{ total_bs|floatformat:2 }}</p>
                     </div>
+                    {% if order.exchange_rate_used %}
+                    <div class="flex justify-between items-center mt-1">
+                        <p class="text-xs text-gray-600">Tasa utilizada:</p>
+                        <p class="text-xs text-gray-600">{{ order.exchange_rate_used }} Bs/USD</p>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
             
             {% if order.supplier.contact_person or order.supplier.phone %}
@@ -176,7 +178,10 @@
                             Categoría
                         </th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Precio Unitario
+                            Precio USD
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Precio Bs
                         </th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Cantidad
@@ -209,19 +214,23 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ item.product.category.name }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">
+                            ${{ item.price_usd|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                             Bs {{ item.price_bs|floatformat:2 }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                             {{ item.quantity }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                            Bs {{ item.subtotal|floatformat:2 }}
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-medium text-green-600">${{ item.subtotal_usd|floatformat:2 }}</div>
+                            <div class="text-xs text-gray-500">Bs {{ item.subtotal_bs|floatformat:2 }}</div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
                             No hay productos en esta orden.
                         </td>
                     </tr>
@@ -229,11 +238,12 @@
                 </tbody>
                 <tfoot class="bg-gray-50">
                     <tr>
-                        <td colspan="4" class="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                        <td colspan="5" class="px-6 py-4 text-sm font-medium text-gray-900 text-right">
                             Total:
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
-                            Bs {{ total|floatformat:2 }}
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-bold text-green-600">${{ total_usd|floatformat:2 }}</div>
+                            <div class="text-xs text-gray-500">Bs {{ total_bs|floatformat:2 }}</div>
                         </td>
                     </tr>
                 </tfoot>

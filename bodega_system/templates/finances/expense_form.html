@@ -1,0 +1,237 @@
+<!-- templates/finances/expense_form.html -->
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}
+{% if form.instance.pk %}Editar Gasto{% else %}Registrar Gasto{% endif %} - Sistema de Bodega
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">
+                {% if form.instance.pk %}
+                    Editar Gasto
+                {% else %}
+                    Registrar Nuevo Gasto
+                {% endif %}
+            </h1>
+            <p class="text-gray-600 mt-1">
+                {% if form.instance.pk %}
+                    Modifica los datos del gasto seleccionado
+                {% else %}
+                    Ingresa los detalles del nuevo gasto
+                {% endif %}
+            </p>
+        </div>
+        <a href="{% url 'finances:expense_list' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver a Lista
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Información básica -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Información del Gasto</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Fecha -->
+                <div>
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.date.label }}
+                        <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.date }}
+                    {% if form.date.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.date.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Categoría -->
+                <div>
+                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.category.label }}
+                        <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.category.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Descripción -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.description.label }}
+                        <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.description.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Información financiera -->
+        <div class="bg-blue-50 p-4 rounded-md">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Información Financiera</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Monto USD -->
+                <div>
+                    <label for="{{ form.amount_usd.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.amount_usd.label }}
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                        <input type="number" 
+                               name="{{ form.amount_usd.name }}" 
+                               id="{{ form.amount_usd.id_for_label }}"
+                               value="{{ form.amount_usd.value|default:'' }}"
+                               step="0.01" 
+                               min="0"
+                               class="form-input pl-8 w-full"
+                               placeholder="0.00">
+                    </div>
+                    {% if form.amount_usd.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.amount_usd.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tasa de cambio (solo lectura) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Tasa de Cambio (Automática)
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Bs</span>
+                        <input type="text" 
+                               class="form-input pl-8 w-full bg-gray-100" 
+                               value="{% if current_exchange_rate %}{{ current_exchange_rate.bs_per_usd|floatformat:2 }}{% else %}7.00{% endif %}"
+                               readonly>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Se aplicará la tasa actual al guardar</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalles adicionales -->
+        <div class="bg-yellow-50 p-4 rounded-md">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Detalles Adicionales</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Número de recibo -->
+                <div>
+                    <label for="{{ form.receipt_number.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.receipt_number.label }}
+                    </label>
+                    {{ form.receipt_number }}
+                    {% if form.receipt_number.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.receipt_number.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Archivo de recibo -->
+                <div>
+                    <label for="{{ form.receipt_file.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.receipt_file.label }}
+                    </label>
+                    {{ form.receipt_file }}
+                    {% if form.receipt_file.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.receipt_file.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if form.instance.receipt_file %}
+                        <p class="text-sm text-gray-600 mt-1">
+                            Archivo actual: 
+                            <a href="{{ form.instance.receipt_file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                {{ form.instance.receipt_file.name|default:"Ver archivo" }}
+                            </a>
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Notas -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.notes.label }}
+                    </label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.notes.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+            <a href="{% url 'finances:expense_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-3 px-6 rounded-md">
+                Cancelar
+            </a>
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                {% if form.instance.pk %}
+                    Actualizar Gasto
+                {% else %}
+                    Registrar Gasto
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-calculate Bs amount when USD amount changes
+    const usdInput = document.querySelector('input[name="amount_usd"]');
+    const exchangeRate = {% if current_exchange_rate %}{{ current_exchange_rate.bs_per_usd }}{% else %}7.00{% endif %};
+    
+    if (usdInput) {
+        function updateBsAmount() {
+            const usdValue = parseFloat(usdInput.value) || 0;
+            const bsValue = usdValue * exchangeRate;
+            // You can display the Bs equivalent if needed
+            console.log(`USD: $${usdValue.toFixed(2)} = Bs ${bsValue.toFixed(2)}`);
+        }
+        
+        usdInput.addEventListener('input', updateBsAmount);
+        updateBsAmount(); // Initial calculation
+    }
+});
+</script>
+{% endblock %}

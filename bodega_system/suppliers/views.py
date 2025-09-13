@@ -7,6 +7,8 @@ from django.utils import timezone
 from django.db.models import Sum, Q
 from django.db import transaction
 from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Supplier, SupplierOrder, SupplierOrderItem
 from .forms import SupplierForm, SupplierOrderForm, SupplierOrderItemFormset, ReceiveOrderForm
@@ -200,45 +202,80 @@ def order_detail(request, pk):
     # Obtener ítems de la orden
     items = order.items.all().select_related('product')
     
-    # Calcular total
-    total = sum(item.quantity * item.price_bs for item in items)
+    # Calcular totales
+    total_usd = sum(item.quantity * item.price_usd for item in items)
+    total_bs = sum(item.quantity * item.price_bs for item in items)
     
     return render(request, 'suppliers/order_detail.html', {
         'order': order,
         'items': items,
-        'total': total,
+        'total_usd': total_usd,
+        'total_bs': total_bs,
     })
 
 @login_required
 def order_create(request):
     """Vista para crear una nueva orden de compra"""
     if request.method == 'POST':
+        print("===== ORDER CREATE POST REQUEST =====")
+        print("POST data:", dict(request.POST))
+        print("=====================================")
+        
         form = SupplierOrderForm(request.POST, user=request.user)
         formset = SupplierOrderItemFormset(request.POST)
         
+        print("Form valid:", form.is_valid())
+        print("Form errors:", form.errors)
+        print("Formset valid:", formset.is_valid())
+        print("Formset errors:", formset.errors)
+        print("Formset non_form_errors:", formset.non_form_errors())
+        
         if form.is_valid() and formset.is_valid():
+            # Obtener tasa de cambio actual
+            from utils.models import ExchangeRate
+            exchange_rate = ExchangeRate.get_latest_rate()
+            
+            if not exchange_rate:
+                messages.error(request, 'No se ha configurado una tasa de cambio. Configure la tasa antes de crear órdenes.')
+                return redirect('suppliers:order_create')
+            
             with transaction.atomic():
                 # Guardar orden
                 order = form.save()
                 
-                # Guardar ítems de la orden
+                # Procesar y guardar ítems de la orden
                 formset.instance = order
+                
+                # Crear productos nuevos antes de guardar el formset
+                for form in formset.forms:
+                    if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                        if form.cleaned_data.get('is_new_product'):
+                            # Crear el producto nuevo
+                            new_product = _create_product_from_form(form, exchange_rate)
+                            form.instance.product = new_product
+                
                 formset.save()
                 
-                # Calcular total
-                total_bs = 0
+                # Calcular totales
+                total_usd = 0
                 for form in formset.forms:
                     if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                         quantity = form.cleaned_data.get('quantity', 0)
-                        price_bs = form.cleaned_data.get('price_bs', 0)
-                        total_bs += quantity * price_bs
+                        price_usd = form.cleaned_data.get('price_usd', 0)
+                        total_usd += quantity * price_usd
                 
-                # Actualizar total
-                order.total_bs = total_bs
+                # Actualizar totales y tasa
+                order.total_usd = total_usd
+                order.total_bs = total_usd * exchange_rate.bs_to_usd
+                order.exchange_rate_used = exchange_rate.bs_to_usd
                 order.save()
                 
                 messages.success(request, 'Orden de compra creada exitosamente.')
                 return redirect('suppliers:order_detail', pk=order.pk)
+        else:
+            # Formulario o formset inválido
+            print("===== FORM/FORMSET INVALID =====")
+            messages.error(request, 'Error en el formulario. Revise los datos.')
     else:
         # Pre-seleccionar proveedor si se pasa por URL
         supplier_id = request.GET.get('supplier')
@@ -253,10 +290,22 @@ def order_create(request):
         form = SupplierOrderForm(initial=initial, user=request.user)
         formset = SupplierOrderItemFormset()
     
+    # Obtener tasa de cambio para mostrar en el template
+    from utils.models import ExchangeRate
+    from inventory.models import Category, Product
+    current_rate = ExchangeRate.get_latest_rate()
+    
+    # Obtener categorías y opciones de unidad
+    categories = Category.objects.all().order_by('name')
+    unit_choices = Product.UNIT_TYPES
+    
     return render(request, 'suppliers/order_form.html', {
         'form': form,
         'formset': formset,
-        'title': 'Nueva Orden de Compra'
+        'title': 'Nueva Orden de Compra',
+        'current_exchange_rate': current_rate,
+        'categories': categories,
+        'unit_choices': unit_choices,
     })
 
 @login_required
@@ -274,23 +323,42 @@ def order_update(request, pk):
         formset = SupplierOrderItemFormset(request.POST, instance=order)
         
         if form.is_valid() and formset.is_valid():
+            # Obtener tasa de cambio actual
+            from utils.models import ExchangeRate
+            exchange_rate = ExchangeRate.get_latest_rate()
+            
+            if not exchange_rate:
+                messages.error(request, 'No se ha configurado una tasa de cambio. Configure la tasa antes de actualizar órdenes.')
+                return redirect('suppliers:order_detail', pk=order.pk)
+            
             with transaction.atomic():
                 # Guardar orden
                 order = form.save()
                 
+                # Procesar y guardar ítems de la orden
+                # Crear productos nuevos antes de guardar el formset
+                for form in formset.forms:
+                    if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                        if form.cleaned_data.get('is_new_product'):
+                            # Crear el producto nuevo
+                            new_product = _create_product_from_form(form, exchange_rate)
+                            form.instance.product = new_product
+                
                 # Guardar ítems de la orden
                 formset.save()
                 
-                # Calcular total
-                total_bs = 0
+                # Calcular totales
+                total_usd = 0
                 for form in formset.forms:
                     if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                         quantity = form.cleaned_data.get('quantity', 0)
-                        price_bs = form.cleaned_data.get('price_bs', 0)
-                        total_bs += quantity * price_bs
+                        price_usd = form.cleaned_data.get('price_usd', 0)
+                        total_usd += quantity * price_usd
                 
-                # Actualizar total
-                order.total_bs = total_bs
+                # Actualizar totales y tasa
+                order.total_usd = total_usd
+                order.total_bs = total_usd * exchange_rate.bs_to_usd
+                order.exchange_rate_used = exchange_rate.bs_to_usd
                 order.save()
                 
                 messages.success(request, 'Orden de compra actualizada exitosamente.')
@@ -299,11 +367,23 @@ def order_update(request, pk):
         form = SupplierOrderForm(instance=order, user=request.user)
         formset = SupplierOrderItemFormset(instance=order)
     
+    # Obtener tasa de cambio para mostrar en el template
+    from utils.models import ExchangeRate
+    from inventory.models import Category, Product
+    current_rate = ExchangeRate.get_latest_rate()
+    
+    # Obtener categorías y opciones de unidad
+    categories = Category.objects.all().order_by('name')
+    unit_choices = Product.UNIT_TYPES
+    
     return render(request, 'suppliers/order_form.html', {
         'form': form,
         'formset': formset,
         'order': order,
-        'title': 'Editar Orden de Compra'
+        'title': 'Editar Orden de Compra',
+        'current_exchange_rate': current_rate,
+        'categories': categories,
+        'unit_choices': unit_choices,
     })
 
 @login_required
@@ -338,8 +418,9 @@ def order_receive(request, pk):
                     # Actualizar stock
                     product.stock += item.quantity
                     
-                    # Actualizar precio de compra si se solicitó
+                    # Actualizar precios de compra si se solicitó
                     if update_prices:
+                        product.purchase_price_usd = item.price_usd
                         product.purchase_price_bs = item.price_bs
                     
                     product.save()
@@ -391,3 +472,53 @@ def order_cancel(request, pk):
     return render(request, 'suppliers/order_confirm_cancel.html', {
         'order': order
     })
+
+def _create_product_from_form(form, exchange_rate):
+    """Helper para crear un producto nuevo desde el formulario"""
+    from inventory.models import Product
+    
+    selling_price_usd = form.cleaned_data['new_product_selling_price_usd']
+    purchase_price_usd = form.cleaned_data['price_usd']
+    
+    product = Product.objects.create(
+        name=form.cleaned_data['new_product_name'],
+        barcode=form.cleaned_data['new_product_barcode'],
+        category=form.cleaned_data['new_product_category'],
+        unit_type=form.cleaned_data.get('new_product_unit_type', 'unit'),
+        purchase_price_usd=purchase_price_usd,
+        purchase_price_bs=purchase_price_usd * exchange_rate.bs_to_usd,
+        selling_price_usd=selling_price_usd,
+        selling_price_bs=selling_price_usd * exchange_rate.bs_to_usd,
+        stock=0,  # Inicialmente en 0, se actualizará al recibir la orden
+        min_stock=form.cleaned_data.get('new_product_min_stock', 5),
+        is_active=True
+    )
+    
+    return product
+
+
+@login_required
+def product_lookup_api(request, barcode):
+    """API endpoint para buscar productos por código de barras"""
+    try:
+        product = Product.objects.get(barcode=barcode, is_active=True)
+        
+        return JsonResponse({
+            'exists': True,
+            'product': {
+                'id': product.id,
+                'name': product.name,
+                'barcode': product.barcode,
+                'category': product.category,
+                'unit_type': product.unit_type,
+                'purchase_price_usd': str(product.purchase_price_usd),
+                'selling_price_usd': str(product.selling_price_usd),
+                'stock': product.stock,
+                'min_stock': product.min_stock,
+            }
+        })
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'exists': False,
+            'product': None
+        })

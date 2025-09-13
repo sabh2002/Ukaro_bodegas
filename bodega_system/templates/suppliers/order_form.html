@@ -2,335 +2,1051 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}{{ title }} - Sistema de Bodega{% endblock %}
+{% block title %}
+{% if form.instance.pk %}Editar Orden{% else %}Nueva Orden de Compra{% endif %} - Sistema de Bodega
+{% endblock %}
 
 {% block extra_head %}
 <style>
-    .form-row-error {
-        border-color: #F56565;
+    .purchase-order-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+
+    .po-header {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 24px;
+        border-left: 4px solid #059669;
+    }
+
+    .po-header-content {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: center;
+    }
+
+    .po-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #059669;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .po-meta {
+        font-size: 14px;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+
+    .po-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .po-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin-bottom: 20px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .po-card-header {
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 16px 24px;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .po-card-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .po-card-content {
+        padding: 24px;
+    }
+
+    /* Form inputs with professional styling */
+    .po-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: all 0.2s ease;
+        background: white;
+    }
+
+    .po-input:focus {
+        outline: none;
+        border-color: #059669;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+
+    .po-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    /* Quick product addition toolbar */
+    .product-toolbar {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #a7f3d0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .barcode-quick-add {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .barcode-input {
+        flex: 1;
+        min-width: 200px;
+        font-family: 'Courier New', monospace;
+        font-size: 16px;
+        padding: 8px 12px;
+        border: 1px solid #059669;
+        border-radius: 6px;
+        background: white;
+    }
+
+    .barcode-input:focus {
+        outline: none;
+        border-color: #047857;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+
+    /* Professional product table */
+    .po-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .po-table th {
+        background: #f8fafc;
+        padding: 12px;
+        text-align: left;
+        border-bottom: 2px solid #e5e7eb;
+        font-weight: 600;
+        color: #374151;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .po-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+    }
+
+    .po-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .po-table tr.new-product-row {
+        background: #fef7ff;
+        border-left: 3px solid #a855f7;
+    }
+
+    .po-table tr.new-product-row td {
+        border-bottom: 1px solid #e879f9;
+    }
+
+    /* Product status badges */
+    .product-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .product-badge.new {
+        background: #fdf4ff;
+        color: #a21caf;
+        border: 1px solid #f0abfc;
+    }
+
+    .product-badge.existing {
+        background: #ecfdf5;
+        color: #059669;
+        border: 1px solid #86efac;
+    }
+
+    /* Table inputs */
+    .po-table-input {
+        padding: 6px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 13px;
+        width: 100%;
+        min-width: 70px;
+    }
+
+    .po-table-input:focus {
+        outline: none;
+        border-color: #059669;
+        box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.1);
+    }
+
+    .po-table-input.narrow {
+        min-width: 60px;
+        text-align: center;
+    }
+
+    /* Status notifications */
+    .po-notification {
+        padding: 10px 16px;
+        border-radius: 6px;
+        margin: 8px 0;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .po-notification.success {
+        background: #ecfdf5;
+        color: #059669;
+        border: 1px solid #86efac;
+    }
+
+    .po-notification.warning {
+        background: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fed7aa;
+    }
+
+    .po-notification.error {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+
+    /* Loading and buttons */
+    .po-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid currentColor;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .po-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+    }
+
+    .po-btn.primary {
+        background: #059669;
+        color: white;
+    }
+
+    .po-btn.primary:hover {
+        background: #047857;
+    }
+
+    .po-btn.secondary {
+        background: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+
+    .po-btn.secondary:hover {
+        background: #f9fafb;
+    }
+
+    .po-btn.danger {
+        background: #dc2626;
+        color: white;
+        padding: 4px 8px;
+    }
+
+    .po-btn.danger:hover {
+        background: #b91c1c;
+    }
+
+    .po-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Summary panel */
+    .po-summary {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #0ea5e9;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .po-summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .po-summary-row.total {
+        border-top: 2px solid #0ea5e9;
+        padding-top: 12px;
+        margin-top: 12px;
+        font-weight: 700;
+        font-size: 16px;
+        color: #0c4a6e;
+    }
+
+    /* Grid utilities */
+    .po-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .po-grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .po-grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .po-grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* New product form */
+    .new-product-form {
+        background: #fdf4ff;
+        border: 1px solid #f0abfc;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 8px;
+    }
+
+    .new-product-form .po-grid {
+        gap: 12px;
+    }
+
+    /* Empty state */
+    .po-empty {
+        text-align: center;
+        padding: 60px 24px;
+        color: #6b7280;
+    }
+
+    .po-empty svg {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 16px;
+        opacity: 0.4;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1024px) {
+        .po-header-content {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .po-actions {
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .purchase-order-container {
+            padding: 12px;
+        }
+        
+        .po-card-content {
+            padding: 16px;
+        }
+        
+        .po-grid-2,
+        .po-grid-3,
+        .po-grid-4 {
+            grid-template-columns: 1fr;
+        }
+        
+        .barcode-quick-add {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .po-table {
+            font-size: 12px;
+        }
+        
+        .po-table td,
+        .po-table th {
+            padding: 8px 4px;
+        }
+        
+        .po-table-input {
+            min-width: 50px;
+            padding: 4px 6px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">{{ title }}</h1>
-        <a href="{% url 'suppliers:order_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-            </svg>
-            Volver
-        </a>
+<div class="purchase-order-container">
+    <!-- Header -->
+    <div class="po-header">
+        <div class="po-header-content">
+            <div>
+                <h1 class="po-title">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    {% if form.instance.pk %}Orden de Compra #{{ form.instance.id }}{% else %}Nueva Orden de Compra{% endif %}
+                </h1>
+                <div class="po-meta">
+                    {% if form.instance.pk %}
+                        Modifica los detalles de la orden existente
+                    {% else %}
+                        Registra productos y proveedores para crear una nueva orden
+                    {% endif %}
+                </div>
+            </div>
+            <div class="po-actions">
+                <a href="{% url 'suppliers:order_list' %}" class="po-btn secondary">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Volver
+                </a>
+            </div>
+        </div>
     </div>
-    
-    <form method="post" class="space-y-6" id="orderForm">
+
+    <form method="post" action="{% url 'suppliers:order_create' %}" x-data="orderForm()" x-init="init()">
         {% csrf_token %}
         
-        {% if form.non_field_errors %}
-        <div class="bg-red-50 text-red-800 p-4 rounded-md mb-6">
-            {{ form.non_field_errors }}
-        </div>
-        {% endif %}
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Información básica -->
-            <div class="bg-gray-50 p-4 rounded-md space-y-4">
-                <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Información Básica</h2>
-                
-                <div>
-                    <label for="{{ form.supplier.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
-                    {{ form.supplier }}
-                    {% if form.supplier.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.supplier.errors.0 }}</p>
-                    {% endif %}
+        <!-- Order Information -->
+        <div class="po-card">
+            <div class="po-card-header">
+                <h3 class="po-card-title">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Información de la Orden
+                </h3>
+            </div>
+            <div class="po-card-content">
+                <div class="po-grid po-grid-2">
+                    <div>
+                        <label class="po-label" for="{{ form.supplier.id_for_label }}">
+                            Proveedor <span style="color: #dc2626;">*</span>
+                        </label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}
+                            <p style="color: #dc2626; font-size: 12px; margin-top: 4px;">{{ form.supplier.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        <label class="po-label" for="{{ form.status.id_for_label }}">
+                            Estado de la Orden
+                        </label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <p style="color: #dc2626; font-size: 12px; margin-top: 4px;">{{ form.status.errors.0 }}</p>
+                        {% endif %}
+                    </div>
                 </div>
                 
-                <div>
-                    <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                    {{ form.status }}
-                    {% if form.status.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.status.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <div>
-                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                <div style="margin-top: 16px;">
+                    <label class="po-label" for="{{ form.notes.id_for_label }}">
+                        Términos y Condiciones / Notas
+                    </label>
                     {{ form.notes }}
                     {% if form.notes.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                        <p style="color: #dc2626; font-size: 12px; margin-top: 4px;">{{ form.notes.errors.0 }}</p>
                     {% endif %}
-                </div>
-                
-                <div class="flex items-center mt-4">
-                    {{ form.paid }}
-                    <label for="{{ form.paid.id_for_label }}" class="ml-2 block text-sm text-gray-900">
-                        Pagado
-                    </label>
-                    {% if form.paid.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.paid.errors.0 }}</p>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Resumen -->
-            <div class="bg-gray-50 p-4 rounded-md">
-                <h2 class="text-lg font-medium text-gray-700 border-b pb-2 mb-4">Resumen</h2>
-                
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">Total Ítems:</span>
-                        <span class="text-sm font-medium" id="itemCount">0</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">Total Productos:</span>
-                        <span class="text-sm font-medium" id="productCount">0</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center border-t border-gray-200 pt-2 mt-2">
-                        <span class="text-base font-medium text-gray-700">Total:</span>
-                        <span class="text-base font-bold text-indigo-700" id="totalAmount">Bs 0.00</span>
-                    </div>
-                </div>
-                
-                <div class="mt-6">
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
-                        {% if order %}Actualizar{% else %}Guardar{% endif %} Orden
-                    </button>
                 </div>
             </div>
         </div>
-        
-        <!-- Ítems de la orden -->
-        <div class="bg-gray-50 p-4 rounded-md">
-            <h2 class="text-lg font-medium text-gray-700 border-b pb-2 mb-4">Productos</h2>
-            
-            {{ formset.management_form }}
-            
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200" id="itemsTable">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Producto
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Precio Unitario (Bs)
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Cantidad
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Subtotal
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Eliminar
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for form in formset.forms %}
-                        <tr class="formset-row {% if form.errors %}form-row-error{% endif %}">
-                            {% for hidden in form.hidden_fields %}
-                                {{ hidden }}
-                            {% endfor %}
-                            
-                            <td class="px-6 py-4">
-                                {{ form.product }}
-                                {% if form.product.errors %}
-                                <p class="mt-1 text-sm text-red-600">{{ form.product.errors.0 }}</p>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex justify-end">
-                                    {{ form.price_bs }}
-                                </div>
-                                {% if form.price_bs.errors %}
-                                <p class="mt-1 text-sm text-red-600 text-right">{{ form.price_bs.errors.0 }}</p>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex justify-end">
-                                    {{ form.quantity }}
-                                </div>
-                                {% if form.quantity.errors %}
-                                <p class="mt-1 text-sm text-red-600 text-right">{{ form.quantity.errors.0 }}</p>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <span class="subtotal">Bs 0.00</span>
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                                {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
-                                <button type="button" class="delete-row text-red-600 hover:text-red-900">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+        <!-- Products Section -->
+        <div class="po-card">
+            <div class="po-card-header">
+                <h3 class="po-card-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+                        </svg>
+                        Productos de la Orden (<span x-text="products.length"></span>)
+                    </div>
+                    <div class="po-summary" style="padding: 8px 16px; margin: 0;">
+                        <div style="font-size: 14px; font-weight: 600; color: #0c4a6e;">
+                            Total: $<span x-text="totalUSD.toFixed(2)"></span> USD
+                        </div>
+                        <div style="font-size: 12px; color: #0369a1;">
+                            Bs <span x-text="(totalUSD * exchangeRate).toFixed(2)"></span>
+                        </div>
+                    </div>
+                </h3>
             </div>
-            
-            <div class="mt-4">
-                <button type="button" id="addRow" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <div class="po-card-content">
+                <!-- Quick Add Toolbar -->
+                <div class="product-toolbar">
+                    <div class="barcode-quick-add">
+                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h5m3 0h6m-9 0h2"/>
+                            </svg>
+                            <span style="font-size: 13px; font-weight: 600; color: #047857; white-space: nowrap;">Escanear código:</span>
+                        </div>
+                        <input 
+                            type="text" 
+                            x-model="barcodeInput"
+                            @keydown.enter.prevent="scanBarcode"
+                            class="barcode-input"
+                            placeholder="Código de barras..."
+                            autocomplete="off">
+                        <button 
+                            type="button"
+                            @click="scanBarcode"
+                            :disabled="scanning || !barcodeInput.trim()"
+                            class="po-btn primary">
+                            <div x-show="scanning" class="po-spinner"></div>
+                            <svg x-show="!scanning" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <span x-text="scanning ? 'Buscando...' : 'Buscar'"></span>
+                        </button>
+                        <button 
+                            type="button"
+                            @click="addEmptyProduct"
+                            class="po-btn secondary">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                            Agregar Manual
+                        </button>
+                    </div>
+                    
+                    <!-- Status Message -->
+                    <div x-show="statusMessage.text" class="po-notification" :class="statusMessage.type">
+                        <svg x-show="statusMessage.type === 'success'" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <svg x-show="statusMessage.type === 'warning'" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.083 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                        </svg>
+                        <svg x-show="statusMessage.type === 'error'" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        <span x-text="statusMessage.text"></span>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="products.length === 0" class="po-empty">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
                     </svg>
-                    Agregar Producto
-                </button>
+                    <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No hay productos en esta orden</h4>
+                    <p style="font-size: 14px;">Use el código de barras o agregue productos manualmente para comenzar</p>
+                </div>
+                
+                <!-- Products Table -->
+                <div x-show="products.length > 0" style="overflow-x: auto;">
+                    <table class="po-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 200px;">Producto</th>
+                                <th style="min-width: 100px;">SKU/Código</th>
+                                <th style="text-align: center; width: 80px;">Cant.</th>
+                                <th style="text-align: center; width: 100px;">Precio Unit. USD</th>
+                                <th style="text-align: right; width: 100px;">Subtotal</th>
+                                <th style="text-align: center; width: 60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(product, index) in products" :key="product.tempId">
+                                <tr :class="product.isNew ? 'new-product-row' : ''">
+                                    <td>
+                                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span class="product-badge" :class="product.isNew ? 'new' : 'existing'">
+                                                    <span x-text="product.isNew ? 'Nuevo' : 'Existente'"></span>
+                                                </span>
+                                            </div>
+                                            <input 
+                                                x-show="product.isNew"
+                                                type="text" 
+                                                x-model="product.name"
+                                                class="po-table-input"
+                                                placeholder="Nombre del producto"
+                                                style="font-weight: 600; font-size: 14px;">
+                                            <div 
+                                                x-show="!product.isNew"
+                                                style="font-weight: 600; font-size: 14px; color: #374151;"
+                                                x-text="product.name"></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <code style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 2px 6px; border-radius: 4px;"
+                                              x-text="product.barcode || '-'"></code>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <input 
+                                            type="number" 
+                                            x-model.number="product.quantity"
+                                            @input="updateTotals"
+                                            min="0.001" 
+                                            step="0.001"
+                                            class="po-table-input narrow">
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <input 
+                                            type="number" 
+                                            x-model.number="product.purchasePrice"
+                                            @input="updateTotals"
+                                            min="0" 
+                                            step="0.01"
+                                            class="po-table-input narrow">
+                                    </td>
+                                    <td style="text-align: right; font-weight: 600; color: #059669;">
+                                        $<span x-text="(product.quantity * product.purchasePrice).toFixed(2)"></span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <button 
+                                            type="button"
+                                            @click="removeProduct(index)"
+                                            class="po-btn danger"
+                                            title="Eliminar producto">
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                                
+                                <!-- New Product Details Form -->
+                                <tr x-show="product.isNew" class="new-product-row">
+                                    <td colspan="6">
+                                        <div class="new-product-form">
+                                            <div style="font-size: 12px; font-weight: 600; color: #a21caf; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+                                                📦 Detalles del Nuevo Producto
+                                            </div>
+                                            <div class="po-grid po-grid-3">
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Categoría *</label>
+                                                    <select x-model="product.category" class="po-table-input" required>
+                                                        <option value="">Seleccionar...</option>
+                                                        {% for category in categories %}
+                                                            <option value="{{ category.id }}">{{ category.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Unidad *</label>
+                                                    <select x-model="product.unitType" class="po-table-input" required>
+                                                        {% for choice in unit_choices %}
+                                                            <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Precio Venta USD *</label>
+                                                    <input 
+                                                        type="number" 
+                                                        x-model.number="product.sellingPrice"
+                                                        min="0" 
+                                                        step="0.01"
+                                                        class="po-table-input"
+                                                        required>
+                                                </div>
+                                            </div>
+                                            <div class="po-grid po-grid-4" style="margin-top: 12px;">
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Stock Mínimo</label>
+                                                    <input 
+                                                        type="number" 
+                                                        x-model.number="product.minStock"
+                                                        min="0" 
+                                                        step="1"
+                                                        class="po-table-input"
+                                                        value="5">
+                                                </div>
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Descripción</label>
+                                                    <input 
+                                                        type="text" 
+                                                        x-model="product.description"
+                                                        class="po-table-input"
+                                                        placeholder="Descripción opcional">
+                                                </div>
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Marca</label>
+                                                    <input 
+                                                        type="text" 
+                                                        x-model="product.brand"
+                                                        class="po-table-input"
+                                                        placeholder="Marca opcional">
+                                                </div>
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Ubicación</label>
+                                                    <input 
+                                                        type="text" 
+                                                        x-model="product.location"
+                                                        class="po-table-input"
+                                                        placeholder="Ubicación opcional">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden Form Fields for Django Formset -->
+        {{ formset.management_form }}
+        <div style="display: none;" id="formset-data">
+            <template x-for="(product, index) in products" :key="product.tempId">
+                <div>
+                    <!-- Main formset fields -->
+                    <input type="hidden" :name="'form-' + index + '-id'" :value="product.id || ''">
+                    <input type="hidden" :name="'form-' + index + '-product'" :value="product.productId || ''">
+                    <input type="hidden" :name="'form-' + index + '-quantity'" :value="product.quantity">
+                    <input type="hidden" :name="'form-' + index + '-price_usd'" :value="product.purchasePrice">
+                    
+                    <!-- New product fields -->
+                    <input type="hidden" :name="'form-' + index + '-is_new_product'" :value="product.isNew ? 'on' : ''">
+                    <template x-if="product.isNew">
+                        <div>
+                            <input type="hidden" :name="'form-' + index + '-new_product_name'" :value="product.name">
+                            <input type="hidden" :name="'form-' + index + '-new_product_barcode'" :value="product.barcode">
+                            <input type="hidden" :name="'form-' + index + '-new_product_category'" :value="product.category">
+                            <input type="hidden" :name="'form-' + index + '-new_product_unit_type'" :value="product.unitType">
+                            <input type="hidden" :name="'form-' + index + '-new_product_selling_price_usd'" :value="product.sellingPrice">
+                            <input type="hidden" :name="'form-' + index + '-new_product_min_stock'" :value="product.minStock">
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+        
+        <!-- Dynamic formset generation for Django -->
+        <div id="real-formset-fields" style="display: none;"></div>
+        
+        <script>
+        document.addEventListener('alpine:initialized', () => {
+            const managementForm = document.querySelector('input[name="form-TOTAL_FORMS"]');
+            const app = Alpine.$data(document.querySelector('[x-data="orderForm()"]'));
+            const formsetContainer = document.getElementById('real-formset-fields');
+            
+            // Function to generate real HTML inputs for Django formset
+            function generateFormsetFields(products) {
+                // Clear existing fields
+                formsetContainer.innerHTML = '';
+                
+                // Update total forms count
+                if (managementForm) {
+                    managementForm.value = products.length;
+                }
+                
+                // Generate fields for each product
+                products.forEach((product, index) => {
+                    const fieldContainer = document.createElement('div');
+                    fieldContainer.className = 'formset-item';
+                    
+                    // Main formset fields
+                    fieldContainer.innerHTML = `
+                        <input type="hidden" name="form-${index}-id" value="${product.id || ''}">
+                        <input type="hidden" name="form-${index}-product" value="${product.productId || ''}">
+                        <input type="hidden" name="form-${index}-quantity" value="${product.quantity || 1}">
+                        <input type="hidden" name="form-${index}-price_usd" value="${product.purchasePrice || 0}">
+                        <input type="hidden" name="form-${index}-is_new_product" value="${product.isNew ? 'on' : ''}">
+                        ${product.isNew ? `
+                            <input type="hidden" name="form-${index}-new_product_name" value="${product.name || ''}">
+                            <input type="hidden" name="form-${index}-new_product_barcode" value="${product.barcode || ''}">
+                            <input type="hidden" name="form-${index}-new_product_category" value="${product.category || ''}">
+                            <input type="hidden" name="form-${index}-new_product_unit_type" value="${product.unitType || 'unit'}">
+                            <input type="hidden" name="form-${index}-new_product_selling_price_usd" value="${product.sellingPrice || 0}">
+                            <input type="hidden" name="form-${index}-new_product_min_stock" value="${product.minStock || 5}">
+                        ` : ''}
+                    `;
+                    
+                    formsetContainer.appendChild(fieldContainer);
+                });
+            }
+            
+            // Update formset fields whenever products array changes
+            app.$watch('products', generateFormsetFields);
+            
+            // Generate fields on form submit
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    console.log('Form submitting, generating formset fields...');
+                    generateFormsetFields(app.products);
+                    console.log('Products to submit:', app.products);
+                    
+                    // Debug: log all form data
+                    const formData = new FormData(form);
+                    console.log('Form data:');
+                    for (let [key, value] of formData.entries()) {
+                        if (key.startsWith('form-')) {
+                            console.log(key + ': ' + value);
+                        }
+                    }
+                });
+            }
+        });
+        </script>
+
+        <!-- Order Summary & Actions -->
+        <div class="po-card">
+            <div class="po-card-content">
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end;">
+                    <div class="po-summary">
+                        <h4 style="font-size: 14px; font-weight: 600; color: #0c4a6e; margin-bottom: 8px;">Resumen de la Orden</h4>
+                        <div class="po-summary-row">
+                            <span>Productos:</span>
+                            <span x-text="products.length"></span>
+                        </div>
+                        <div class="po-summary-row">
+                            <span>Subtotal USD:</span>
+                            <span>$<span x-text="totalUSD.toFixed(2)"></span></span>
+                        </div>
+                        <div class="po-summary-row">
+                            <span>Subtotal Bs:</span>
+                            <span>Bs <span x-text="(totalUSD * exchangeRate).toFixed(2)"></span></span>
+                        </div>
+                        <div class="po-summary-row total">
+                            <span>TOTAL:</span>
+                            <span>$<span x-text="totalUSD.toFixed(2)"></span> USD</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <a href="{% url 'suppliers:order_list' %}" class="po-btn secondary">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                            Cancelar
+                        </a>
+                        <button 
+                            type="submit"
+                            :disabled="products.length === 0"
+                            class="po-btn primary" style="padding: 12px 24px;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            {% if form.instance.pk %}Actualizar Orden de Compra{% else %}Crear Orden de Compra{% endif %}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </form>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const formset = document.getElementById('orderForm');
-        const addRowBtn = document.getElementById('addRow');
-        const itemsTable = document.getElementById('itemsTable').querySelector('tbody');
-        const totalCounter = document.getElementById('totalAmount');
-        const itemCounter = document.getElementById('itemCount');
-        const productCounter = document.getElementById('productCount');
+document.addEventListener('alpine:init', () => {
+    Alpine.data('orderForm', () => ({
+        // State
+        products: [],
+        barcodeInput: '',
+        scanning: false,
+        statusMessage: { type: '', text: '' },
+        exchangeRate: 7.0,
         
-        const prefix = '{{ formset.prefix }}';
-        let formCount = parseInt(document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS').value);
+        // Computed
+        get totalUSD() {
+            return this.products.reduce((sum, product) => 
+                sum + (product.quantity * product.purchasePrice), 0);
+        },
         
-        // Actualizar contadores y totales
-        function updateCounters() {
-            let total = 0;
-            let itemCount = 0;
-            let productSet = new Set();
-            const rows = itemsTable.querySelectorAll('tr:not(.empty-form)');
+        // Methods
+        async scanBarcode() {
+            const code = this.barcodeInput.trim();
+            if (!code) {
+                this.showStatus('error', 'Ingrese un código de barras');
+                return;
+            }
             
-            rows.forEach(row => {
-                const deleteCheckbox = row.querySelector('input[type="checkbox"]');
-                const isDeleted = deleteCheckbox && deleteCheckbox.checked;
+            console.log('Escaneando código:', code);
+            this.scanning = true;
+            this.statusMessage = { type: '', text: '' };
+            
+            try {
+                const response = await fetch(`/api/products/barcode/${encodeURIComponent(code)}/`);
                 
-                if (!isDeleted) {
-                    const priceInput = row.querySelector('input[name$="-price_bs"]');
-                    const quantityInput = row.querySelector('input[name$="-quantity"]');
-                    const productSelect = row.querySelector('select[name$="-product"]');
-                    
-                    if (priceInput && quantityInput && productSelect.value) {
-                        const price = parseFloat(priceInput.value) || 0;
-                        const quantity = parseInt(quantityInput.value) || 0;
-                        const subtotal = price * quantity;
-                        total += subtotal;
-                        itemCount++;
-                        
-                        // Actualizar subtotal
-                        const subtotalElement = row.querySelector('.subtotal');
-                        if (subtotalElement) {
-                            subtotalElement.textContent = `Bs ${subtotal.toFixed(2)}`;
-                        }
-                        
-                        // Agregar producto al conjunto
-                        if (productSelect.value) {
-                            productSet.add(productSelect.value);
-                        }
-                    }
-                }
-            });
-            
-            totalCounter.textContent = `Bs ${total.toFixed(2)}`;
-            itemCounter.textContent = itemCount;
-            productCounter.textContent = productSet.size;
-        }
-        
-        // Agregar fila
-        addRowBtn.addEventListener('click', function() {
-            // Clonar la primera fila
-            const emptyForm = document.querySelector('.formset-row:last-child').cloneNode(true);
-            
-            // Actualizar IDs y names
-            updateElementAttr(emptyForm, 'id');
-            updateElementAttr(emptyForm, 'name');
-            
-            // Limpiar valores
-            emptyForm.querySelectorAll('input[type="text"], input[type="number"]').forEach(input => {
-                input.value = '';
-            });
-            
-            emptyForm.querySelectorAll('select').forEach(select => {
-                select.selectedIndex = 0;
-            });
-            
-            // Reiniciar subtotal
-            emptyForm.querySelector('.subtotal').textContent = 'Bs 0.00';
-            
-            // Agregar al formulario
-            itemsTable.appendChild(emptyForm);
-            
-            // Actualizar contador del formset
-            formCount++;
-            document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS').value = formCount;
-            
-            // Agregar event listeners
-            addRowEventListeners(emptyForm);
-            
-            // Actualizar contadores
-            updateCounters();
-        });
-        
-        // Función para actualizar atributos
-        function updateElementAttr(element, attrName) {
-            element.querySelectorAll(`[${attrName}^="${prefix}"]`).forEach(el => {
-                const attr = el.getAttribute(attrName);
-                if (attr) {
-                    const newAttr = attr.replace(
-                        new RegExp(`${prefix}-\\d+`), 
-                        `${prefix}-${formCount}`
-                    );
-                    el.setAttribute(attrName, newAttr);
-                }
-            });
-        }
-        
-        // Función para agregar event listeners a una fila
-        function addRowEventListeners(row) {
-            // Evento para eliminar fila
-            const deleteBtn = row.querySelector('.delete-row');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', function() {
-                    const deleteCheckbox = row.querySelector('input[type="checkbox"]');
-                    if (deleteCheckbox) {
-                        deleteCheckbox.checked = true;
-                        row.style.display = 'none';
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        // Producto no encontrado - agregar como nuevo
+                        this.addNewProduct(code);
+                        this.showStatus('warning', `Producto nuevo agregado con código: ${code}`);
                     } else {
-                        row.remove();
-                        formCount--;
-                        document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS').value = formCount;
+                        throw new Error('Error de conexión. Intente nuevamente.');
                     }
-                    updateCounters();
-                });
+                } else {
+                    const productData = await response.json();
+                    console.log('Producto encontrado:', productData);
+                    
+                    // Verificar si ya está en la lista
+                    const existingIndex = this.products.findIndex(p => p.barcode === code);
+                    
+                    if (existingIndex !== -1) {
+                        // Incrementar cantidad
+                        this.products[existingIndex].quantity += 1;
+                        this.showStatus('success', `Cantidad incrementada: "${productData.name}"`);
+                    } else {
+                        // Agregar producto existente
+                        this.addExistingProduct(productData);
+                        this.showStatus('success', `Producto agregado: "${productData.name}"`);
+                    }
+                }
+                
+                this.barcodeInput = '';
+                this.focusBarcodeInput();
+                
+            } catch (error) {
+                console.error('Error scanning:', error);
+                this.showStatus('error', error.message || 'Error de conexión. Intente nuevamente.');
+            } finally {
+                this.scanning = false;
             }
+        },
+        
+        addExistingProduct(productData) {
+            this.products.push({
+                tempId: Date.now() + Math.random(),
+                id: '',
+                productId: productData.id,
+                name: productData.name,
+                barcode: productData.barcode,
+                quantity: 1,
+                purchasePrice: parseFloat(productData.purchase_price_usd || 0),
+                category: productData.category_id,
+                unitType: productData.unit_code,
+                sellingPrice: parseFloat(productData.selling_price_usd || 0),
+                minStock: parseFloat(productData.min_stock || 5),
+                description: productData.description || '',
+                brand: '',
+                location: '',
+                isNew: false
+            });
+        },
+        
+        addNewProduct(barcode) {
+            this.products.push({
+                tempId: Date.now() + Math.random(),
+                id: '',
+                productId: '',
+                name: '',
+                barcode: barcode,
+                quantity: 1,
+                purchasePrice: 0,
+                category: '',
+                unitType: 'unit',
+                sellingPrice: 0,
+                minStock: 5,
+                description: '',
+                brand: '',
+                location: '',
+                isNew: true
+            });
             
-            // Eventos para calcular subtotal
-            const priceInput = row.querySelector('input[name$="-price_bs"]');
-            const quantityInput = row.querySelector('input[name$="-quantity"]');
+            // Auto-focus on the product name field and show the new product fields
+            this.$nextTick(() => {
+                const nameInputs = document.querySelectorAll('input[x-model="product.name"]');
+                if (nameInputs.length > 0) {
+                    nameInputs[nameInputs.length - 1].focus();
+                    nameInputs[nameInputs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        },
+        
+        addEmptyProduct() {
+            this.addNewProduct('');
+        },
+        
+        removeProduct(index) {
+            this.products.splice(index, 1);
+        },
+        
+        updateTotals() {
+            // Trigger reactivity
+            this.$nextTick();
+        },
+        
+        showStatus(type, text) {
+            this.statusMessage = { type, text };
+            setTimeout(() => {
+                this.statusMessage = { type: '', text: '' };
+            }, 5000);
+        },
+        
+        focusBarcodeInput() {
+            setTimeout(() => {
+                const input = document.querySelector('input[x-model="barcodeInput"]');
+                if (input) input.focus();
+            }, 100);
+        },
+        
+        init() {
+            this.exchangeRate = {{ current_exchange_rate.bs_per_usd|default:7.0 }};
+            this.focusBarcodeInput();
             
-            if (priceInput) {
-                priceInput.addEventListener('input', updateCounters);
-            }
-            
-            if (quantityInput) {
-                quantityInput.addEventListener('input', updateCounters);
-            }
+            console.log('Order form initialized with exchange rate:', this.exchangeRate);
         }
-        
-        // Agregar event listeners a todas las filas existentes
-        document.querySelectorAll('.formset-row').forEach(row => {
-            addRowEventListeners(row);
-        });
-        
-        // Actualizar contadores iniciales
-        updateCounters();
-    });
+    }));
+});
 </script>
 {% endblock %}

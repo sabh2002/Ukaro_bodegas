@@ -63,10 +63,24 @@ class Product(models.Model):
         decimal_places=2,
         verbose_name="Precio de Compra (USD)"
     )
+    purchase_price_bs = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        default=0,
+        verbose_name="Precio de Compra (Bs)",
+        help_text="Se actualiza automáticamente con la tasa de cambio"
+    )
     selling_price_usd = models.DecimalField(
         max_digits=10, 
         decimal_places=2,
         verbose_name="Precio de Venta (USD)"
+    )
+    selling_price_bs = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        default=0,
+        verbose_name="Precio de Venta (Bs)",
+        help_text="Se actualiza automáticamente con la tasa de cambio"
     )
     
     # Inventario

@@ -6,9 +6,12 @@ from django.urls import reverse
 class Expense(models.Model):
     """Modelo para gastos adicionales (no relacionados a compras de productos)"""
     EXPENSE_CATEGORIES = (
+        ('salaries', 'Sueldos de Empleados'),
+        ('repairs', 'Reparaciones'),
+        ('improvements', 'Mejoras en la Bodega'),
+        ('supplies', 'Materiales de Trabajo'),
         ('rent', 'Alquiler'),
-        ('utilities', 'Servicios'),
-        ('salaries', 'Salarios'),
+        ('utilities', 'Servicios (Luz, Agua, Internet)'),
         ('maintenance', 'Mantenimiento'),
         ('taxes', 'Impuestos'),
         ('other', 'Otros'),
@@ -58,6 +61,39 @@ class Expense(models.Model):
     
     def __str__(self):
         return f"{self.get_category_display()} - {self.description} - {self.amount_bs} Bs"
+    
+    def get_absolute_url(self):
+        return reverse('finances:expense_detail', args=[str(self.id)])
+
+class ExpenseReceipt(models.Model):
+    """Modelo para comprobantes de gastos"""
+    expense = models.ForeignKey(
+        Expense,
+        on_delete=models.CASCADE,
+        related_name='receipts',
+        verbose_name="Gasto"
+    )
+    file = models.FileField(
+        upload_to='expense_receipts/%Y/%m/',
+        verbose_name="Archivo"
+    )
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Descripción"
+    )
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Subido el"
+    )
+    
+    class Meta:
+        verbose_name = "Comprobante de Gasto"
+        verbose_name_plural = "Comprobantes de Gastos"
+        ordering = ['-uploaded_at']
+    
+    def __str__(self):
+        return f"Comprobante - {self.expense.description}"
 
 class DailyClose(models.Model):
     """Modelo para cierre diario"""

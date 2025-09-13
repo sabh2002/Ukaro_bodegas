@@ -85,10 +85,24 @@ class SupplierOrder(models.Model):
         blank=True,
         verbose_name="Fecha de Recepción"
     )
+    total_usd = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        default=0,
+        verbose_name="Total (USD)"
+    )
     total_bs = models.DecimalField(
         max_digits=12, 
         decimal_places=2,
+        default=0,
         verbose_name="Total (Bs)"
+    )
+    exchange_rate_used = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        default=1,
+        verbose_name="Tasa de Cambio Utilizada",
+        help_text="Tasa Bs/USD utilizada en esta orden"
     )
     paid = models.BooleanField(
         default=False,
@@ -133,10 +147,17 @@ class SupplierOrderItem(models.Model):
     quantity = models.IntegerField(
         verbose_name="Cantidad"
     )
+    price_usd = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        default=0,
+        verbose_name="Precio (USD)"
+    )
     price_bs = models.DecimalField(
         max_digits=12, 
         decimal_places=2,
-        verbose_name="Precio (Bs)"
+        verbose_name="Precio (Bs)",
+        help_text="Se calcula automáticamente basado en USD y tasa de cambio"
     )
     
     class Meta:
@@ -146,7 +167,26 @@ class SupplierOrderItem(models.Model):
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
     
+    def save(self, *args, **kwargs):
+        """Calcular precio en Bs automáticamente antes de guardar"""
+        if self.price_usd and not self.price_bs:
+            from utils.models import ExchangeRate
+            latest_rate = ExchangeRate.get_latest_rate()
+            if latest_rate:
+                self.price_bs = self.price_usd * latest_rate.bs_to_usd
+        super().save(*args, **kwargs)
+    
+    @property
+    def subtotal_usd(self):
+        """Calcula el subtotal en USD"""
+        return self.quantity * self.price_usd
+    
+    @property
+    def subtotal_bs(self):
+        """Calcula el subtotal en Bs"""
+        return self.quantity * self.price_bs
+    
     @property
     def subtotal(self):
-        """Calcula el subtotal del ítem"""
-        return self.quantity * self.price_bs
+        """Alias para subtotal_bs (compatibilidad)"""
+        return self.subtotal_bs
