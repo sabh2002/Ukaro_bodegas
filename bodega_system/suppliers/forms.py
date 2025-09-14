@@ -126,6 +126,10 @@ class SupplierOrderItemForm(forms.ModelForm):
         # Filtrar solo productos activos
         self.fields['product'].queryset = Product.objects.filter(is_active=True)
         
+        # ✅ SOLUCIÓN: Hacer el campo product no requerido
+        # La validación real se hace en clean() que maneja productos nuevos
+        self.fields['product'].required = False
+        
         # Cargar categorías para productos nuevos
         from inventory.models import Category
         self.fields['new_product_category'].queryset = Category.objects.all().order_by('name')
@@ -157,26 +161,25 @@ class SupplierOrderItemForm(forms.ModelForm):
             raise forms.ValidationError("La cantidad debe ser un número válido.")
     
     def clean_price_usd(self):
-        def clean_price_usd(self):
-            """Validar precio en USD"""
-            price = self.cleaned_data.get('price_usd')
+        """Validar precio en USD"""
+        price = self.cleaned_data.get('price_usd')
+        
+        if price is None:
+            raise forms.ValidationError("El precio es requerido.")
+        
+        try:
+            if isinstance(price, str):
+                price = price.replace(',', '.')
             
-            if price is None:
-                raise forms.ValidationError("El precio es requerido.")
+            price_decimal = Decimal(str(price))
             
-            try:
-                if isinstance(price, str):
-                    price = price.replace(',', '.')
-                
-                price_decimal = Decimal(str(price))
-                
-                if price_decimal <= 0:
-                    raise forms.ValidationError("El precio debe ser mayor a cero.")
-                
-                return price_decimal
-                
-            except (InvalidOperation, ValueError):
-                raise forms.ValidationError("El precio debe ser un número válido.")
+            if price_decimal <= 0:
+                raise forms.ValidationError("El precio debe ser mayor a cero.")
+            
+            return price_decimal
+            
+        except (InvalidOperation, ValueError):
+            raise forms.ValidationError("El precio debe ser un número válido.")
         
     def clean(self):
         """Validación personalizada para productos nuevos"""
@@ -184,26 +187,46 @@ class SupplierOrderItemForm(forms.ModelForm):
         is_new_product = cleaned_data.get('is_new_product')
         product = cleaned_data.get('product')
         
+        # Debug: mostrar todos los datos que llegan
+        print(f"🔍 FORM VALIDATION DEBUG:")
+        print(f"  is_new_product: {is_new_product}")
+        print(f"  product: {product}")
+        print(f"  All cleaned_data keys: {list(cleaned_data.keys())}")
+        for key, value in cleaned_data.items():
+            if 'new_product' in key:
+                print(f"    {key}: {value}")
+        
         if is_new_product:
+            print("✅ Processing as NEW PRODUCT")
             # Validar campos requeridos para productos nuevos
             required_fields = ['new_product_name', 'new_product_barcode', 'new_product_category', 'new_product_selling_price_usd']
+            missing_fields = []
             
             for field in required_fields:
                 if not cleaned_data.get(field):
-                    field_label = self.fields[field].label
-                    raise forms.ValidationError(f'{field_label} es requerido para productos nuevos.')
+                    missing_fields.append(field)
+                    print(f"❌ Missing required field: {field}")
+            
+            if missing_fields:
+                field_labels = [self.fields[field].label for field in missing_fields]
+                raise forms.ValidationError(f'Campos requeridos para productos nuevos: {", ".join(field_labels)}.')
             
             # Validar que el código de barras no exista
             barcode = cleaned_data.get('new_product_barcode')
             if barcode and Product.objects.filter(barcode=barcode).exists():
+                print(f"❌ Barcode {barcode} already exists")
                 raise forms.ValidationError(f'Ya existe un producto con el código de barras {barcode}.')
             
             # Limpiar el campo product si es nuevo producto
             cleaned_data['product'] = None
+            print("✅ New product validation passed")
             
         elif not product:
+            print("❌ No product selected and not marked as new")
             # Si no es producto nuevo, debe seleccionar uno existente
             raise forms.ValidationError('Debe seleccionar un producto existente o marcar como producto nuevo.')
+        else:
+            print("✅ Processing as EXISTING PRODUCT")
         
         return cleaned_data
 

@@ -125,7 +125,8 @@ class SupplierOrder(models.Model):
         ordering = ['-order_date']
     
     def __str__(self):
-        return f"Orden #{self.id} - {self.supplier.name}"
+        supplier_name = self.supplier.name if hasattr(self, 'supplier') and self.supplier else "Sin proveedor"
+        return f"Orden #{self.id if self.id else 'Nueva'} - {supplier_name}"
     
     def get_absolute_url(self):
         return reverse('suppliers:order_detail', args=[str(self.id)])
@@ -158,6 +159,7 @@ class SupplierOrderItem(models.Model):
     price_bs = models.DecimalField(
         max_digits=12, 
         decimal_places=2,
+        default=0,
         verbose_name="Precio (Bs)",
         help_text="Se calcula automáticamente basado en USD y tasa de cambio"
     )
@@ -171,11 +173,13 @@ class SupplierOrderItem(models.Model):
     
     def save(self, *args, **kwargs):
         """Calcular precio en Bs automáticamente antes de guardar"""
-        if self.price_usd and not self.price_bs:
+        if self.price_usd:
             from utils.models import ExchangeRate
             latest_rate = ExchangeRate.get_latest_rate()
             if latest_rate:
                 self.price_bs = self.price_usd * latest_rate.bs_to_usd
+            else:
+                self.price_bs = self.price_usd * 7.0  # Fallback rate
         super().save(*args, **kwargs)
     
     @property

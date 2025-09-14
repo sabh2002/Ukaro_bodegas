@@ -564,12 +564,12 @@
                         </button>
                         <button 
                             type="button"
-                            @click="addEmptyProduct"
+                            @click="openNewProductModal"
                             class="po-btn secondary">
                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                             </svg>
-                            Agregar Manual
+                            Producto Nuevo
                         </button>
                     </div>
                     
@@ -678,19 +678,30 @@
                                             <div style="font-size: 12px; font-weight: 600; color: #a21caf; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
                                                 📦 Detalles del Nuevo Producto
                                             </div>
-                                            <div class="po-grid po-grid-3">
+                                            <div class="po-grid po-grid-2">
+                                                <div>
+                                                    <label class="po-label" style="font-size: 11px;">Código de Barras *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        x-model="product.barcode"
+                                                        class="po-table-input"
+                                                        placeholder="Código único"
+                                                        >
+                                                </div>
                                                 <div>
                                                     <label class="po-label" style="font-size: 11px;">Categoría *</label>
-                                                    <select x-model="product.category" class="po-table-input" required>
+                                                    <select x-model="product.category" class="po-table-input">
                                                         <option value="">Seleccionar...</option>
                                                         {% for category in categories %}
                                                             <option value="{{ category.id }}">{{ category.name }}</option>
                                                         {% endfor %}
                                                     </select>
                                                 </div>
+                                            </div>
+                                            <div class="po-grid po-grid-3" style="margin-top: 12px;">
                                                 <div>
                                                     <label class="po-label" style="font-size: 11px;">Unidad *</label>
-                                                    <select x-model="product.unitType" class="po-table-input" required>
+                                                    <select x-model="product.unitType" class="po-table-input">
                                                         {% for choice in unit_choices %}
                                                             <option value="{{ choice.0 }}">{{ choice.1 }}</option>
                                                         {% endfor %}
@@ -704,10 +715,9 @@
                                                         min="0" 
                                                         step="0.01"
                                                         class="po-table-input"
-                                                        required>
+                                                        placeholder="0.00"
+                                                        >
                                                 </div>
-                                            </div>
-                                            <div class="po-grid po-grid-4" style="margin-top: 12px;">
                                                 <div>
                                                     <label class="po-label" style="font-size: 11px;">Stock Mínimo</label>
                                                     <input 
@@ -718,29 +728,15 @@
                                                         class="po-table-input"
                                                         value="5">
                                                 </div>
+                                            </div>
+                                            <div class="po-grid po-grid-1" style="margin-top: 12px;">
                                                 <div>
-                                                    <label class="po-label" style="font-size: 11px;">Descripción</label>
+                                                    <label class="po-label" style="font-size: 11px;">Descripción (Opcional)</label>
                                                     <input 
                                                         type="text" 
                                                         x-model="product.description"
                                                         class="po-table-input"
-                                                        placeholder="Descripción opcional">
-                                                </div>
-                                                <div>
-                                                    <label class="po-label" style="font-size: 11px;">Marca</label>
-                                                    <input 
-                                                        type="text" 
-                                                        x-model="product.brand"
-                                                        class="po-table-input"
-                                                        placeholder="Marca opcional">
-                                                </div>
-                                                <div>
-                                                    <label class="po-label" style="font-size: 11px;">Ubicación</label>
-                                                    <input 
-                                                        type="text" 
-                                                        x-model="product.location"
-                                                        class="po-table-input"
-                                                        placeholder="Ubicación opcional">
+                                                        placeholder="Descripción del producto">
                                                 </div>
                                             </div>
                                         </div>
@@ -755,30 +751,6 @@
 
         <!-- Hidden Form Fields for Django Formset -->
         {{ formset.management_form }}
-        <div style="display: none;" id="formset-data">
-            <template x-for="(product, index) in products" :key="product.tempId">
-                <div>
-                    <!-- Main formset fields -->
-                    <input type="hidden" :name="'form-' + index + '-id'" :value="product.id || ''">
-                    <input type="hidden" :name="'form-' + index + '-product'" :value="product.productId || ''">
-                    <input type="hidden" :name="'form-' + index + '-quantity'" :value="product.quantity">
-                    <input type="hidden" :name="'form-' + index + '-price_usd'" :value="product.purchasePrice">
-                    
-                    <!-- New product fields -->
-                    <input type="hidden" :name="'form-' + index + '-is_new_product'" :value="product.isNew ? 'on' : ''">
-                    <template x-if="product.isNew">
-                        <div>
-                            <input type="hidden" :name="'form-' + index + '-new_product_name'" :value="product.name">
-                            <input type="hidden" :name="'form-' + index + '-new_product_barcode'" :value="product.barcode">
-                            <input type="hidden" :name="'form-' + index + '-new_product_category'" :value="product.category">
-                            <input type="hidden" :name="'form-' + index + '-new_product_unit_type'" :value="product.unitType">
-                            <input type="hidden" :name="'form-' + index + '-new_product_selling_price_usd'" :value="product.sellingPrice">
-                            <input type="hidden" :name="'form-' + index + '-new_product_min_stock'" :value="product.minStock">
-                        </div>
-                    </template>
-                </div>
-            </template>
-        </div>
         
         <!-- Dynamic formset generation for Django -->
         <div id="real-formset-fields" style="display: none;"></div>
@@ -791,12 +763,15 @@
             
             // Function to generate real HTML inputs for Django formset
             function generateFormsetFields(products) {
+                console.log('Generating formset fields for:', products);
+                
                 // Clear existing fields
                 formsetContainer.innerHTML = '';
                 
                 // Update total forms count
                 if (managementForm) {
                     managementForm.value = products.length;
+                    console.log('Updated TOTAL_FORMS to:', products.length);
                 }
                 
                 // Generate fields for each product
@@ -804,46 +779,109 @@
                     const fieldContainer = document.createElement('div');
                     fieldContainer.className = 'formset-item';
                     
-                    // Main formset fields
+                    // Validate required fields for new products
+                    if (product.isNew) {
+                        const requiredFields = ['name', 'category', 'sellingPrice'];
+                        const missingFields = requiredFields.filter(field => !product[field]);
+                        
+                        if (missingFields.length > 0) {
+                            console.error(`Missing required fields for product ${index}:`, missingFields);
+                        }
+                    }
+                    
+                    // Sanitize values to prevent HTML injection and ensure valid data
+                    const sanitize = (value) => {
+                        if (value === null || value === undefined) return '';
+                        return String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    };
+                    
+                    // Main formset fields - USAR NOMBRES CORRECTOS
                     fieldContainer.innerHTML = `
-                        <input type="hidden" name="form-${index}-id" value="${product.id || ''}">
-                        <input type="hidden" name="form-${index}-product" value="${product.productId || ''}">
-                        <input type="hidden" name="form-${index}-quantity" value="${product.quantity || 1}">
-                        <input type="hidden" name="form-${index}-price_usd" value="${product.purchasePrice || 0}">
-                        <input type="hidden" name="form-${index}-is_new_product" value="${product.isNew ? 'on' : ''}">
+                        <input type="hidden" name="items-${index}-id" value="">
+                        <input type="hidden" name="items-${index}-product" value="${sanitize(product.productId)}">
+                        <input type="hidden" name="items-${index}-quantity" value="${sanitize(product.quantity || 1)}">
+                        <input type="hidden" name="items-${index}-price_usd" value="${sanitize(product.purchasePrice || 0)}">
+                        <input type="hidden" name="items-${index}-is_new_product" value="${product.isNew ? 'on' : ''}">
                         ${product.isNew ? `
-                            <input type="hidden" name="form-${index}-new_product_name" value="${product.name || ''}">
-                            <input type="hidden" name="form-${index}-new_product_barcode" value="${product.barcode || ''}">
-                            <input type="hidden" name="form-${index}-new_product_category" value="${product.category || ''}">
-                            <input type="hidden" name="form-${index}-new_product_unit_type" value="${product.unitType || 'unit'}">
-                            <input type="hidden" name="form-${index}-new_product_selling_price_usd" value="${product.sellingPrice || 0}">
-                            <input type="hidden" name="form-${index}-new_product_min_stock" value="${product.minStock || 5}">
+                            <input type="hidden" name="items-${index}-new_product_name" value="${sanitize(product.name)}">
+                            <input type="hidden" name="items-${index}-new_product_barcode" value="${sanitize(product.barcode)}">
+                            <input type="hidden" name="items-${index}-new_product_category" value="${sanitize(product.category)}">
+                            <input type="hidden" name="items-${index}-new_product_unit_type" value="${sanitize(product.unitType || 'unit')}">
+                            <input type="hidden" name="items-${index}-new_product_selling_price_usd" value="${sanitize(product.sellingPrice || 0)}">
+                            <input type="hidden" name="items-${index}-new_product_min_stock" value="${sanitize(product.minStock || 5)}">
+                            <input type="hidden" name="items-${index}-new_product_description" value="${sanitize(product.description || '')}">
                         ` : ''}
                     `;
                     
                     formsetContainer.appendChild(fieldContainer);
                 });
+                
+                console.log('Generated formset fields HTML:', formsetContainer.innerHTML);
             }
             
             // Update formset fields whenever products array changes
-            app.$watch('products', generateFormsetFields);
+            app.$watch('products', (newProducts) => {
+                console.log('🔄 Products array changed, regenerating formset fields...');
+                console.log('New products array:', newProducts);
+                generateFormsetFields(newProducts);
+            });
             
             // Generate fields on form submit
             const form = document.querySelector('form');
             if (form) {
                 form.addEventListener('submit', (e) => {
-                    console.log('Form submitting, generating formset fields...');
+                    console.log('=== FORM SUBMISSION ===');
+                    console.log('Products array:', app.products);
+                    
+                    // Validate products before submission
+                    const invalidProducts = app.products.filter((product, index) => {
+                        if (product.isNew) {
+                            const missing = [];
+                            if (!product.name) missing.push('name');
+                            if (!product.barcode) missing.push('barcode');
+                            if (!product.category) missing.push('category');
+                            if (!product.sellingPrice || product.sellingPrice <= 0) missing.push('sellingPrice');
+                            if (!product.quantity || product.quantity <= 0) missing.push('quantity');
+                            if (!product.purchasePrice || product.purchasePrice <= 0) missing.push('purchasePrice');
+                            
+                            if (missing.length > 0) {
+                                console.error(`Product ${index} missing fields:`, missing);
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                    
+                    if (invalidProducts.length > 0) {
+                        e.preventDefault();
+                        alert('Por favor complete todos los campos requeridos para los productos nuevos.');
+                        return false;
+                    }
+                    
                     generateFormsetFields(app.products);
-                    console.log('Products to submit:', app.products);
                     
                     // Debug: log all form data
-                    const formData = new FormData(form);
-                    console.log('Form data:');
-                    for (let [key, value] of formData.entries()) {
-                        if (key.startsWith('form-')) {
-                            console.log(key + ': ' + value);
+                    setTimeout(() => {
+                        const formData = new FormData(form);
+                        console.log('=== FINAL FORM DATA SUBMITTED ===');
+                        console.log('Total products in array:', app.products.length);
+                        app.products.forEach((prod, idx) => {
+                            console.log(`Product ${idx}:`, {
+                                name: prod.name,
+                                isNew: prod.isNew,
+                                barcode: prod.barcode,
+                                productId: prod.productId
+                            });
+                        });
+                        
+                        console.log('Form fields being sent:');
+                        for (let [key, value] of formData.entries()) {
+                            if (key.startsWith('items-') || key === 'supplier' || key === 'status' || key.includes('TOTAL_FORMS')) {
+                                console.log(key + ': ' + value);
+                            }
                         }
-                    }
+                        console.log('=== END FORM DATA ===');
+                    }, 10);
                 });
             }
         });
@@ -882,13 +920,169 @@
                         </a>
                         <button 
                             type="submit"
-                            :disabled="products.length === 0"
+                            :disabled="products.length === 0 || !validateProducts()"
                             class="po-btn primary" style="padding: 12px 24px;">
                             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                             {% if form.instance.pk %}Actualizar Orden de Compra{% else %}Crear Orden de Compra{% endif %}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Producto Nuevo -->
+        <div x-show="showNewProductModal" 
+             x-transition:enter="transition ease-out duration-300" 
+             x-transition:enter-start="opacity-0 transform scale-90" 
+             x-transition:enter-end="opacity-100 transform scale-100" 
+             x-transition:leave="transition ease-in duration-200" 
+             x-transition:leave-start="opacity-100 transform scale-100" 
+             x-transition:leave-end="opacity-0 transform scale-90"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+             @click.self="closeNewProductModal">
+            
+            <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-6 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="inline mr-2">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Registrar Producto Nuevo
+                    </h3>
+                    <button @click="closeNewProductModal" class="text-gray-400 hover:text-gray-600">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6m0 0l6 6m-6-6v12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Body -->
+                <div class="p-6">
+                    <div>
+                        <!-- Información Básica -->
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-900 mb-4">📦 Información Básica</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Nombre del Producto <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" x-model="newProductForm.name"
+                                           @keydown.enter.prevent=""
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="Ejemplo: Pasta Mary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Código de Barras <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" x-model="newProductForm.barcode"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="Código único del producto">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Categoría y Unidad -->
+                        <div class="mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Categoría <span class="text-red-500">*</span>
+                                    </label>
+                                    <select x-model="newProductForm.category"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Seleccionar categoría...</option>
+                                        {% for category in categories %}
+                                            <option value="{{ category.id }}">{{ category.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Tipo de Unidad <span class="text-red-500">*</span>
+                                    </label>
+                                    <select x-model="newProductForm.unitType"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        {% for choice in unit_choices %}
+                                            <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Precios -->
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-900 mb-4">💰 Información de Precios</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Precio de Compra USD <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" x-model.number="newProductForm.purchasePrice"
+                                           min="0" step="0.01"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Precio de Venta USD <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" x-model.number="newProductForm.sellingPrice"
+                                           min="0" step="0.01"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Cantidad para la Orden <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number" x-model.number="newProductForm.quantity"
+                                           min="0.01" step="0.01"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="1.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Inventario -->
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-900 mb-4">📦 Información de Inventario</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Stock Mínimo
+                                    </label>
+                                    <input type="number" x-model.number="newProductForm.minStock"
+                                           min="0" step="1" value="5"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Descripción (Opcional)
+                                    </label>
+                                    <input type="text" x-model="newProductForm.description"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           placeholder="Descripción del producto">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" @click="closeNewProductModal" 
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                Cancelar
+                            </button>
+                            <button type="button" @click="saveNewProduct"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
+                                Agregar a la Orden
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -905,6 +1099,18 @@ document.addEventListener('alpine:init', () => {
         scanning: false,
         statusMessage: { type: '', text: '' },
         exchangeRate: 7.0,
+        showNewProductModal: false,
+        newProductForm: {
+            name: '',
+            barcode: '',
+            category: '',
+            unitType: 'unit',
+            purchasePrice: 0,
+            sellingPrice: 0,
+            quantity: 1,
+            minStock: 5,
+            description: ''
+        },
         
         // Computed
         get totalUSD() {
@@ -925,7 +1131,7 @@ document.addEventListener('alpine:init', () => {
             this.statusMessage = { type: '', text: '' };
             
             try {
-                const response = await fetch(`/api/products/barcode/${encodeURIComponent(code)}/`);
+                const response = await fetch(`/suppliers/api/product-lookup/${encodeURIComponent(code)}/`);
                 
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -973,8 +1179,8 @@ document.addEventListener('alpine:init', () => {
                 barcode: productData.barcode,
                 quantity: 1,
                 purchasePrice: parseFloat(productData.purchase_price_usd || 0),
-                category: productData.category_id,
-                unitType: productData.unit_code,
+                category: productData.category,
+                unitType: productData.unit_type,
                 sellingPrice: parseFloat(productData.selling_price_usd || 0),
                 minStock: parseFloat(productData.min_stock || 5),
                 description: productData.description || '',
@@ -1013,8 +1219,73 @@ document.addEventListener('alpine:init', () => {
             });
         },
         
-        addEmptyProduct() {
-            this.addNewProduct('');
+        openNewProductModal() {
+            // Reset form
+            this.newProductForm = {
+                name: '',
+                barcode: '',
+                category: '',
+                unitType: 'unit',
+                purchasePrice: 0,
+                sellingPrice: 0,
+                quantity: 1,
+                minStock: 5,
+                description: ''
+            };
+            this.showNewProductModal = true;
+            
+            // Focus on first field after modal opens
+            this.$nextTick(() => {
+                const firstInput = document.querySelector('input[x-model="newProductForm.name"]');
+                if (firstInput) firstInput.focus();
+            });
+        },
+        
+        closeNewProductModal() {
+            this.showNewProductModal = false;
+        },
+        
+        saveNewProduct() {
+            // Validate required fields
+            if (!this.newProductForm.name || !this.newProductForm.barcode || 
+                !this.newProductForm.category || !this.newProductForm.purchasePrice || 
+                !this.newProductForm.sellingPrice || !this.newProductForm.quantity) {
+                alert('Por favor complete todos los campos requeridos.');
+                return;
+            }
+            
+            // Check if barcode already exists
+            const existingProduct = this.products.find(p => p.barcode === this.newProductForm.barcode);
+            if (existingProduct) {
+                alert('Ya existe un producto con este código de barras en la orden.');
+                return;
+            }
+            
+            // Add product to order
+            const newProduct = {
+                tempId: Date.now() + Math.random(),
+                id: '',
+                productId: '',
+                name: this.newProductForm.name,
+                barcode: this.newProductForm.barcode,
+                quantity: this.newProductForm.quantity,
+                purchasePrice: this.newProductForm.purchasePrice,
+                category: this.newProductForm.category,
+                unitType: this.newProductForm.unitType,
+                sellingPrice: this.newProductForm.sellingPrice,
+                minStock: this.newProductForm.minStock,
+                description: this.newProductForm.description,
+                isNew: true
+            };
+            
+            console.log('🆕 Adding new product to order:', newProduct);
+            this.products.push(newProduct);
+            console.log('📦 Total products after add:', this.products.length);
+            console.log('📦 Products array:', this.products);
+            
+            // Close modal and show success message
+            this.closeNewProductModal();
+            this.showStatus('success', `Producto "${this.newProductForm.name}" agregado a la orden.`);
         },
         
         removeProduct(index) {
@@ -1024,6 +1295,35 @@ document.addEventListener('alpine:init', () => {
         updateTotals() {
             // Trigger reactivity
             this.$nextTick();
+        },
+        
+        validateProducts() {
+            if (this.products.length === 0) {
+                return false;
+            }
+            
+            // Check if all products have valid data
+            return this.products.every((product, index) => {
+                // Basic validation for all products
+                if (!product.quantity || product.quantity <= 0) {
+                    return false;
+                }
+                if (!product.purchasePrice || product.purchasePrice <= 0) {
+                    return false;
+                }
+                
+                // If it's a new product, validate required fields
+                if (product.isNew) {
+                    return product.name && 
+                           product.barcode && 
+                           product.category && 
+                           product.sellingPrice && 
+                           product.sellingPrice > 0;
+                }
+                
+                // For existing products, productId should be valid OR we should have a barcode at minimum
+                return (product.productId && product.productId > 0) || (product.barcode && product.name);
+            });
         },
         
         showStatus(type, text) {
@@ -1041,7 +1341,7 @@ document.addEventListener('alpine:init', () => {
         },
         
         init() {
-            this.exchangeRate = {{ current_exchange_rate.bs_per_usd|default:7.0 }};
+            this.exchangeRate = {{ current_exchange_rate.bs_to_usd|default:7.0 }};
             this.focusBarcodeInput();
             
             console.log('Order form initialized with exchange rate:', this.exchangeRate);
