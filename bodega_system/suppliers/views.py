@@ -1,5 +1,6 @@
 # suppliers/views.py
 
+from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -388,10 +389,9 @@ def order_update(request, pk):
 
 @login_required
 def order_receive(request, pk):
-    """Vista para recibir una orden de compra"""
+    """Vista para recibir una orden de compra - CORREGIDA"""
     order = get_object_or_404(SupplierOrder, pk=pk)
     
-    # No permitir recibir órdenes ya recibidas
     if order.status == 'received':
         messages.error(request, 'Esta orden ya ha sido recibida.')
         return redirect('suppliers:order_detail', pk=order.pk)
@@ -400,56 +400,103 @@ def order_receive(request, pk):
         form = ReceiveOrderForm(request.POST)
         
         if form.is_valid():
-            with transaction.atomic():
-                # Actualizar estado de la orden
-                order.status = 'received'
-                order.received_date = timezone.now()
-                order.save()
-                
-                # Actualizar inventario
-                update_prices = form.cleaned_data.get('update_prices', False)
-                notes = form.cleaned_data.get('notes', '')
-                
-                # Procesar cada ítem de la orden
-                for item in order.items.all():
-                    product = item.product
-                    previous_stock = product.stock
+            try:
+                with transaction.atomic():
+                    # Actualizar estado de la orden
+                    order.status = 'received'
+                    order.received_date = timezone.now()
+                    order.save()
                     
-                    # Actualizar stock
-                    product.stock += item.quantity
+                    # Obtener datos del formulario
+                    update_prices = form.cleaned_data.get('update_prices', False)
+                    notes = form.cleaned_data.get('notes', '').strip()
                     
-                    # Actualizar precios de compra si se solicitó
-                    if update_prices:
-                        product.purchase_price_usd = item.price_usd
-                        product.purchase_price_bs = item.price_bs
+                    # Contadores para el mensaje de confirmación
+                    updated_products = []
+                    total_items_received = Decimal('0')
                     
-                    product.save()
+                    # Procesar cada ítem de la orden
+                    for item in order.items.all():
+                        product = item.product
+                        previous_stock = product.stock
+                        
+                        # ✅ CORRECCIÓN CRÍTICA: Asegurar que quantity sea Decimal
+                        quantity_to_add = Decimal(str(item.quantity))
+                        total_items_received += quantity_to_add
+                        
+                        # Actualizar stock (ambos son Decimal ahora)
+                        product.stock = previous_stock + quantity_to_add
+                        
+                        # Actualizar precios si se solicitó
+                        if update_prices:
+                            # Verificar si el producto tiene campos USD
+                            if hasattr(product, 'purchase_price_usd'):
+                                product.purchase_price_usd = item.price_usd
+                            
+                            # Actualizar precio en Bs
+                            product.purchase_price_bs = item.price_bs
+                        
+                        product.save()
+                        updated_products.append({
+                            'name': product.name,
+                            'quantity': quantity_to_add,
+                            'previous_stock': previous_stock,
+                            'new_stock': product.stock
+                        })
+                        
+                        # ✅ REGISTRAR AJUSTE DE INVENTARIO
+                        InventoryAdjustment.objects.create(
+                            product=product,
+                            adjustment_type='add',
+                            quantity=quantity_to_add,
+                            previous_stock=previous_stock,
+                            new_stock=product.stock,
+                            reason=f'Recepción orden #{order.id}' + (f' - {notes}' if notes else ''),
+                            adjusted_by=request.user
+                        )
                     
-                    # Registrar ajuste de inventario
-                    InventoryAdjustment.objects.create(
-                        product=product,
-                        adjustment_type='add',
-                        quantity=item.quantity,
-                        previous_stock=previous_stock,
-                        new_stock=product.stock,
-                        reason=f'Recepción de orden #{order.id} - {notes}',
-                        adjusted_by=request.user
+                    # ✅ MENSAJE DE ÉXITO DETALLADO
+                    product_names = [p['name'] for p in updated_products[:3]]
+                    products_summary = ', '.join(product_names)
+                    if len(updated_products) > 3:
+                        products_summary += f' y {len(updated_products) - 3} más'
+                    
+                    messages.success(
+                        request,
+                        f'Orden #{order.id} recibida exitosamente. '
+                        f'Productos actualizados: {products_summary}. '
+                        f'Total ítems: {total_items_received}. '
+                        f'Valor: ${order.total_usd} (Bs {order.total_bs})'
                     )
+                    
+                    return redirect('suppliers:order_detail', pk=order.pk)
+                    
+            except Exception as e:
+                # Log del error para debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error en order_receive orden #{order.id}: {str(e)}")
                 
-                messages.success(request, 'Orden de compra recibida exitosamente.')
-                return redirect('suppliers:order_detail', pk=order.pk)
+                messages.error(request, f'Error al recibir la orden: {str(e)}')
+                
     else:
         form = ReceiveOrderForm()
     
-    # Obtener ítems de la orden
+    # Obtener ítems de la orden con información adicional
     items = order.items.all().select_related('product')
     
-    return render(request, 'suppliers/order_receive.html', {
+    # Información adicional para el template
+    context = {
         'form': form,
         'order': order,
         'items': items,
-        'title': 'Recibir Orden de Compra'
-    })
+        'title': f'Recibir Orden #{order.id}',
+        'total_items_count': items.count(),
+        'total_products_quantity': sum(item.quantity for item in items),
+        'estimated_new_total': sum(item.product.stock + item.quantity for item in items),
+    }
+    
+    return render(request, 'suppliers/order_receive.html', context)
 
 @admin_required
 def order_cancel(request, pk):

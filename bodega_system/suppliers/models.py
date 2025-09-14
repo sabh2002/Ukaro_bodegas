@@ -144,7 +144,9 @@ class SupplierOrderItem(models.Model):
         related_name='supplier_order_items',
         verbose_name="Producto"
     )
-    quantity = models.IntegerField(
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
         verbose_name="Cantidad"
     )
     price_usd = models.DecimalField(

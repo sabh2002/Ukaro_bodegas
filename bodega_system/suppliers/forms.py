@@ -1,5 +1,6 @@
 # suppliers/forms.py
 
+from decimal import Decimal, InvalidOperation
 from django import forms
 from django.forms import inlineformset_factory
 from .models import Supplier, SupplierOrder, SupplierOrderItem
@@ -107,8 +108,16 @@ class SupplierOrderItemForm(forms.ModelForm):
         fields = ['product', 'quantity', 'price_usd']
         widgets = {
             'product': forms.Select(attrs={'class': 'form-select'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-input', 'min': '1'}),
-            'price_usd': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            # ✅ CAMBIAR: Permitir decimales en cantidad
+            'quantity': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'min': '0.01',
+                'step': '0.01'  # ← AGREGAR/MODIFICAR ESTO
+            }),
+            'price_usd': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'step': '0.01'
+            }),
         }
     
     def __init__(self, *args, **kwargs):
@@ -122,23 +131,53 @@ class SupplierOrderItemForm(forms.ModelForm):
         self.fields['new_product_category'].queryset = Category.objects.all().order_by('name')
     
     def clean_quantity(self):
-        """Validar cantidad"""
+        """Validar cantidad como decimal"""
         quantity = self.cleaned_data.get('quantity')
         
-        if quantity <= 0:
-            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
+        if quantity is None:
+            raise forms.ValidationError("La cantidad es requerida.")
         
-        return quantity
+        # ✅ MEJORAR: Validación robusta para decimales
+        try:
+            if isinstance(quantity, str):
+                quantity = quantity.replace(',', '.')
+            
+            quantity_decimal = Decimal(str(quantity))
+            
+            if quantity_decimal <= 0:
+                raise forms.ValidationError("La cantidad debe ser mayor a cero.")
+            
+            # Validar máximo 2 decimales
+            if quantity_decimal.as_tuple().exponent < -2:
+                raise forms.ValidationError("La cantidad no puede tener más de 2 decimales.")
+            
+            return quantity_decimal
+            
+        except (InvalidOperation, ValueError):
+            raise forms.ValidationError("La cantidad debe ser un número válido.")
     
     def clean_price_usd(self):
-        """Validar precio en USD"""
-        price = self.cleaned_data.get('price_usd')
+        def clean_price_usd(self):
+            """Validar precio en USD"""
+            price = self.cleaned_data.get('price_usd')
+            
+            if price is None:
+                raise forms.ValidationError("El precio es requerido.")
+            
+            try:
+                if isinstance(price, str):
+                    price = price.replace(',', '.')
+                
+                price_decimal = Decimal(str(price))
+                
+                if price_decimal <= 0:
+                    raise forms.ValidationError("El precio debe ser mayor a cero.")
+                
+                return price_decimal
+                
+            except (InvalidOperation, ValueError):
+                raise forms.ValidationError("El precio debe ser un número válido.")
         
-        if price <= 0:
-            raise forms.ValidationError("El precio debe ser mayor a cero.")
-        
-        return price
-    
     def clean(self):
         """Validación personalizada para productos nuevos"""
         cleaned_data = super().clean()
