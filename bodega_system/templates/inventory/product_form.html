@@ -862,9 +862,9 @@ function enhancedProductFormUSD() {
         errors: {},
         
         // Valores reactivos
-        purchasePrice: {% if form.purchase_price_usd.value %}{{ form.purchase_price_usd.value }}{% else %}0{% endif %},
-        sellingPrice: {% if form.selling_price_usd.value %}{{ form.selling_price_usd.value }}{% else %}0{% endif %},
-        bulkPrice: {% if form.bulk_price_usd.value %}{{ form.bulk_price_usd.value }}{% else %}0{% endif %},
+        purchasePrice: {% if form.purchase_price_usd.value %}{{ form.purchase_price_usd.value|unlocalize }}{% else %}0{% endif %},
+        sellingPrice: {% if form.selling_price_usd.value %}{{ form.selling_price_usd.value|unlocalize }}{% else %}0{% endif %},
+        bulkPrice: {% if form.bulk_price_usd.value %}{{ form.bulk_price_usd.value|unlocalize }}{% else %}0{% endif %},
         
         // Calculated properties para márgenes
         get margin() {
