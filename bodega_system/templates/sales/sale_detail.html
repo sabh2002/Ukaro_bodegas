@@ -40,6 +40,41 @@
                     <dt class="text-sm font-medium text-gray-500">Usuario:</dt>
                     <dd class="text-sm text-gray-900">{{ sale.user.get_full_name|default:sale.user.username }}</dd>
                 </div>
+                
+                <!-- NUEVO: Método de Pago -->
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Método de Pago:</dt>
+                    <dd class="text-sm">
+                        {% if sale.payment_method == 'cash' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                💵 Efectivo
+                            </span>
+                        {% elif sale.payment_method == 'card' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                💳 Punto de Venta
+                            </span>
+                        {% elif sale.payment_method == 'mobile' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                📱 Pago Móvil
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                💵 Efectivo
+                            </span>
+                        {% endif %}
+                    </dd>
+                </div>
+                
+                <!-- NUEVO: Referencia de Pago Móvil (si aplica) -->
+                {% if sale.payment_method == 'mobile' and sale.mobile_reference %}
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Referencia:</dt>
+                    <dd class="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded border border-gray-300">
+                        {{ sale.mobile_reference }}
+                    </dd>
+                </div>
+                {% endif %}
+                
                 <div class="flex justify-between py-1 border-b border-gray-200">
                     <dt class="text-sm font-medium text-gray-500">Tipo:</dt>
                     <dd class="text-sm text-gray-900">
@@ -161,6 +196,17 @@
                             Bs {{ sale.total_bs|floatformat:2 }}
                         </td>
                     </tr>
+                    <!-- NUEVO: Mostrar equivalente en USD si existe -->
+                    {% if sale.total_usd %}
+                    <tr class="bg-gray-100">
+                        <td colspan="3" class="px-6 py-2 text-xs text-gray-600 text-right">
+                            Equivalente en USD (Tasa: {{ sale.exchange_rate_used|floatformat:2 }} Bs/$):
+                        </td>
+                        <td class="px-6 py-2 whitespace-nowrap text-xs font-semibold text-gray-700 text-right">
+                            $ {{ sale.total_usd|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endif %}
                 </tfoot>
             </table>
         </div>
