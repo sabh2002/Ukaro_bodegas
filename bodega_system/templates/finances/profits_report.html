@@ -1,0 +1,185 @@
+<!-- templates/finances/profits_report.html -->
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Reporte de Ganancias - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">📊 Reporte de Ganancias</h1>
+                <p class="text-sm text-gray-600 mt-1">
+                    Período: {{ start_date|date:"d/m/Y" }} - {{ end_date|date:"d/m/Y" }}
+                </p>
+            </div>
+            <a href="{% url 'finances:dashboard' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+                Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Filtros</h2>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {{ form.as_p }}
+            <div class="flex items-end">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
+                    Aplicar Filtros
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resumen de Ganancias -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-6">Resumen del Período</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Ventas Totales -->
+            <div class="p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm font-medium text-blue-800">Ventas Totales</p>
+                <p class="text-2xl font-bold text-blue-900">Bs {{ total_sales_bs|floatformat:2 }}</p>
+                <p class="text-sm text-blue-700">${{ total_sales_usd|floatformat:2 }} USD</p>
+                <p class="text-xs text-blue-600 mt-1">{{ sales_count }} venta{{ sales_count|pluralize }}</p>
+            </div>
+
+            <!-- Compras Totales -->
+            <div class="p-4 bg-orange-50 rounded-lg">
+                <p class="text-sm font-medium text-orange-800">Compras Totales</p>
+                <p class="text-2xl font-bold text-orange-900">Bs {{ total_purchases_bs|floatformat:2 }}</p>
+                <p class="text-sm text-orange-700">${{ total_purchases_usd|floatformat:2 }} USD</p>
+                <p class="text-xs text-orange-600 mt-1">{{ purchases_count }} compra{{ purchases_count|pluralize }}</p>
+            </div>
+
+            <!-- Gastos -->
+            <div class="p-4 bg-red-50 rounded-lg">
+                <p class="text-sm font-medium text-red-800">Gastos</p>
+                <p class="text-2xl font-bold text-red-900">Bs {{ total_expenses|floatformat:2 }}</p>
+                <p class="text-xs text-red-600 mt-1">{{ expenses_count }} gasto{{ expenses_count|pluralize }}</p>
+            </div>
+
+            <!-- Ganancia Bruta Anterior (para comparación) -->
+            <div class="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
+                <p class="text-sm font-medium text-purple-800">Ganancia Bruta (Antigua)</p>
+                <p class="text-2xl font-bold text-purple-900">Bs {{ gross_profit_bs|floatformat:2 }}</p>
+                <p class="text-sm text-purple-700">${{ gross_profit_usd|floatformat:2 }} USD</p>
+                <p class="text-xs text-purple-600 mt-1">Ventas - Compras</p>
+            </div>
+        </div>
+
+        <!-- ⭐ NUEVO: Ganancia REAL por Productos Vendidos -->
+        <div class="border-t pt-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">💰 Ganancia Real por Productos Vendidos</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Ganancia Real en USD -->
+                <div class="p-6 bg-green-50 rounded-lg border-2 border-green-300">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-green-800">Ganancia Real (USD)</p>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold text-green-900">${{ real_profit_usd|floatformat:2 }}</p>
+                    <p class="text-xs text-green-700 mt-2">Calculado: (precio_venta - precio_compra) × cantidad</p>
+                </div>
+
+                <!-- Ganancia Real en Bs -->
+                <div class="p-6 bg-green-50 rounded-lg border-2 border-green-300">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-green-800">Ganancia Real (Bs)</p>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold text-green-900">Bs {{ real_profit_bs|floatformat:2 }}</p>
+                    <p class="text-xs text-green-700 mt-2">Suma de ganancias por cada producto vendido</p>
+                </div>
+
+                <!-- Ganancia Neta Real -->
+                <div class="p-6 {% if net_profit_real_bs >= 0 %}bg-emerald-50 border-emerald-400{% else %}bg-red-50 border-red-400{% endif %} rounded-lg border-2">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium {% if net_profit_real_bs >= 0 %}text-emerald-800{% else %}text-red-800{% endif %}">Ganancia Neta Real</p>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 {% if net_profit_real_bs >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold {% if net_profit_real_bs >= 0 %}text-emerald-900{% else %}text-red-900{% endif %}">
+                        Bs {{ net_profit_real_bs|floatformat:2 }}
+                    </p>
+                    <p class="text-xs {% if net_profit_real_bs >= 0 %}text-emerald-700{% else %}text-red-700{% endif %} mt-2">
+                        Ganancia Real - Gastos
+                    </p>
+                </div>
+            </div>
+
+            <!-- Explicación -->
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm font-medium text-blue-900 mb-1">ℹ️ Cálculo de Ganancia Real</p>
+                        <p class="text-sm text-blue-800">
+                            La <strong>Ganancia Real</strong> se calcula multiplicando el margen de ganancia de cada producto
+                            (precio de venta - precio de compra) por la cantidad vendida, y sumando todos los productos vendidos.
+                            Esto refleja la ganancia verdadera basada en los márgenes de cada producto, a diferencia del cálculo
+                            antiguo que solo restaba totales de ventas menos totales de compras.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enlaces a otros reportes -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Ver Más Detalles</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'finances:product_profitability_report' %}" class="block p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-green-900">Rentabilidad por Producto</p>
+                        <p class="text-sm text-green-700">Ver qué productos generan más ganancia</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'finances:sales_report' %}" class="block p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-blue-900">Reporte de Ventas</p>
+                        <p class="text-sm text-blue-700">Historial detallado de ventas</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'finances:expense_list' %}" class="block p-4 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-red-900">Lista de Gastos</p>
+                        <p class="text-sm text-red-700">Ver todos los gastos registrados</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
