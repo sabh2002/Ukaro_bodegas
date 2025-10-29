@@ -31,15 +31,24 @@ class ExpenseForm(forms.ModelForm):
         if not self.instance.pk:
             self.fields['date'].initial = date.today()
     
+    def clean_amount_bs(self):
+        """Validar que el monto sea positivo"""
+        amount = self.cleaned_data.get('amount_bs')
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError('El monto debe ser mayor a cero.')
+        return amount
+
     def save(self, commit=True):
         expense = super().save(commit=False)
-        
+
         if not expense.pk:  # Solo para nuevos gastos
+            if not self.user:
+                raise forms.ValidationError('Usuario es requerido para crear un gasto.')
             expense.created_by = self.user
-        
+
         if commit:
             expense.save()
-        
+
         return expense
 
 class ExpenseReceiptForm(forms.ModelForm):

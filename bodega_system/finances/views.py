@@ -64,6 +64,10 @@ def finance_dashboard(request):
     # Calcular rentabilidad por producto
     products_profit = {}
     for item in sale_items_month:
+        # ⭐ VALIDACIÓN: Saltar si no hay producto (no debería pasar por el filtro, pero es defensivo)
+        if not item.product:
+            continue
+
         product_name = item.product.name
         if product_name not in products_profit:
             products_profit[product_name] = {
@@ -73,7 +77,10 @@ def finance_dashboard(request):
             }
 
         quantity = item.quantity
-        profit = (item.price_usd - item.product.purchase_price_usd) * quantity
+        # ⭐ VALIDACIÓN: Manejar valores None defensivamente
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+        profit = (sale_price - purchase_price) * quantity
 
         products_profit[product_name]['total_quantity'] += quantity
         products_profit[product_name]['total_profit_usd'] += profit
@@ -241,8 +248,15 @@ def profits_report(request):
 
     real_profit_usd = Decimal('0.00')
     for item in sale_items:
+        # ⭐ VALIDACIÓN: Saltar si no hay producto
+        if not item.product:
+            continue
+
         # Ganancia por ítem = (precio venta - precio compra) × cantidad
-        item_profit = (item.price_usd - item.product.purchase_price_usd) * item.quantity
+        # ⭐ VALIDACIÓN: Manejar valores None defensivamente
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+        item_profit = (sale_price - purchase_price) * item.quantity
         real_profit_usd += item_profit
 
     # Convertir ganancia real a Bs usando tasa promedio del período
@@ -337,6 +351,10 @@ def product_profitability_report(request):
     products_profitability = {}
 
     for item in sale_items:
+        # ⭐ VALIDACIÓN: Saltar si no hay producto
+        if not item.product:
+            continue
+
         product_id = item.product.id
 
         if product_id not in products_profitability:
@@ -351,8 +369,12 @@ def product_profitability_report(request):
 
         # Calcular métricas
         quantity = item.quantity
-        revenue = item.price_usd * quantity
-        cost = item.product.purchase_price_usd * quantity
+        # ⭐ VALIDACIÓN: Manejar valores None defensivamente
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+
+        revenue = sale_price * quantity
+        cost = purchase_price * quantity
         profit = revenue - cost
 
         products_profitability[product_id]['total_quantity_sold'] += quantity
@@ -578,36 +600,42 @@ def daily_close_create(request):
     """Vista para crear un cierre diario"""
     if request.method == 'POST':
         form = DailyCloseForm(request.POST, user=request.user)
-        
+
         if form.is_valid():
             close_date = form.cleaned_data['date']
-            
-            # Verificar que no exista un cierre para esta fecha
-            if DailyClose.objects.filter(date=close_date).exists():
-                messages.error(request, f'Ya existe un cierre para la fecha {close_date.strftime("%d/%m/%Y")}.')
+
+            # ⭐ CORREGIDO: Usar transacción atómica para prevenir race conditions
+            try:
+                with transaction.atomic():
+                    # Verificar que no exista un cierre para esta fecha
+                    if DailyClose.objects.filter(date=close_date).exists():
+                        messages.error(request, f'Ya existe un cierre para la fecha {close_date.strftime("%d/%m/%Y")}.')
+                        return redirect('finances:daily_close_create')
+
+                    # Calcular métricas del día
+                    day_sales = Sale.objects.filter(date__date=close_date)
+                    sales_count = day_sales.count()
+                    sales_total_bs = day_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+
+                    day_expenses = Expense.objects.filter(date=close_date)
+                    expenses_total_bs = day_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+
+                    profit_bs = sales_total_bs - expenses_total_bs
+
+                    # Crear el cierre
+                    close = form.save(commit=False)
+                    close.sales_count = sales_count
+                    close.sales_total_bs = sales_total_bs
+                    close.expenses_total_bs = expenses_total_bs
+                    close.profit_bs = profit_bs
+                    close.closed_by = request.user
+                    close.save()
+
+                    messages.success(request, f'Cierre del {close_date.strftime("%d/%m/%Y")} realizado exitosamente.')
+                    return redirect('finances:daily_close_detail', pk=close.pk)
+            except Exception as e:
+                messages.error(request, f'Error al crear el cierre: {str(e)}')
                 return redirect('finances:daily_close_create')
-            
-            # Calcular métricas del día
-            day_sales = Sale.objects.filter(date__date=close_date)
-            sales_count = day_sales.count()
-            sales_total_bs = day_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
-            
-            day_expenses = Expense.objects.filter(date=close_date)
-            expenses_total_bs = day_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
-            
-            profit_bs = sales_total_bs - expenses_total_bs
-            
-            # Crear el cierre
-            close = form.save(commit=False)
-            close.sales_count = sales_count
-            close.sales_total_bs = sales_total_bs
-            close.expenses_total_bs = expenses_total_bs
-            close.profit_bs = profit_bs
-            close.closed_by = request.user
-            close.save()
-            
-            messages.success(request, f'Cierre del {close_date.strftime("%d/%m/%Y")} realizado exitosamente.')
-            return redirect('finances:daily_close_detail', pk=close.pk)
     else:
         form = DailyCloseForm(user=request.user)
     
