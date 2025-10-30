@@ -220,21 +220,52 @@
         <!-- Resumen y totales -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-2 bg-white rounded-md border border-gray-200 p-4">
+                <!-- Método de Pago -->
+                <div class="mb-4">
+                    <label for="payment_method" class="block text-sm font-medium text-gray-700 mb-1">
+                        Método de Pago *
+                    </label>
+                    <select
+                        id="payment_method"
+                        x-model="paymentMethod"
+                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                        <option value="cash">💵 Efectivo</option>
+                        <option value="card">💳 Punto de Venta</option>
+                        <option value="mobile">📱 Pago Móvil</option>
+                    </select>
+                </div>
+
+                <!-- Referencia de Pago Móvil (condicional) -->
+                <div class="mb-4" x-show="paymentMethod === 'mobile'" x-cloak>
+                    <label for="mobile_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                        Número de Referencia *
+                    </label>
+                    <input
+                        type="text"
+                        id="mobile_reference"
+                        x-model="mobileReference"
+                        :required="paymentMethod === 'mobile'"
+                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        placeholder="Ej: 123456789"
+                        maxlength="20">
+                    <p class="mt-1 text-xs text-gray-500">Ingrese el número de referencia del pago móvil</p>
+                </div>
+
                 <div class="mb-4">
                     <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
-                    <textarea 
-                        id="notes" 
+                    <textarea
+                        id="notes"
                         x-model="notes"
                         rows="2"
                         class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         placeholder="Agregar notas a la venta..."></textarea>
                 </div>
-                
+
                 <div class="flex flex-col md:flex-row items-center md:justify-between space-y-2 md:space-y-0">
                     <div class="flex items-center">
-                        <input 
-                            type="checkbox" 
-                            id="is_credit" 
+                        <input
+                            type="checkbox"
+                            id="is_credit"
                             x-model="isCredit"
                             :disabled="!selectedCustomer"
                             class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
@@ -360,6 +391,8 @@
             selectedCustomer: null,
             isCredit: false,
             notes: '',
+            paymentMethod: 'cash', // Método de pago por defecto: Efectivo
+            mobileReference: '', // Referencia de pago móvil
             exchangeRate: 1, // VALOR POR DEFECTO SEGURO
             
             // Variables para el modal de cantidad
@@ -577,12 +610,18 @@
                     alert('Agregue al menos un producto a la venta');
                     return;
                 }
-                
+
                 if (this.isCredit && !this.selectedCustomer) {
                     alert('Para venta a crédito debe seleccionar un cliente');
                     return;
                 }
-                
+
+                // Validar referencia de pago móvil
+                if (this.paymentMethod === 'mobile' && !this.mobileReference.trim()) {
+                    alert('Debe ingresar el número de referencia del pago móvil');
+                    return;
+                }
+
                 const saleData = {
                     items: this.items.map(item => ({
                         product_id: item.id,
@@ -592,7 +631,9 @@
                     customer_id: this.selectedCustomer ? this.selectedCustomer.id : null,
                     is_credit: this.isCredit,
                     notes: this.notes || '',
-                    total_bs: this.total
+                    total_bs: this.total,
+                    payment_method: this.paymentMethod,
+                    mobile_reference: this.paymentMethod === 'mobile' ? this.mobileReference.trim() : null
                 };
                 
                 console.log('=== DATOS DE VENTA COMPLETOS ===');
@@ -638,6 +679,8 @@
                 this.selectedCustomer = null;
                 this.isCredit = false;
                 this.notes = '';
+                this.paymentMethod = 'cash';
+                this.mobileReference = '';
                 this.closeQuantityModal();
                 this.clearCustomerSearch();
             },

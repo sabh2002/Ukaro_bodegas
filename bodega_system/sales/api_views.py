@@ -65,7 +65,7 @@ def create_sale_api(request):
                     total_usd += item_total_usd
                     total_bs += item_total_bs
             
-            # ⭐ CREAR VENTA CON AMBOS TOTALES Y TASA UTILIZADA
+            # ⭐ CREAR VENTA CON AMBOS TOTALES, TASA UTILIZADA Y MÉTODO DE PAGO
             sale = Sale.objects.create(
                 customer=customer,
                 user=request.user,
@@ -73,7 +73,9 @@ def create_sale_api(request):
                 total_bs=total_bs,
                 exchange_rate_used=current_exchange_rate.bs_to_usd,
                 is_credit=data.get('is_credit', False),
-                notes=data.get('notes', '')
+                notes=data.get('notes', ''),
+                payment_method=data.get('payment_method', 'cash'),
+                mobile_reference=data.get('mobile_reference') if data.get('payment_method') == 'mobile' else None
             )
             
             # Procesar ítems de venta

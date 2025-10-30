@@ -1,0 +1,249 @@
+<!-- templates/finances/product_profitability_report.html -->
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Rentabilidad por Producto - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">🏆 Rentabilidad por Producto</h1>
+                <p class="text-sm text-gray-600 mt-1">
+                    Período: {{ start_date|date:"d/m/Y" }} - {{ end_date|date:"d/m/Y" }}
+                </p>
+            </div>
+            <div class="flex space-x-2">
+                <a href="{% url 'finances:profits_report' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Ver Ganancias Totales
+                </a>
+                <a href="{% url 'finances:dashboard' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                    </svg>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Filtros y Ordenamiento</h2>
+        <form method="get" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {{ form.as_p }}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ordenar por</label>
+                    <select name="sort_by" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                        <option value="profit" {% if sort_by == 'profit' %}selected{% endif %}>💰 Ganancia (mayor a menor)</option>
+                        <option value="revenue" {% if sort_by == 'revenue' %}selected{% endif %}>💵 Ingresos (mayor a menor)</option>
+                        <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>📦 Cantidad vendida (mayor a menor)</option>
+                        <option value="margin" {% if sort_by == 'margin' %}selected{% endif %}>📊 Margen % (mayor a menor)</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-md">
+                Aplicar Filtros
+            </button>
+        </form>
+    </div>
+
+    <!-- Resumen General -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Resumen del Período</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="p-4 bg-green-50 rounded-lg">
+                <p class="text-sm font-medium text-green-800">Ganancia Total</p>
+                <p class="text-2xl font-bold text-green-900">${{ total_profit|floatformat:2 }}</p>
+                <p class="text-xs text-green-700 mt-1">USD</p>
+            </div>
+            <div class="p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm font-medium text-blue-800">Ingresos Totales</p>
+                <p class="text-2xl font-bold text-blue-900">${{ total_revenue|floatformat:2 }}</p>
+                <p class="text-xs text-blue-700 mt-1">USD</p>
+            </div>
+            <div class="p-4 bg-orange-50 rounded-lg">
+                <p class="text-sm font-medium text-orange-800">Costo Total</p>
+                <p class="text-2xl font-bold text-orange-900">${{ total_cost|floatformat:2 }}</p>
+                <p class="text-xs text-orange-700 mt-1">USD</p>
+            </div>
+            <div class="p-4 bg-purple-50 rounded-lg">
+                <p class="text-sm font-medium text-purple-800">Items Vendidos</p>
+                <p class="text-2xl font-bold text-purple-900">{{ total_items_sold|floatformat:0 }}</p>
+                <p class="text-xs text-purple-700 mt-1">Unidades</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Productos -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Producto
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cantidad Vendida
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ingresos (USD)
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Costo (USD)
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            💰 Ganancia (USD)
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            📊 Margen %
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ventas
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in page_obj %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ item.product.name }}</div>
+                            <div class="text-xs text-gray-500">{{ item.product.barcode }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-medium text-gray-900">{{ item.total_quantity_sold|floatformat:2 }}</span>
+                            <span class="text-xs text-gray-500 block">{{ item.product.unit_display }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm text-gray-900">${{ item.total_revenue_usd|floatformat:2 }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm text-gray-900">${{ item.total_cost_usd|floatformat:2 }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-semibold {% if item.total_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                ${{ item.total_profit_usd|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if item.profit_margin >= 50 %}bg-green-100 text-green-800
+                                {% elif item.profit_margin >= 30 %}bg-blue-100 text-blue-800
+                                {% elif item.profit_margin >= 10 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ item.profit_margin|floatformat:1 }}%
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-sm text-gray-900">{{ item.sales_count }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
+                            No hay productos vendidos en este período
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                            TOTAL:
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <span class="text-sm font-bold text-green-600">${{ total_profit|floatformat:2 }}</span>
+                        </td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow-md">
+        <div class="flex-1 flex justify-between sm:hidden">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&sort_by={{ sort_by }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Anterior
+                </a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&sort_by={{ sort_by }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Siguiente
+                </a>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ page_obj.paginator.count }}</span> productos
+                </p>
+            </div>
+            <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}&sort_by={{ sort_by }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <span class="sr-only">Anterior</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <span class="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600">
+                                {{ i }}
+                            </span>
+                        {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+                            <a href="?page={{ i }}&sort_by={{ sort_by }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                {{ i }}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}&sort_by={{ sort_by }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <span class="sr-only">Siguiente</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Info adicional -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-blue-900 mb-1">💡 Interpretación de Resultados</p>
+                <ul class="text-sm text-blue-800 list-disc list-inside space-y-1">
+                    <li><strong>Ganancia</strong>: Diferencia entre el precio de venta y el precio de compra multiplicado por la cantidad vendida</li>
+                    <li><strong>Margen %</strong>: Porcentaje de ganancia sobre los ingresos (Ganancia / Ingresos × 100)</li>
+                    <li>Margen <strong>verde (≥50%)</strong>: Excelente rentabilidad</li>
+                    <li>Margen <strong>azul (30-49%)</strong>: Buena rentabilidad</li>
+                    <li>Margen <strong>amarillo (10-29%)</strong>: Rentabilidad moderada</li>
+                    <li>Margen <strong>rojo (<10%)</strong>: Baja rentabilidad</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

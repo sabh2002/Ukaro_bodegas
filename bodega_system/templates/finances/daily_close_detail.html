@@ -1,0 +1,244 @@
+<!-- templates/finances/daily_close_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block title %}Detalle de Cierre Diario - Sistema de Bodega{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Cierre del {{ close.date|date:"d/m/Y" }}</h1>
+        <a href="{% url 'finances:daily_close_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+            </svg>
+            Volver
+        </a>
+    </div>
+
+    <!-- Resumen del cierre -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-green-50 p-4 rounded-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-green-500">Ventas del Día</p>
+                    <p class="text-2xl font-bold text-green-800 mt-1">{{ close.sales_count }}</p>
+                </div>
+                <div class="p-3 rounded-full bg-green-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-blue-500">Total Ventas</p>
+                    <p class="text-2xl font-bold text-blue-800 mt-1">Bs {{ close.sales_total_bs|floatformat:2 }}</p>
+                </div>
+                <div class="p-3 rounded-full bg-blue-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-red-50 p-4 rounded-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-red-500">Total Gastos</p>
+                    <p class="text-2xl font-bold text-red-800 mt-1">Bs {{ close.expenses_total_bs|floatformat:2 }}</p>
+                </div>
+                <div class="p-3 rounded-full bg-red-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="{% if close.profit_bs >= 0 %}bg-purple-50{% else %}bg-orange-50{% endif %} p-4 rounded-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium {% if close.profit_bs >= 0 %}text-purple-500{% else %}text-orange-500{% endif %}">Ganancia Neta</p>
+                    <p class="text-2xl font-bold {% if close.profit_bs >= 0 %}text-purple-800{% else %}text-orange-800{% endif %} mt-1">
+                        Bs {{ close.profit_bs|floatformat:2 }}
+                    </p>
+                </div>
+                <div class="p-3 rounded-full {% if close.profit_bs >= 0 %}bg-purple-100{% else %}bg-orange-100{% endif %}">
+                    {% if close.profit_bs >= 0 %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                    </svg>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del cierre -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-medium text-gray-700 mb-3">Información del Cierre</h2>
+            <dl class="grid grid-cols-1 gap-2">
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Fecha del Cierre:</dt>
+                    <dd class="text-sm text-gray-900">{{ close.date|date:"d/m/Y" }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Cerrado por:</dt>
+                    <dd class="text-sm text-gray-900">{{ close.closed_by.get_full_name|default:close.closed_by.username }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Fecha y Hora de Cierre:</dt>
+                    <dd class="text-sm text-gray-900">{{ close.closed_at|date:"d/m/Y H:i" }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-medium text-gray-700 mb-3">Resumen Financiero</h2>
+            <dl class="grid grid-cols-1 gap-2">
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Ingresos por Ventas:</dt>
+                    <dd class="text-sm font-semibold text-green-600">+Bs {{ close.sales_total_bs|floatformat:2 }}</dd>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-200">
+                    <dt class="text-sm font-medium text-gray-500">Gastos del Día:</dt>
+                    <dd class="text-sm font-semibold text-red-600">-Bs {{ close.expenses_total_bs|floatformat:2 }}</dd>
+                </div>
+                <div class="flex justify-between py-2 bg-gray-100 px-2 rounded">
+                    <dt class="text-sm font-bold text-gray-700">Balance Final:</dt>
+                    <dd class="text-sm font-bold {% if close.profit_bs >= 0 %}text-purple-600{% else %}text-orange-600{% endif %}">
+                        Bs {{ close.profit_bs|floatformat:2 }}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Notas del cierre -->
+    {% if close.notes %}
+    <div class="bg-yellow-50 p-4 rounded-md mb-6">
+        <h2 class="text-lg font-medium text-yellow-700 mb-2">Notas del Cierre</h2>
+        <p class="text-sm text-yellow-800">{{ close.notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Detalle de ventas del día -->
+    <div class="mb-6">
+        <h2 class="text-lg font-medium text-gray-700 mb-3">Ventas del Día ({{ day_sales.count }})</h2>
+        {% if day_sales %}
+        <div class="bg-white overflow-hidden border border-gray-200 rounded-md">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Venta #
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Hora
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cliente
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for sale in day_sales %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            #{{ sale.id }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ sale.date|date:"H:i" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {{ sale.customer.name|default:"Cliente General" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 text-right">
+                            Bs {{ sale.total_bs|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                            <a href="{% url 'sales:sale_detail' sale.id %}" class="text-blue-600 hover:text-blue-900">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="bg-gray-50 p-4 rounded-md text-center">
+            <p class="text-sm text-gray-500">No se registraron ventas este día</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Detalle de gastos del día -->
+    <div class="mb-6">
+        <h2 class="text-lg font-medium text-gray-700 mb-3">Gastos del Día ({{ day_expenses.count }})</h2>
+        {% if day_expenses %}
+        <div class="bg-white overflow-hidden border border-gray-200 rounded-md">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Categoría
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Descripción
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Monto
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for expense in day_expenses %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                {{ expense.get_category_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {{ expense.description }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600 text-right">
+                            Bs {{ expense.amount_bs|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                            <a href="{% url 'finances:expense_detail' expense.id %}" class="text-blue-600 hover:text-blue-900">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="bg-gray-50 p-4 rounded-md text-center">
+            <p class="text-sm text-gray-500">No se registraron gastos este día</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

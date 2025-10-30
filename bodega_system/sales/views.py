@@ -209,7 +209,17 @@ def sale_receipt(request, pk):
             p.drawString(1*inch, height - 2.6*inch, "Tipo: CRÉDITO")
     else:
         p.drawString(1*inch, height - 2.4*inch, "Cliente: Consumidor Final")
-    
+
+    # Método de pago
+    payment_method_display = sale.get_payment_method_display()
+    y_position = height - 2.8*inch if sale.customer and sale.is_credit else height - 2.6*inch
+    p.drawString(1*inch, y_position, f"Método de pago: {payment_method_display}")
+
+    # Referencia de pago móvil si aplica
+    if sale.payment_method == 'mobile' and sale.mobile_reference:
+        y_position -= 0.2*inch
+        p.drawString(1*inch, y_position, f"Ref. Pago Móvil: {sale.mobile_reference}")
+
     # Tabla de productos
     data = [["Producto", "Cantidad", "Precio Unit.", "Subtotal"]]
     

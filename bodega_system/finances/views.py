@@ -27,9 +27,31 @@ def finance_dashboard(request):
     today_sales = Sale.objects.filter(date__date=today)
     today_sales_total_bs = today_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
     today_sales_count = today_sales.count()
-    
+
     today_expenses = Expense.objects.filter(date=today)
     today_expenses_total = today_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+
+    # ⭐ CORREGIDO: Calcular ganancia REAL del día (no solo ventas - gastos)
+    today_sale_items = SaleItem.objects.filter(
+        sale__date__date=today,
+        product__isnull=False
+    ).select_related('product')
+
+    today_real_profit_usd = Decimal('0.00')
+    for item in today_sale_items:
+        if not item.product:
+            continue
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+        item_profit = (sale_price - purchase_price) * item.quantity
+        today_real_profit_usd += item_profit
+
+    # Convertir a Bs
+    current_rate = ExchangeRate.get_latest_rate()
+    today_real_profit_bs = today_real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+    # Ganancia neta del día = ganancia por productos - gastos
+    today_net_profit_bs = today_real_profit_bs - today_expenses_total
     
     # Métricas del mes
     month_sales = Sale.objects.filter(date__date__gte=this_month_start, date__date__lte=today)
@@ -46,24 +68,61 @@ def finance_dashboard(request):
     
     month_expenses = Expense.objects.filter(date__gte=this_month_start, date__lte=today)
     month_expenses_total = month_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
-    
-    # Calcular ganancia bruta del mes (ventas - compras)
+
+    # Tasa de cambio actual (necesaria para conversiones)
+    current_rate = ExchangeRate.get_latest_rate()
+
+    # ⭐ MODIFICADO: Productos más RENTABLES este mes (no solo más vendidos)
+    sale_items_month = SaleItem.objects.filter(
+        sale__date__date__gte=this_month_start,
+        sale__date__date__lte=today,
+        product__isnull=False
+    ).select_related('product')
+
+    # Calcular rentabilidad REAL por producto Y ganancia total del mes
+    products_profit = {}
+    month_real_profit_usd = Decimal('0.00')  # ⭐ NUEVO: Ganancia real del mes
+
+    for item in sale_items_month:
+        # ⭐ VALIDACIÓN: Saltar si no hay producto (no debería pasar por el filtro, pero es defensivo)
+        if not item.product:
+            continue
+
+        product_name = item.product.name
+        if product_name not in products_profit:
+            products_profit[product_name] = {
+                'name': product_name,
+                'total_quantity': Decimal('0.00'),
+                'total_profit_usd': Decimal('0.00'),
+            }
+
+        quantity = item.quantity
+        # ⭐ VALIDACIÓN: Manejar valores None defensivamente
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+        profit = (sale_price - purchase_price) * quantity
+
+        products_profit[product_name]['total_quantity'] += quantity
+        products_profit[product_name]['total_profit_usd'] += profit
+        month_real_profit_usd += profit  # ⭐ NUEVO: Sumar a ganancia total del mes
+
+    # Convertir ganancia real del mes a Bs
+    month_real_profit_bs = month_real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+    # ⭐ CORREGIDO: Ganancia neta REAL del mes = ganancia por productos - gastos
+    net_profit_real_bs = month_real_profit_bs - month_expenses_total
+
+    # Mantener cálculo aproximado para comparación (opcional)
     gross_profit_bs = month_sales_total_bs - month_purchases_total_bs
     gross_profit_usd = month_sales_total_usd - month_purchases_total_usd
-    
-    # Calcular ganancia neta del mes (ganancia bruta - gastos)
-    net_profit_bs = gross_profit_bs - month_expenses_total
-    
-    # Productos más vendidos este mes
-    top_products = SaleItem.objects.filter(
-        sale__date__date__gte=this_month_start,
-        sale__date__date__lte=today
-    ).values(
-        'product__name'
-    ).annotate(
-        total_quantity=Sum('quantity'),
-        total_sales=Sum(F('quantity') * F('price_bs'))
-    ).order_by('-total_quantity')[:10]
+    net_profit_bs = gross_profit_bs - month_expenses_total  # Método aproximado
+
+    # Ordenar por ganancia y tomar top 10
+    top_products_by_profit = sorted(
+        products_profit.values(),
+        key=lambda x: x['total_profit_usd'],
+        reverse=True
+    )[:10]
     
     # Gastos por categoría este mes
     expenses_by_category = month_expenses.values(
@@ -72,31 +131,36 @@ def finance_dashboard(request):
         total=Sum('amount_bs'),
         count=Count('id')
     ).order_by('-total')
-    
-    # Tasa de cambio actual
-    current_rate = ExchangeRate.get_latest_rate()
-    
+
     context = {
         'today_sales_count': today_sales_count,
         'today_sales_total_bs': today_sales_total_bs,
         'today_expenses_total': today_expenses_total,
-        'today_profit': today_sales_total_bs - today_expenses_total,
-        
+        # ⭐ CORREGIDO: Usar ganancia REAL del día, no solo ventas - gastos
+        'today_profit': today_net_profit_bs,
+        'today_real_profit_usd': today_real_profit_usd,  # Ganancia en USD
+
         'month_sales_total_bs': month_sales_total_bs,
         'month_sales_total_usd': month_sales_total_usd,
         'month_purchases_total_bs': month_purchases_total_bs,
         'month_purchases_total_usd': month_purchases_total_usd,
         'month_expenses_total': month_expenses_total,
+        # Métodos de cálculo aproximado (para comparación)
         'gross_profit_bs': gross_profit_bs,
         'gross_profit_usd': gross_profit_usd,
         'net_profit_bs': net_profit_bs,
-        
-        'top_products': top_products,
+        # ⭐ NUEVO: Ganancias REALES del mes
+        'month_real_profit_usd': month_real_profit_usd,
+        'month_real_profit_bs': month_real_profit_bs,
+        'net_profit_real_bs': net_profit_real_bs,
+
+        # ⭐ MODIFICADO: Ahora son productos más rentables (no más vendidos)
+        'top_products_by_profit': top_products_by_profit,
         'expenses_by_category': expenses_by_category,
         'current_rate': current_rate,
         'current_month': this_month_start.strftime('%B %Y'),
     }
-    
+
     return render(request, 'finances/dashboard.html', context)
 
 @login_required
@@ -163,9 +227,9 @@ def purchases_report(request):
 
 @login_required
 def profits_report(request):
-    """Vista para el reporte de ganancias"""
+    """Vista para el reporte de ganancias REAL por producto vendido"""
     form = ReportFilterForm(request.GET or None)
-    
+
     # Obtener fechas del formulario
     if form.is_valid():
         start_date, end_date = _get_date_range(form.cleaned_data)
@@ -174,17 +238,17 @@ def profits_report(request):
         today = date.today()
         start_date = today.replace(day=1)
         end_date = today
-    
+
     # Calcular métricas de ganancias
     sales_data = Sale.objects.filter(
-        date__date__gte=start_date, 
+        date__date__gte=start_date,
         date__date__lte=end_date
     ).aggregate(
         total_sales_bs=Sum('total_bs'),
         total_sales_usd=Sum('total_usd'),
         sales_count=Count('id')
     )
-    
+
     purchases_data = SupplierOrder.objects.filter(
         order_date__date__gte=start_date,
         order_date__date__lte=end_date,
@@ -194,7 +258,7 @@ def profits_report(request):
         total_purchases_usd=Sum('total_usd'),
         purchases_count=Count('id')
     )
-    
+
     expenses_data = Expense.objects.filter(
         date__gte=start_date,
         date__lte=end_date
@@ -202,14 +266,43 @@ def profits_report(request):
         total_expenses=Sum('amount_bs'),
         expenses_count=Count('id')
     )
-    
+
     # Calcular ganancias
     total_sales_bs = sales_data['total_sales_bs'] or Decimal('0.00')
     total_sales_usd = sales_data['total_sales_usd'] or Decimal('0.00')
     total_purchases_bs = purchases_data['total_purchases_bs'] or Decimal('0.00')
     total_purchases_usd = purchases_data['total_purchases_usd'] or Decimal('0.00')
     total_expenses = expenses_data['total_expenses'] or Decimal('0.00')
-    
+
+    # ⭐ NUEVO: Calcular ganancia REAL por producto vendido
+    # Ganancia = (precio_venta - precio_compra) × cantidad
+    sale_items = SaleItem.objects.filter(
+        sale__date__date__gte=start_date,
+        sale__date__lte=end_date,
+        product__isnull=False  # Solo productos, no combos
+    ).select_related('product', 'sale')
+
+    real_profit_usd = Decimal('0.00')
+    for item in sale_items:
+        # ⭐ VALIDACIÓN: Saltar si no hay producto
+        if not item.product:
+            continue
+
+        # Ganancia por ítem = (precio venta - precio compra) × cantidad
+        # ⭐ VALIDACIÓN: Manejar valores None defensivamente
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+        item_profit = (sale_price - purchase_price) * item.quantity
+        real_profit_usd += item_profit
+
+    # Convertir ganancia real a Bs usando tasa promedio del período
+    current_rate = ExchangeRate.get_latest_rate()
+    real_profit_bs = real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+    # Ganancia neta real = ganancia por productos - gastos
+    net_profit_real_bs = real_profit_bs - total_expenses
+
+    # Mantener cálculo anterior para comparación
     gross_profit_bs = total_sales_bs - total_purchases_bs
     gross_profit_usd = total_sales_usd - total_purchases_usd
     net_profit_bs = gross_profit_bs - total_expenses
@@ -257,13 +350,130 @@ def profits_report(request):
         'gross_profit_bs': gross_profit_bs,
         'gross_profit_usd': gross_profit_usd,
         'net_profit_bs': net_profit_bs,
+        # ⭐ NUEVO: Ganancias REALES calculadas por producto
+        'real_profit_usd': real_profit_usd,
+        'real_profit_bs': real_profit_bs,
+        'net_profit_real_bs': net_profit_real_bs,
         'daily_profits': daily_profits,
         'sales_count': sales_data['sales_count'],
         'purchases_count': purchases_data['purchases_count'],
         'expenses_count': expenses_data['expenses_count'],
     }
-    
+
     return render(request, 'finances/profits_report.html', context)
+
+@login_required
+def product_profitability_report(request):
+    """Vista para el reporte de rentabilidad por producto"""
+    form = ReportFilterForm(request.GET or None)
+
+    # Obtener fechas del formulario
+    if form.is_valid():
+        start_date, end_date = _get_date_range(form.cleaned_data)
+    else:
+        # Por defecto, este mes
+        today = date.today()
+        start_date = today.replace(day=1)
+        end_date = today
+
+    # Obtener todos los ítems vendidos en el período
+    sale_items = SaleItem.objects.filter(
+        sale__date__date__gte=start_date,
+        sale__date__lte=end_date,
+        product__isnull=False
+    ).select_related('product')
+
+    # Calcular rentabilidad por producto
+    products_profitability = {}
+
+    for item in sale_items:
+        # ⭐ VALIDACIÓN: Saltar si no hay producto
+        if not item.product:
+            continue
+
+        product_id = item.product.id
+
+        if product_id not in products_profitability:
+            products_profitability[product_id] = {
+                'product': item.product,
+                'total_quantity_sold': Decimal('0.00'),
+                'total_revenue_usd': Decimal('0.00'),
+                'total_cost_usd': Decimal('0.00'),
+                'total_profit_usd': Decimal('0.00'),
+                'sales_count': 0,
+            }
+
+        # Calcular métricas
+        quantity = item.quantity
+        # ⭐ VALIDACIÓN: Manejar valores None defensivamente
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+
+        revenue = sale_price * quantity
+        cost = purchase_price * quantity
+        profit = revenue - cost
+
+        products_profitability[product_id]['total_quantity_sold'] += quantity
+        products_profitability[product_id]['total_revenue_usd'] += revenue
+        products_profitability[product_id]['total_cost_usd'] += cost
+        products_profitability[product_id]['total_profit_usd'] += profit
+        products_profitability[product_id]['sales_count'] += 1
+
+    # Convertir a lista y calcular métricas adicionales
+    products_list = []
+    for data in products_profitability.values():
+        # Calcular margen de ganancia porcentual
+        if data['total_revenue_usd'] > 0:
+            profit_margin = (data['total_profit_usd'] / data['total_revenue_usd']) * 100
+        else:
+            profit_margin = Decimal('0.00')
+
+        products_list.append({
+            'product': data['product'],
+            'total_quantity_sold': data['total_quantity_sold'],
+            'total_revenue_usd': data['total_revenue_usd'],
+            'total_cost_usd': data['total_cost_usd'],
+            'total_profit_usd': data['total_profit_usd'],
+            'profit_margin': profit_margin,
+            'sales_count': data['sales_count'],
+        })
+
+    # Ordenar por diferentes criterios
+    sort_by = request.GET.get('sort_by', 'profit')  # profit, revenue, quantity, margin
+
+    if sort_by == 'revenue':
+        products_list.sort(key=lambda x: x['total_revenue_usd'], reverse=True)
+    elif sort_by == 'quantity':
+        products_list.sort(key=lambda x: x['total_quantity_sold'], reverse=True)
+    elif sort_by == 'margin':
+        products_list.sort(key=lambda x: x['profit_margin'], reverse=True)
+    else:  # profit (por defecto)
+        products_list.sort(key=lambda x: x['total_profit_usd'], reverse=True)
+
+    # Paginar
+    paginator = Paginator(products_list, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Calcular totales
+    total_revenue = sum(p['total_revenue_usd'] for p in products_list)
+    total_cost = sum(p['total_cost_usd'] for p in products_list)
+    total_profit = sum(p['total_profit_usd'] for p in products_list)
+    total_items_sold = sum(p['total_quantity_sold'] for p in products_list)
+
+    context = {
+        'form': form,
+        'page_obj': page_obj,
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_revenue': total_revenue,
+        'total_cost': total_cost,
+        'total_profit': total_profit,
+        'total_items_sold': total_items_sold,
+        'sort_by': sort_by,
+    }
+
+    return render(request, 'finances/product_profitability_report.html', context)
 
 # ============================================================================
 # GESTIÓN DE GASTOS
@@ -426,36 +636,42 @@ def daily_close_create(request):
     """Vista para crear un cierre diario"""
     if request.method == 'POST':
         form = DailyCloseForm(request.POST, user=request.user)
-        
+
         if form.is_valid():
             close_date = form.cleaned_data['date']
-            
-            # Verificar que no exista un cierre para esta fecha
-            if DailyClose.objects.filter(date=close_date).exists():
-                messages.error(request, f'Ya existe un cierre para la fecha {close_date.strftime("%d/%m/%Y")}.')
+
+            # ⭐ CORREGIDO: Usar transacción atómica para prevenir race conditions
+            try:
+                with transaction.atomic():
+                    # Verificar que no exista un cierre para esta fecha
+                    if DailyClose.objects.filter(date=close_date).exists():
+                        messages.error(request, f'Ya existe un cierre para la fecha {close_date.strftime("%d/%m/%Y")}.')
+                        return redirect('finances:daily_close_create')
+
+                    # Calcular métricas del día
+                    day_sales = Sale.objects.filter(date__date=close_date)
+                    sales_count = day_sales.count()
+                    sales_total_bs = day_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+
+                    day_expenses = Expense.objects.filter(date=close_date)
+                    expenses_total_bs = day_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+
+                    profit_bs = sales_total_bs - expenses_total_bs
+
+                    # Crear el cierre
+                    close = form.save(commit=False)
+                    close.sales_count = sales_count
+                    close.sales_total_bs = sales_total_bs
+                    close.expenses_total_bs = expenses_total_bs
+                    close.profit_bs = profit_bs
+                    close.closed_by = request.user
+                    close.save()
+
+                    messages.success(request, f'Cierre del {close_date.strftime("%d/%m/%Y")} realizado exitosamente.')
+                    return redirect('finances:daily_close_detail', pk=close.pk)
+            except Exception as e:
+                messages.error(request, f'Error al crear el cierre: {str(e)}')
                 return redirect('finances:daily_close_create')
-            
-            # Calcular métricas del día
-            day_sales = Sale.objects.filter(date__date=close_date)
-            sales_count = day_sales.count()
-            sales_total_bs = day_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
-            
-            day_expenses = Expense.objects.filter(date=close_date)
-            expenses_total_bs = day_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
-            
-            profit_bs = sales_total_bs - expenses_total_bs
-            
-            # Crear el cierre
-            close = form.save(commit=False)
-            close.sales_count = sales_count
-            close.sales_total_bs = sales_total_bs
-            close.expenses_total_bs = expenses_total_bs
-            close.profit_bs = profit_bs
-            close.closed_by = request.user
-            close.save()
-            
-            messages.success(request, f'Cierre del {close_date.strftime("%d/%m/%Y")} realizado exitosamente.')
-            return redirect('finances:daily_close_detail', pk=close.pk)
     else:
         form = DailyCloseForm(user=request.user)
     
