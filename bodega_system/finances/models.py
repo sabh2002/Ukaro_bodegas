@@ -26,10 +26,25 @@ class Expense(models.Model):
         max_length=255,
         verbose_name="Descripción"
     )
-    amount_bs = models.DecimalField(
-        max_digits=12, 
+    # Montos en ambas monedas (USD es la principal)
+    amount_usd = models.DecimalField(
+        max_digits=12,
         decimal_places=2,
-        verbose_name="Monto (Bs)"
+        verbose_name="Monto (USD)",
+        help_text="Monto en dólares estadounidenses"
+    )
+    amount_bs = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Monto (Bs)",
+        help_text="Monto en bolívares (conversión automática)"
+    )
+    exchange_rate_used = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1.00,
+        verbose_name="Tasa de Cambio Usada",
+        help_text="Tasa de cambio al momento de registrar el gasto"
     )
     date = models.DateField(
         verbose_name="Fecha"
@@ -60,7 +75,7 @@ class Expense(models.Model):
         ordering = ['-date']
     
     def __str__(self):
-        return f"{self.get_category_display()} - {self.description} - {self.amount_bs} Bs"
+        return f"{self.get_category_display()} - {self.description} - ${self.amount_usd} USD"
     
     def get_absolute_url(self):
         return reverse('finances:expense_detail', args=[str(self.id)])
@@ -96,7 +111,7 @@ class ExpenseReceipt(models.Model):
         return f"Comprobante - {self.expense.description}"
 
 class DailyClose(models.Model):
-    """Modelo para cierre diario"""
+    """Modelo para cierre diario con moneda principal USD"""
     date = models.DateField(
         unique=True,
         verbose_name="Fecha"
@@ -104,21 +119,62 @@ class DailyClose(models.Model):
     sales_count = models.IntegerField(
         verbose_name="Cantidad de Ventas"
     )
-    sales_total_bs = models.DecimalField(
-        max_digits=12, 
+
+    # Totales en USD (moneda principal)
+    sales_total_usd = models.DecimalField(
+        max_digits=12,
         decimal_places=2,
-        verbose_name="Total Ventas (Bs)"
+        verbose_name="Total Ventas (USD)",
+        help_text="Total de ventas en dólares"
+    )
+    expenses_total_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Total Gastos (USD)",
+        help_text="Total de gastos en dólares"
+    )
+    real_profit_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Ganancia Real (USD)",
+        help_text="Ganancia calculada: (precio_venta - precio_compra) × cantidad"
+    )
+    net_profit_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Ganancia Neta (USD)",
+        help_text="Ganancia real menos gastos"
+    )
+
+    # Totales en Bs (referencia)
+    sales_total_bs = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Total Ventas (Bs)",
+        help_text="Total de ventas en bolívares"
     )
     expenses_total_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
-        verbose_name="Total Gastos (Bs)"
+        verbose_name="Total Gastos (Bs)",
+        help_text="Total de gastos en bolívares"
     )
     profit_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
-        verbose_name="Ganancia (Bs)"
+        verbose_name="Ganancia (Bs)",
+        help_text="Ganancia en bolívares (referencia)"
     )
+
+    # Tasa de cambio usada
+    exchange_rate_used = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1.00,
+        verbose_name="Tasa de Cambio",
+        help_text="Tasa Bs/USD usada para el cierre"
+    )
+
     notes = models.TextField(
         blank=True,
         verbose_name="Notas"

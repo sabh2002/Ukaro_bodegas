@@ -39,21 +39,33 @@
             <div class="bg-white p-4 rounded-md shadow">
                 <p class="text-sm text-gray-600 mb-1">Total de Ventas</p>
                 <p class="text-2xl font-bold text-green-600">
-                    Bs {{ today_sales_total|floatformat:2 }}
+                    ${{ today_sales_total_usd|floatformat:2 }} USD
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Bs {{ today_sales_total_bs|floatformat:2 }}
                 </p>
             </div>
 
             <div class="bg-white p-4 rounded-md shadow">
                 <p class="text-sm text-gray-600 mb-1">Total de Gastos</p>
                 <p class="text-2xl font-bold text-red-600">
-                    Bs {{ today_expenses_total|floatformat:2 }}
+                    ${{ today_expenses_total_usd|floatformat:2 }} USD
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Bs {{ today_expenses_total_bs|floatformat:2 }}
                 </p>
             </div>
 
             <div class="bg-white p-4 rounded-md shadow">
                 <p class="text-sm text-gray-600 mb-1">Ganancia Neta</p>
-                <p class="text-2xl font-bold {% if today_profit >= 0 %}text-green-600{% else %}text-orange-600{% endif %}">
-                    Bs {{ today_profit|floatformat:2 }}
+                <p class="text-2xl font-bold {% if today_profit_usd >= 0 %}text-green-600{% else %}text-orange-600{% endif %}">
+                    ${{ today_profit_usd|floatformat:2 }} USD
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Bs {{ today_profit_bs|floatformat:2 }}
+                </p>
+                <p class="text-xs text-blue-600 mt-1">
+                    Ganancia real calculada por productos
                 </p>
             </div>
         </div>

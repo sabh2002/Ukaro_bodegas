@@ -633,14 +633,14 @@ def daily_close_detail(request, pk):
 
 @login_required
 def daily_close_create(request):
-    """Vista para crear un cierre diario"""
+    """Vista para crear un cierre diario con cálculo REAL de ganancias"""
     if request.method == 'POST':
         form = DailyCloseForm(request.POST, user=request.user)
 
         if form.is_valid():
             close_date = form.cleaned_data['date']
 
-            # ⭐ CORREGIDO: Usar transacción atómica para prevenir race conditions
+            # Usar transacción atómica para prevenir race conditions
             try:
                 with transaction.atomic():
                     # Verificar que no exista un cierre para esta fecha
@@ -648,51 +648,119 @@ def daily_close_create(request):
                         messages.error(request, f'Ya existe un cierre para la fecha {close_date.strftime("%d/%m/%Y")}.')
                         return redirect('finances:daily_close_create')
 
-                    # Calcular métricas del día
+                    # Obtener tasa de cambio
+                    current_rate = ExchangeRate.get_latest_rate()
+                    if not current_rate:
+                        messages.error(request, 'No hay tasa de cambio configurada.')
+                        return redirect('finances:daily_close_create')
+
+                    rate = current_rate.bs_to_usd
+
+                    # Calcular ventas del día
                     day_sales = Sale.objects.filter(date__date=close_date)
                     sales_count = day_sales.count()
                     sales_total_bs = day_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+                    sales_total_usd = day_sales.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
 
+                    # Calcular gastos del día (ahora usando amount_usd)
                     day_expenses = Expense.objects.filter(date=close_date)
+                    expenses_total_usd = day_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
                     expenses_total_bs = day_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
 
-                    profit_bs = sales_total_bs - expenses_total_bs
+                    # ⭐ CÁLCULO REAL DE GANANCIAS POR PRODUCTO
+                    # Ganancia = (precio_venta - precio_compra) × cantidad
+                    day_sale_items = SaleItem.objects.filter(
+                        sale__date__date=close_date,
+                        product__isnull=False
+                    ).select_related('product')
+
+                    real_profit_usd = Decimal('0.00')
+                    for item in day_sale_items:
+                        if not item.product:
+                            continue
+                        sale_price = item.price_usd or Decimal('0.00')
+                        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+                        item_profit = (sale_price - purchase_price) * item.quantity
+                        real_profit_usd += item_profit
+
+                    # Ganancia neta = ganancia real por productos - gastos
+                    net_profit_usd = real_profit_usd - expenses_total_usd
+
+                    # Convertir a Bs para referencia
+                    real_profit_bs = real_profit_usd * rate
+                    net_profit_bs = net_profit_usd * rate
+                    profit_bs = sales_total_bs - expenses_total_bs  # Método antiguo para comparación
 
                     # Crear el cierre
                     close = form.save(commit=False)
                     close.sales_count = sales_count
+                    close.sales_total_usd = sales_total_usd
                     close.sales_total_bs = sales_total_bs
+                    close.expenses_total_usd = expenses_total_usd
                     close.expenses_total_bs = expenses_total_bs
-                    close.profit_bs = profit_bs
+                    close.real_profit_usd = real_profit_usd
+                    close.net_profit_usd = net_profit_usd
+                    close.profit_bs = net_profit_bs  # Usar ganancia neta en Bs
+                    close.exchange_rate_used = rate
                     close.closed_by = request.user
                     close.save()
 
-                    messages.success(request, f'Cierre del {close_date.strftime("%d/%m/%Y")} realizado exitosamente.')
+                    messages.success(request, f'Cierre del {close_date.strftime("%d/%m/%Y")} realizado exitosamente. Ganancia neta: ${net_profit_usd:.2f} USD.')
                     return redirect('finances:daily_close_detail', pk=close.pk)
             except Exception as e:
                 messages.error(request, f'Error al crear el cierre: {str(e)}')
                 return redirect('finances:daily_close_create')
     else:
         form = DailyCloseForm(user=request.user)
-    
-    # Obtener datos del día para mostrar en el formulario
+
+    # Obtener datos del día para mostrar en el formulario (vista previa)
     today = date.today()
+    current_rate = ExchangeRate.get_latest_rate()
+
     today_sales = Sale.objects.filter(date__date=today)
     today_sales_count = today_sales.count()
-    today_sales_total = today_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
-    
+    today_sales_total_usd = today_sales.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
+    today_sales_total_bs = today_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+
     today_expenses = Expense.objects.filter(date=today)
-    today_expenses_total = today_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
-    
-    today_profit = today_sales_total - today_expenses_total
-    
+    today_expenses_total_usd = today_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
+    today_expenses_total_bs = today_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+
+    # Calcular ganancia REAL del día
+    today_sale_items = SaleItem.objects.filter(
+        sale__date__date=today,
+        product__isnull=False
+    ).select_related('product')
+
+    today_real_profit_usd = Decimal('0.00')
+    for item in today_sale_items:
+        if not item.product:
+            continue
+        sale_price = item.price_usd or Decimal('0.00')
+        purchase_price = item.product.purchase_price_usd or Decimal('0.00')
+        item_profit = (sale_price - purchase_price) * item.quantity
+        today_real_profit_usd += item_profit
+
+    # Ganancia neta
+    today_net_profit_usd = today_real_profit_usd - today_expenses_total_usd
+
+    # Convertir a Bs si hay tasa
+    if current_rate:
+        today_net_profit_bs = today_net_profit_usd * current_rate.bs_to_usd
+    else:
+        today_net_profit_bs = Decimal('0.00')
+
     return render(request, 'finances/daily_close_form.html', {
         'form': form,
         'today_sales_count': today_sales_count,
-        'today_sales_total': today_sales_total,
-        'today_expenses_total': today_expenses_total,
-        'today_profit': today_profit,
-        'title': 'Realizar Cierre Diario'
+        'today_sales_total_usd': today_sales_total_usd,
+        'today_sales_total_bs': today_sales_total_bs,
+        'today_expenses_total_usd': today_expenses_total_usd,
+        'today_expenses_total_bs': today_expenses_total_bs,
+        'today_profit_usd': today_net_profit_usd,
+        'today_profit_bs': today_net_profit_bs,
+        'title': 'Realizar Cierre Diario',
+        'current_rate': current_rate,
     })
 
 # ============================================================================
