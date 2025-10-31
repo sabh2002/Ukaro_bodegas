@@ -90,11 +90,46 @@
         <!-- Información financiera -->
         <div class="bg-blue-50 p-4 rounded-md">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Información Financiera</h3>
-            <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <!-- Monto Bs -->
+
+            <!-- Instrucción importante -->
+            <div class="bg-yellow-100 border-l-4 border-yellow-500 p-3 mb-4">
+                <p class="text-sm text-yellow-800">
+                    <strong>Importante:</strong> Ingrese el monto en <strong>USD</strong> o <strong>Bs</strong>. El sistema convertirá automáticamente a la otra moneda.
+                </p>
+            </div>
+
+            <!-- Tasa de cambio actual -->
+            <div class="mb-4 p-3 bg-white rounded border border-blue-200">
+                <p class="text-sm text-gray-700">
+                    <strong>Tasa de cambio actual:</strong>
+                    <span id="exchange-rate-display" class="font-mono text-blue-600">Cargando...</span> Bs/USD
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Monto USD (Principal) -->
+                <div>
+                    <label for="{{ form.amount_usd.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        Monto (USD) <span class="text-blue-600">Moneda Principal</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                        {{ form.amount_usd }}
+                    </div>
+                    {% if form.amount_usd.errors %}
+                        <div class="text-red-600 text-sm mt-1">
+                            {% for error in form.amount_usd.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <p class="text-xs text-gray-500 mt-1">{{ form.amount_usd.help_text }}</p>
+                </div>
+
+                <!-- Monto Bs (Referencia) -->
                 <div>
                     <label for="{{ form.amount_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                        Monto (Bs) <span class="text-red-500">*</span>
+                        Monto (Bs) <span class="text-gray-500">Referencia</span>
                     </label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Bs</span>
@@ -107,9 +142,18 @@
                             {% endfor %}
                         </div>
                     {% endif %}
-                    <p class="text-xs text-gray-500 mt-1">Ingrese el monto del gasto en bolívares</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ form.amount_bs.help_text }}</p>
                 </div>
             </div>
+
+            <!-- Errores no específicos de campo -->
+            {% if form.non_field_errors %}
+                <div class="mt-4 bg-red-50 border border-red-200 rounded p-3">
+                    {% for error in form.non_field_errors %}
+                        <p class="text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
 
         <!-- Detalles adicionales -->
@@ -212,4 +256,60 @@
         </div>
     </form>
 </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const amountUsdInput = document.getElementById('id_amount_usd');
+    const amountBsInput = document.getElementById('id_amount_bs');
+    const rateDisplay = document.getElementById('exchange-rate-display');
+
+    let exchangeRate = 36.00; // Valor por defecto
+    let isConverting = false; // Flag para evitar bucles infinitos
+
+    // Obtener tasa de cambio actual
+    fetch('/api/exchange-rate/latest/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.bs_to_usd) {
+                exchangeRate = parseFloat(data.bs_to_usd);
+                rateDisplay.textContent = exchangeRate.toFixed(2);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching exchange rate:', error);
+            rateDisplay.textContent = exchangeRate.toFixed(2) + ' (por defecto)';
+        });
+
+    // Convertir USD a Bs
+    amountUsdInput.addEventListener('input', function() {
+        if (isConverting) return;
+
+        const usdValue = parseFloat(this.value);
+        if (isNaN(usdValue) || usdValue === 0) {
+            return;
+        }
+
+        isConverting = true;
+        const bsValue = usdValue * exchangeRate;
+        amountBsInput.value = bsValue.toFixed(2);
+        isConverting = false;
+    });
+
+    // Convertir Bs a USD
+    amountBsInput.addEventListener('input', function() {
+        if (isConverting) return;
+
+        const bsValue = parseFloat(this.value);
+        if (isNaN(bsValue) || bsValue === 0) {
+            return;
+        }
+
+        isConverting = true;
+        const usdValue = bsValue / exchangeRate;
+        amountUsdInput.value = usdValue.toFixed(2);
+        isConverting = false;
+    });
+});
+</script>
 {% endblock %}

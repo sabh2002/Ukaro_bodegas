@@ -20,13 +20,13 @@ class ExpenseForm(forms.ModelForm):
             'category': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.TextInput(attrs={'class': 'form-input'}),
             'amount_usd': forms.NumberInput(attrs={
-                'class': 'form-input',
+                'class': 'form-input pl-8',
                 'step': '0.01',
                 'placeholder': 'Ingrese monto en USD',
                 'id': 'id_amount_usd'
             }),
             'amount_bs': forms.NumberInput(attrs={
-                'class': 'form-input',
+                'class': 'form-input pl-10',
                 'step': '0.01',
                 'placeholder': 'Ingrese monto en Bs',
                 'id': 'id_amount_bs'
