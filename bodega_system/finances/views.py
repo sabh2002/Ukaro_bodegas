@@ -29,7 +29,7 @@ def finance_dashboard(request):
     today_sales_count = today_sales.count()
 
     today_expenses = Expense.objects.filter(date=today)
-    today_expenses_total = today_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    today_expenses_total = today_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
 
     # ⭐ CORREGIDO: Calcular ganancia REAL del día (no solo ventas - gastos)
     today_sale_items = SaleItem.objects.filter(
@@ -67,7 +67,7 @@ def finance_dashboard(request):
     month_purchases_total_usd = month_purchases.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
     
     month_expenses = Expense.objects.filter(date__gte=this_month_start, date__lte=today)
-    month_expenses_total = month_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    month_expenses_total = month_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
 
     # Tasa de cambio actual (necesaria para conversiones)
     current_rate = ExchangeRate.get_latest_rate()
@@ -128,7 +128,7 @@ def finance_dashboard(request):
     expenses_by_category = month_expenses.values(
         'category'
     ).annotate(
-        total=Sum('amount_bs'),
+        total=Sum('amount_usd'),
         count=Count('id')
     ).order_by('-total')
 
@@ -263,7 +263,7 @@ def profits_report(request):
         date__gte=start_date,
         date__lte=end_date
     ).aggregate(
-        total_expenses=Sum('amount_bs'),
+        total_expenses=Sum('amount_usd'),
         expenses_count=Count('id')
     )
 
@@ -323,7 +323,7 @@ def profits_report(request):
         )['total'] or Decimal('0.00')
         
         day_expenses = Expense.objects.filter(date=current_date).aggregate(
-            total=Sum('amount_bs')
+            total=Sum('amount_usd')
         )['total'] or Decimal('0.00')
         
         day_profit = day_sales - day_purchases - day_expenses
@@ -507,7 +507,7 @@ def expense_list(request):
     page_obj = paginator.get_page(page_number)
     
     # Calcular total
-    total = expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    total = expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
     
     # Categorías para el filtro
     categories = Expense.EXPENSE_CATEGORIES
