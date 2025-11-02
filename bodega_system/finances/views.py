@@ -29,7 +29,7 @@ def finance_dashboard(request):
     today_sales_count = today_sales.count()
 
     today_expenses = Expense.objects.filter(date=today)
-    today_expenses_total = today_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    today_expenses_total_usd = today_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
 
     # ⭐ CORREGIDO: Calcular ganancia REAL del día (no solo ventas - gastos)
     today_sale_items = SaleItem.objects.filter(
@@ -50,8 +50,14 @@ def finance_dashboard(request):
     current_rate = ExchangeRate.get_latest_rate()
     today_real_profit_bs = today_real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
 
-    # Ganancia neta del día = ganancia por productos - gastos
-    today_net_profit_bs = today_real_profit_bs - today_expenses_total
+    # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
+    today_expenses_total_bs = today_expenses_total_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+    # Ganancia neta del día = ganancia por productos - gastos (ambos en Bs)
+    today_net_profit_bs = today_real_profit_bs - today_expenses_total_bs
+
+    # Calcular ganancia neta en USD también
+    today_net_profit_usd = today_real_profit_usd - today_expenses_total_usd
     
     # Métricas del mes
     month_sales = Sale.objects.filter(date__date__gte=this_month_start, date__date__lte=today)
@@ -67,7 +73,7 @@ def finance_dashboard(request):
     month_purchases_total_usd = month_purchases.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
     
     month_expenses = Expense.objects.filter(date__gte=this_month_start, date__lte=today)
-    month_expenses_total = month_expenses.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    month_expenses_total_usd = month_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
 
     # Tasa de cambio actual (necesaria para conversiones)
     current_rate = ExchangeRate.get_latest_rate()
@@ -109,13 +115,17 @@ def finance_dashboard(request):
     # Convertir ganancia real del mes a Bs
     month_real_profit_bs = month_real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
 
-    # ⭐ CORREGIDO: Ganancia neta REAL del mes = ganancia por productos - gastos
-    net_profit_real_bs = month_real_profit_bs - month_expenses_total
+    # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
+    month_expenses_total_bs = month_expenses_total_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+    # ⭐ CORREGIDO: Ganancia neta REAL del mes = ganancia por productos - gastos (ambos en Bs)
+    net_profit_real_bs = month_real_profit_bs - month_expenses_total_bs
 
     # Mantener cálculo aproximado para comparación (opcional)
     gross_profit_bs = month_sales_total_bs - month_purchases_total_bs
     gross_profit_usd = month_sales_total_usd - month_purchases_total_usd
-    net_profit_bs = gross_profit_bs - month_expenses_total  # Método aproximado
+    # ⭐ CORREGIDO: Convertir gastos a Bs antes de restar
+    net_profit_bs = gross_profit_bs - month_expenses_total_bs  # Método aproximado
 
     # Ordenar por ganancia y tomar top 10
     top_products_by_profit = sorted(
@@ -124,27 +134,30 @@ def finance_dashboard(request):
         reverse=True
     )[:10]
     
-    # Gastos por categoría este mes
+    # Gastos por categoría este mes (en USD)
     expenses_by_category = month_expenses.values(
         'category'
     ).annotate(
-        total=Sum('amount_bs'),
+        total_usd=Sum('amount_usd'),
         count=Count('id')
-    ).order_by('-total')
+    ).order_by('-total_usd')
 
     context = {
         'today_sales_count': today_sales_count,
         'today_sales_total_bs': today_sales_total_bs,
-        'today_expenses_total': today_expenses_total,
+        'today_expenses_total': today_expenses_total_bs,  # ⭐ CORREGIDO: En Bs
+        'today_expenses_total_usd': today_expenses_total_usd,  # ⭐ NUEVO: En USD
         # ⭐ CORREGIDO: Usar ganancia REAL del día, no solo ventas - gastos
         'today_profit': today_net_profit_bs,
+        'today_net_profit_usd': today_net_profit_usd,  # ⭐ NUEVO: Ganancia neta en USD
         'today_real_profit_usd': today_real_profit_usd,  # Ganancia en USD
 
         'month_sales_total_bs': month_sales_total_bs,
         'month_sales_total_usd': month_sales_total_usd,
         'month_purchases_total_bs': month_purchases_total_bs,
         'month_purchases_total_usd': month_purchases_total_usd,
-        'month_expenses_total': month_expenses_total,
+        'month_expenses_total': month_expenses_total_bs,  # ⭐ CORREGIDO: En Bs
+        'month_expenses_total_usd': month_expenses_total_usd,  # ⭐ NUEVO: En USD
         # Métodos de cálculo aproximado (para comparación)
         'gross_profit_bs': gross_profit_bs,
         'gross_profit_usd': gross_profit_usd,
@@ -263,7 +276,7 @@ def profits_report(request):
         date__gte=start_date,
         date__lte=end_date
     ).aggregate(
-        total_expenses=Sum('amount_bs'),
+        total_expenses_usd=Sum('amount_usd'),  # ⭐ CORREGIDO: Sumar en USD
         expenses_count=Count('id')
     )
 
@@ -272,7 +285,7 @@ def profits_report(request):
     total_sales_usd = sales_data['total_sales_usd'] or Decimal('0.00')
     total_purchases_bs = purchases_data['total_purchases_bs'] or Decimal('0.00')
     total_purchases_usd = purchases_data['total_purchases_usd'] or Decimal('0.00')
-    total_expenses = expenses_data['total_expenses'] or Decimal('0.00')
+    total_expenses_usd = expenses_data['total_expenses_usd'] or Decimal('0.00')
 
     # ⭐ NUEVO: Calcular ganancia REAL por producto vendido
     # Ganancia = (precio_venta - precio_compra) × cantidad
@@ -299,13 +312,18 @@ def profits_report(request):
     current_rate = ExchangeRate.get_latest_rate()
     real_profit_bs = real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
 
-    # Ganancia neta real = ganancia por productos - gastos
-    net_profit_real_bs = real_profit_bs - total_expenses
+    # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
+    total_expenses_bs = total_expenses_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+    # Ganancia neta real = ganancia por productos - gastos (ambos en Bs)
+    net_profit_real_bs = real_profit_bs - total_expenses_bs
+    net_profit_real_usd = real_profit_usd - total_expenses_usd  # ⭐ NUEVO: También en USD
 
     # Mantener cálculo anterior para comparación
     gross_profit_bs = total_sales_bs - total_purchases_bs
     gross_profit_usd = total_sales_usd - total_purchases_usd
-    net_profit_bs = gross_profit_bs - total_expenses
+    # ⭐ CORREGIDO: Convertir gastos a Bs antes de restar
+    net_profit_bs = gross_profit_bs - total_expenses_bs
     
     # Ganancias por día (para gráfico)
     daily_profits = []
@@ -322,17 +340,20 @@ def profits_report(request):
             total=Sum('total_bs')
         )['total'] or Decimal('0.00')
         
-        day_expenses = Expense.objects.filter(date=current_date).aggregate(
-            total=Sum('amount_bs')
+        day_expenses_usd = Expense.objects.filter(date=current_date).aggregate(
+            total=Sum('amount_usd')  # ⭐ CORREGIDO: Sumar en USD
         )['total'] or Decimal('0.00')
-        
-        day_profit = day_sales - day_purchases - day_expenses
+
+        # ⭐ CORREGIDO: Convertir gastos USD a Bs para el gráfico
+        day_expenses_bs = day_expenses_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+
+        day_profit = day_sales - day_purchases - day_expenses_bs  # ⭐ CORREGIDO: Restar Bs
         
         daily_profits.append({
             'date': current_date.strftime('%d/%m'),
             'sales': float(day_sales),
             'purchases': float(day_purchases),
-            'expenses': float(day_expenses),
+            'expenses': float(day_expenses_bs),  # ⭐ CORREGIDO: Usar Bs
             'profit': float(day_profit),
         })
         
@@ -346,7 +367,8 @@ def profits_report(request):
         'total_sales_usd': total_sales_usd,
         'total_purchases_bs': total_purchases_bs,
         'total_purchases_usd': total_purchases_usd,
-        'total_expenses': total_expenses,
+        'total_expenses': total_expenses_bs,  # ⭐ CORREGIDO: En Bs
+        'total_expenses_usd': total_expenses_usd,  # ⭐ NUEVO: En USD
         'gross_profit_bs': gross_profit_bs,
         'gross_profit_usd': gross_profit_usd,
         'net_profit_bs': net_profit_bs,
@@ -354,6 +376,7 @@ def profits_report(request):
         'real_profit_usd': real_profit_usd,
         'real_profit_bs': real_profit_bs,
         'net_profit_real_bs': net_profit_real_bs,
+        'net_profit_real_usd': net_profit_real_usd,  # ⭐ NUEVO: Ganancia neta real en USD
         'daily_profits': daily_profits,
         'sales_count': sales_data['sales_count'],
         'purchases_count': purchases_data['purchases_count'],

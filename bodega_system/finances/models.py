@@ -27,9 +27,20 @@ class Expense(models.Model):
         verbose_name="Descripción"
     )
     amount_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
         verbose_name="Monto (Bs)"
+    )
+    amount_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Monto (USD)"
+    )
+    exchange_rate_used = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Tasa de Cambio Utilizada",
+        help_text="Tasa Bs/USD utilizada al registrar el gasto"
     )
     date = models.DateField(
         verbose_name="Fecha"
