@@ -23,10 +23,18 @@ class Customer(models.Model):
         verbose_name="Dirección"
     )
     credit_limit_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
         default=0,
-        verbose_name="Límite de Crédito (Bs)"
+        verbose_name="Límite de Crédito (Bs)",
+        help_text="Límite en Bs (deprecado, usar credit_limit_usd)"
+    )
+    credit_limit_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Límite de Crédito (USD)",
+        help_text="Límite principal en USD"
     )
     notes = models.TextField(
         blank=True,
@@ -58,15 +66,40 @@ class Customer(models.Model):
     
     @property
     def total_credit_used(self):
-        """Calcula el total de crédito utilizado"""
+        """Calcula el total de crédito utilizado en USD"""
+        from django.db.models import Sum
+        total = self.credits.filter(is_paid=False).aggregate(Sum('amount_usd'))
+        return total['amount_usd__sum'] or 0
+
+    @property
+    def total_credit_used_bs(self):
+        """Calcula el total de crédito utilizado en Bs (para compatibilidad)"""
         from django.db.models import Sum
         total = self.credits.filter(is_paid=False).aggregate(Sum('amount_bs'))
         return total['amount_bs__sum'] or 0
-    
+
     @property
     def available_credit(self):
-        """Calcula el crédito disponible"""
-        return self.credit_limit_bs - self.total_credit_used
+        """Calcula el crédito disponible en USD"""
+        return self.credit_limit_usd - self.total_credit_used
+
+    @property
+    def available_credit_bs(self):
+        """Calcula el crédito disponible en Bs a tasa actual"""
+        from utils.models import ExchangeRate
+        rate = ExchangeRate.get_latest_rate()
+        if rate:
+            return self.available_credit * rate.bs_to_usd
+        return 0
+
+    @property
+    def credit_limit_bs_current(self):
+        """Límite en Bs a tasa actual"""
+        from utils.models import ExchangeRate
+        rate = ExchangeRate.get_latest_rate()
+        if rate:
+            return self.credit_limit_usd * rate.bs_to_usd
+        return 0
 
 class CustomerCredit(models.Model):
     """Modelo para los créditos de clientes"""
@@ -83,9 +116,20 @@ class CustomerCredit(models.Model):
         verbose_name="Venta"
     )
     amount_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
         verbose_name="Monto (Bs)"
+    )
+    amount_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Monto (USD)"
+    )
+    exchange_rate_used = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Tasa de Cambio Utilizada",
+        help_text="Tasa Bs/USD utilizada al crear el crédito"
     )
     date_created = models.DateTimeField(
         auto_now_add=True,
@@ -128,9 +172,20 @@ class CreditPayment(models.Model):
         verbose_name="Crédito"
     )
     amount_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
         verbose_name="Monto (Bs)"
+    )
+    amount_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Monto (USD)"
+    )
+    exchange_rate_used = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Tasa de Cambio Utilizada",
+        help_text="Tasa Bs/USD utilizada al momento del pago"
     )
     payment_date = models.DateTimeField(
         auto_now_add=True,

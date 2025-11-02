@@ -97,11 +97,14 @@ def create_sale_api(request):
             if sale.is_credit and customer:
                 from datetime import datetime, timedelta
                 due_date = datetime.now().date() + timedelta(days=30)
-                
+
+                # ⭐ CORREGIDO: Guardar USD y tasa de cambio del crédito
                 CustomerCredit.objects.create(
                     customer=customer,
                     sale=sale,
-                    amount_bs=sale.total_bs,
+                    amount_bs=sale.total_bs,              # Bs
+                    amount_usd=sale.total_usd,            # ✅ USD
+                    exchange_rate_used=sale.exchange_rate_used,  # ✅ Tasa utilizada
                     date_due=due_date,
                     notes=f'Crédito por venta #{sale.id}'
                 )
