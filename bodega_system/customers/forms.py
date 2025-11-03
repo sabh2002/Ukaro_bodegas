@@ -80,31 +80,51 @@ class CreditPaymentForm(forms.ModelForm):
     def __init__(self, *args, credit=None, **kwargs):
         self.credit = credit
         super().__init__(*args, **kwargs)
-        
+
         if credit:
-            # Establecer monto pendiente por defecto
-            pending_amount = credit.amount_bs
-            for payment in credit.payments.all():
-                pending_amount -= payment.amount_bs
-            
-            self.fields['amount_bs'].initial = pending_amount
-            self.fields['amount_bs'].widget.attrs['max'] = pending_amount
+            # ⭐ CORREGIDO: Calcular monto pendiente en USD
+            from django.db.models import Sum
+            total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            pending_amount_usd = credit.amount_usd - total_paid_usd
+
+            # Calcular en Bs (para backward compatibility)
+            total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
+            pending_amount_bs = credit.amount_bs - total_paid_bs
+
+            self.fields['amount_bs'].initial = pending_amount_bs
+            self.fields['amount_bs'].widget.attrs['max'] = pending_amount_bs
+
+            # ⭐ NUEVO: Agregar help_text con información USD
+            from utils.models import ExchangeRate
+            current_rate = ExchangeRate.get_latest_rate()
+            if current_rate:
+                equivalent_usd = pending_amount_bs / current_rate.bs_to_usd
+                self.fields['amount_bs'].help_text = (
+                    f'Pendiente: ${pending_amount_usd:.2f} USD '
+                    f'(Bs {pending_amount_bs:.2f} a tasa actual {current_rate.bs_to_usd}). '
+                    f'Ingrese monto en Bs, se calculará USD automáticamente.'
+                )
     
     def clean_amount_bs(self):
         """Validar monto de pago"""
         amount = self.cleaned_data.get('amount_bs')
-        
+
         if amount <= 0:
             raise forms.ValidationError('El monto debe ser mayor a cero.')
-        
+
         if self.credit:
-            # Calcular monto pendiente
-            pending_amount = self.credit.amount_bs
-            for payment in self.credit.payments.all():
-                pending_amount -= payment.amount_bs
-            
-            if amount > pending_amount:
-                raise forms.ValidationError(
-                    f'El monto excede el saldo pendiente ({pending_amount} Bs).')
-        
+            # ⭐ CORREGIDO: Calcular monto pendiente usando USD (más preciso)
+            from django.db.models import Sum
+            total_paid_usd = self.credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            pending_amount_usd = self.credit.amount_usd - total_paid_usd
+
+            # Convertir monto ingresado a USD para validar
+            from utils.models import ExchangeRate
+            current_rate = ExchangeRate.get_latest_rate()
+            if current_rate:
+                amount_usd = amount / current_rate.bs_to_usd
+                if amount_usd > pending_amount_usd:
+                    raise forms.ValidationError(
+                        f'El monto excede el saldo pendiente (${pending_amount_usd:.2f} USD).')
+
         return amount

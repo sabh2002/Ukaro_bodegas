@@ -182,19 +182,31 @@ def credit_list(request):
 def credit_detail(request, pk):
     """Vista para ver detalles de un crédito - Solo Administradores"""
     credit = get_object_or_404(CustomerCredit, pk=pk)
-    
+
     # Obtener pagos
     payments = credit.payments.all().order_by('-payment_date')
-    
-    # Calcular saldo pendiente
-    total_paid = payments.aggregate(total=Sum('amount_bs'))['total'] or 0
-    pending_amount = credit.amount_bs - total_paid
-    
+
+    # ⭐ CORREGIDO: Calcular saldo pendiente en ambas monedas
+    total_paid_bs = payments.aggregate(total=Sum('amount_bs'))['total'] or 0
+    total_paid_usd = payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+
+    pending_amount_bs = credit.amount_bs - total_paid_bs
+    pending_amount_usd = credit.amount_usd - total_paid_usd
+
+    # ⭐ NUEVO: Tasa actual para conversiones
+    from utils.models import ExchangeRate
+    current_rate = ExchangeRate.get_latest_rate()
+
     return render(request, 'customers/credit_detail.html', {
         'credit': credit,
         'payments': payments,
-        'total_paid': total_paid,
-        'pending_amount': pending_amount,
+        'total_paid': total_paid_bs,  # Mantener para compatibilidad
+        'total_paid_bs': total_paid_bs,
+        'total_paid_usd': total_paid_usd,
+        'pending_amount': pending_amount_bs,  # Mantener para compatibilidad
+        'pending_amount_bs': pending_amount_bs,
+        'pending_amount_usd': pending_amount_usd,
+        'current_rate': current_rate,
     })
 
 @admin_required
@@ -240,30 +252,54 @@ def credit_payment(request, pk):
             payment = form.save(commit=False)
             payment.credit = credit
             payment.received_by = request.user
+
+            # ⭐ NUEVO: Calcular USD y guardar tasa de cambio utilizada
+            from utils.models import ExchangeRate
+            current_rate = ExchangeRate.get_latest_rate()
+            if current_rate:
+                payment.exchange_rate_used = current_rate.bs_to_usd
+                payment.amount_usd = payment.amount_bs / current_rate.bs_to_usd
+            else:
+                # Fallback si no hay tasa configurada
+                from decimal import Decimal
+                payment.exchange_rate_used = Decimal('36.00')
+                payment.amount_usd = payment.amount_bs / Decimal('36.00')
+
             payment.save()
-            
-            # Calcular si el crédito está pagado completamente
-            total_paid = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
-            if total_paid >= credit.amount_bs:
+
+            # ⭐ CORREGIDO: Calcular si el crédito está pagado completamente (usar USD)
+            total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            if total_paid_usd >= credit.amount_usd:
                 credit.is_paid = True
                 credit.date_paid = timezone.now()
                 credit.save()
                 messages.success(request, 'Crédito pagado completamente.')
             else:
                 messages.success(request, 'Pago registrado exitosamente.')
-            
+
             return redirect('customers:customer_detail', pk=credit.customer.pk)
     else:
         form = CreditPaymentForm(credit=credit)
-    
-    # Calcular saldo pendiente
-    total_paid = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
-    pending_amount = credit.amount_bs - total_paid
-    
+
+    # ⭐ CORREGIDO: Calcular saldo pendiente en ambas monedas
+    total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
+    total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+    pending_amount_bs = credit.amount_bs - total_paid_bs
+    pending_amount_usd = credit.amount_usd - total_paid_usd
+
+    # ⭐ NUEVO: Tasa actual para mostrar en template
+    from utils.models import ExchangeRate
+    current_rate = ExchangeRate.get_latest_rate()
+
     return render(request, 'customers/credit_payment.html', {
         'form': form,
         'credit': credit,
-        'total_paid': total_paid,
-        'pending_amount': pending_amount,
+        'total_paid': total_paid_bs,  # Mantener para compatibilidad
+        'total_paid_bs': total_paid_bs,
+        'total_paid_usd': total_paid_usd,
+        'pending_amount': pending_amount_bs,  # Mantener para compatibilidad
+        'pending_amount_bs': pending_amount_bs,
+        'pending_amount_usd': pending_amount_usd,
+        'current_rate': current_rate,
         'title': 'Registrar Pago'
     })
