@@ -573,10 +573,15 @@ def expense_create(request):
     else:
         form = ExpenseForm(user=request.user)
         formset = ExpenseReceiptFormset()
-    
+
+    # Pasar tasa de cambio actual para mostrar USD
+    from utils.models import ExchangeRate
+    current_rate = ExchangeRate.get_latest_rate()
+
     return render(request, 'finances/expense_form.html', {
         'form': form,
         'formset': formset,
+        'current_rate': current_rate,
         'title': 'Registrar Nuevo Gasto'
     })
 
@@ -599,11 +604,16 @@ def expense_update(request, pk):
     else:
         form = ExpenseForm(instance=expense, user=request.user)
         formset = ExpenseReceiptFormset(instance=expense)
-    
+
+    # Pasar tasa de cambio actual para mostrar USD
+    from utils.models import ExchangeRate
+    current_rate = ExchangeRate.get_latest_rate()
+
     return render(request, 'finances/expense_form.html', {
         'form': form,
         'formset': formset,
         'expense': expense,
+        'current_rate': current_rate,
         'title': 'Editar Gasto'
     })
 

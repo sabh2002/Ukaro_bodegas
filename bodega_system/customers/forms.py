@@ -68,12 +68,14 @@ class CreditForm(forms.ModelForm):
 
 class CreditPaymentForm(forms.ModelForm):
     """Formulario para pagos de créditos"""
-    
+
     class Meta:
         model = CreditPayment
-        fields = ['amount_bs', 'notes']
+        fields = ['amount_bs', 'payment_method', 'mobile_reference', 'notes']
         widgets = {
             'amount_bs': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
+            'mobile_reference': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 2}),
         }
     
@@ -128,3 +130,15 @@ class CreditPaymentForm(forms.ModelForm):
                         f'El monto excede el saldo pendiente (${pending_amount_usd:.2f} USD).')
 
         return amount
+
+    def clean(self):
+        """Validar mobile_reference cuando payment_method es 'mobile'"""
+        cleaned_data = super().clean()
+        payment_method = cleaned_data.get('payment_method')
+        mobile_reference = cleaned_data.get('mobile_reference')
+
+        if payment_method == 'mobile' and not mobile_reference:
+            self.add_error('mobile_reference',
+                          'La referencia es requerida para pagos móviles.')
+
+        return cleaned_data

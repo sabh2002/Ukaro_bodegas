@@ -33,7 +33,14 @@
         </a>
     </div>
 
-    <form method="post" enctype="multipart/form-data" class="space-y-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-6"
+          x-data="{
+              amountBs: {{ expense.amount_bs|default:0 }},
+              exchangeRate: {{ current_rate.bs_to_usd|default:36 }},
+              calculateUsd() {
+                  return (this.amountBs / this.exchangeRate).toFixed(2);
+              }
+          }">
         {% csrf_token %}
 
         <!-- Información básica -->
@@ -98,7 +105,14 @@
                     </label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Bs</span>
-                        {{ form.amount_bs }}
+                        <input type="number"
+                               name="amount_bs"
+                               id="{{ form.amount_bs.id_for_label }}"
+                               step="0.01"
+                               class="form-input pl-12"
+                               x-model.number="amountBs"
+                               value="{{ expense.amount_bs|default:'' }}"
+                               required>
                     </div>
                     {% if form.amount_bs.errors %}
                         <div class="text-red-600 text-sm mt-1">
@@ -108,6 +122,17 @@
                         </div>
                     {% endif %}
                     <p class="text-xs text-gray-500 mt-1">Ingrese el monto del gasto en bolívares</p>
+
+                    <!-- Display USD calculado dinámicamente -->
+                    <div class="mt-3 p-3 bg-white border border-blue-200 rounded-md">
+                        <p class="text-sm text-gray-600">
+                            <span class="font-medium">Equivalente en USD:</span>
+                            <span class="text-xl font-bold text-blue-600 ml-2">$<span x-text="calculateUsd()">0.00</span> USD</span>
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Tasa de cambio: <span class="font-semibold">{{ current_rate.bs_to_usd|default:'36.00' }}</span> Bs/USD
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

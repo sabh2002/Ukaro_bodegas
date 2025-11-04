@@ -165,6 +165,13 @@ class CustomerCredit(models.Model):
 
 class CreditPayment(models.Model):
     """Modelo para los pagos de créditos"""
+
+    PAYMENT_METHODS = (
+        ('cash', 'Efectivo'),
+        ('card', 'Punto de Venta'),
+        ('mobile', 'Pago Móvil'),
+    )
+
     credit = models.ForeignKey(
         CustomerCredit,
         on_delete=models.PROTECT,
@@ -191,6 +198,18 @@ class CreditPayment(models.Model):
         auto_now_add=True,
         verbose_name="Fecha de Pago"
     )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHODS,
+        default='cash',
+        verbose_name="Método de Pago"
+    )
+    mobile_reference = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="Referencia de Pago Móvil"
+    )
     received_by = models.ForeignKey(
         'accounts.User',
         on_delete=models.PROTECT,
@@ -206,6 +225,23 @@ class CreditPayment(models.Model):
         verbose_name = "Pago de Crédito"
         verbose_name_plural = "Pagos de Créditos"
         ordering = ['-payment_date']
-    
+
     def __str__(self):
         return f"Pago de {self.amount_bs} Bs - {self.payment_date.strftime('%d/%m/%Y')}"
+
+    def get_payment_method_icon(self):
+        """Retorna el icono del método de pago"""
+        icons = {
+            'cash': '💵',
+            'card': '💳',
+            'mobile': '📱'
+        }
+        return icons.get(self.payment_method, '💰')
+
+    def get_payment_method_display_with_icon(self):
+        """Retorna el método de pago con icono"""
+        icon = self.get_payment_method_icon()
+        display = self.get_payment_method_display()
+        if self.payment_method == 'mobile' and self.mobile_reference:
+            return f"{icon} {display} (Ref: {self.mobile_reference})"
+        return f"{icon} {display}"
