@@ -13,7 +13,7 @@ def populate_customer_credit_usd_fields(apps, schema_editor):
 
     # Obtener tasa de cambio más reciente
     try:
-        latest_rate = ExchangeRate.objects.latest('created_at')
+        latest_rate = ExchangeRate.objects.latest('date')
         rate = latest_rate.bs_to_usd
     except ExchangeRate.DoesNotExist:
         # Fallback si no hay tasa configurada
