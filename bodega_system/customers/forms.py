@@ -7,25 +7,31 @@ from .models import Customer, CustomerCredit, CreditPayment
 
 class CustomerForm(forms.ModelForm):
     """Formulario para clientes"""
-    
+
     class Meta:
         model = Customer
         fields = [
-            'name', 'phone', 'email', 'address', 
-            'credit_limit_bs', 'notes', 'is_active'
+            'name', 'phone', 'email', 'address',
+            'credit_limit_usd', 'notes', 'is_active'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'phone': forms.TextInput(attrs={'class': 'form-input'}),
             'email': forms.EmailInput(attrs={'class': 'form-input'}),
             'address': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
-            'credit_limit_bs': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'credit_limit_usd': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
+        }
+        labels = {
+            'credit_limit_usd': 'Límite de Crédito (USD)',
+        }
+        help_texts = {
+            'credit_limit_usd': 'Límite de crédito en dólares. El equivalente en Bs se calcula automáticamente.',
         }
 
 class CreditForm(forms.ModelForm):
     """Formulario para créditos de clientes"""
-    
+
     class Meta:
         model = CustomerCredit
         fields = ['customer', 'amount_bs', 'date_due', 'notes']
@@ -35,34 +41,45 @@ class CreditForm(forms.ModelForm):
             'date_due': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
         }
-    
+        labels = {
+            'amount_bs': 'Monto (Bs)',
+        }
+        help_texts = {
+            'amount_bs': 'Monto en bolívares. El equivalente en USD se calcula automáticamente.',
+        }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # Establecer fecha de vencimiento por defecto (30 días)
         if not self.instance.pk and not self.initial.get('date_due'):
             self.initial['date_due'] = (timezone.now() + timedelta(days=30)).date()
-        
-        # Filtrar solo clientes con crédito disponible
+
+        # Filtrar solo clientes con crédito disponible (usar USD)
         self.fields['customer'].queryset = Customer.objects.filter(
-            is_active=True, 
-            credit_limit_bs__gt=0
+            is_active=True,
+            credit_limit_usd__gt=0
         )
-    
+
     def clean(self):
         """Validaciones adicionales"""
         cleaned_data = super().clean()
         customer = cleaned_data.get('customer')
         amount_bs = cleaned_data.get('amount_bs')
-        
+
         if customer and amount_bs:
-            # Validar límite de crédito disponible
+            # Validar límite de crédito disponible (usar USD)
             if not self.instance.pk:  # Solo para nuevos créditos
-                available_credit = customer.available_credit
-                if amount_bs > available_credit:
-                    self.add_error('amount_bs', 
-                        f'El monto excede el crédito disponible. '
-                        f'Disponible: {available_credit} Bs')
+                from utils.models import ExchangeRate
+                current_rate = ExchangeRate.get_latest_rate()
+                if current_rate:
+                    amount_usd = amount_bs / current_rate.bs_to_usd
+                    available_credit_usd = customer.available_credit
+                    if amount_usd > available_credit_usd:
+                        self.add_error('amount_bs',
+                            f'El monto excede el crédito disponible. '
+                            f'Disponible: ${available_credit_usd:.2f} USD '
+                            f'(Bs {available_credit_usd * current_rate.bs_to_usd:.2f})')
         
         return cleaned_data
 
