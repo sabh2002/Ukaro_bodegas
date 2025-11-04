@@ -100,16 +100,23 @@
             <dl class="space-y-2">
                 <div class="flex justify-between py-1 border-b border-gray-200">
                     <dt class="text-sm font-medium text-gray-500">Límite de Crédito:</dt>
-                    <dd class="text-sm text-gray-900">Bs {{ customer.credit_limit_bs|floatformat:2 }}</dd>
+                    <dd class="text-sm text-gray-900">
+                        <div class="text-blue-600 font-semibold">${{ customer.credit_limit_usd|floatformat:2 }} USD</div>
+                        <div class="text-gray-500 text-xs">Bs {{ customer.credit_limit_bs_current|floatformat:2 }}</div>
+                    </dd>
                 </div>
                 <div class="flex justify-between py-1 border-b border-gray-200">
                     <dt class="text-sm font-medium text-gray-500">Crédito Utilizado:</dt>
-                    <dd class="text-sm text-gray-900">Bs {{ customer.total_credit_used|floatformat:2 }}</dd>
+                    <dd class="text-sm text-gray-900">
+                        <div class="text-blue-600 font-semibold">${{ customer.total_credit_used|floatformat:2 }} USD</div>
+                        <div class="text-gray-500 text-xs">Bs {{ customer.total_credit_used_bs|floatformat:2 }}</div>
+                    </dd>
                 </div>
                 <div class="flex justify-between py-1 border-b border-gray-200">
                     <dt class="text-sm font-medium text-gray-500">Crédito Disponible:</dt>
                     <dd class="text-sm {% if customer.available_credit > 0 %}text-green-600{% else %}text-red-600{% endif %}">
-                        Bs {{ customer.available_credit|floatformat:2 }}
+                        <div class="font-semibold">${{ customer.available_credit|floatformat:2 }} USD</div>
+                        <div class="text-gray-500 text-xs">Bs {{ customer.available_credit_bs|floatformat:2 }}</div>
                     </dd>
                 </div>
             </dl>
@@ -145,8 +152,9 @@
                                 <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                                     {{ credit.date_created|date:"d/m/Y" }}
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-right">
-                                    Bs {{ credit.amount_bs|floatformat:2 }}
+                                <td class="px-3 py-2 whitespace-nowrap text-xs text-right">
+                                    <div class="text-blue-600 font-semibold">${{ credit.amount_usd|floatformat:2 }} USD</div>
+                                    <div class="text-gray-500 text-xs">Bs {{ credit.amount_bs|floatformat:2 }}</div>
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-center">
                                     {% if credit.is_paid %}
@@ -238,8 +246,9 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             #{{ sale.id }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                            Bs {{ sale.total_bs|floatformat:2 }}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            <div class="text-blue-600 font-semibold">${{ sale.total_usd|floatformat:2 }} USD</div>
+                            <div class="text-gray-500 text-xs">Bs {{ sale.total_bs|floatformat:2 }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% if sale.is_credit %}

@@ -220,14 +220,15 @@
         <!-- Resumen y totales -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-2 bg-white rounded-md border border-gray-200 p-4">
-                <!-- Método de Pago -->
-                <div class="mb-4">
+                <!-- Método de Pago (oculto si es venta a crédito) -->
+                <div class="mb-4" x-show="!isCredit">
                     <label for="payment_method" class="block text-sm font-medium text-gray-700 mb-1">
                         Método de Pago *
                     </label>
                     <select
                         id="payment_method"
                         x-model="paymentMethod"
+                        :required="!isCredit"
                         class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
                         <option value="cash">💵 Efectivo</option>
                         <option value="card">💳 Punto de Venta</option>
@@ -236,7 +237,7 @@
                 </div>
 
                 <!-- Referencia de Pago Móvil (condicional) -->
-                <div class="mb-4" x-show="paymentMethod === 'mobile'" x-cloak>
+                <div class="mb-4" x-show="paymentMethod === 'mobile' && !isCredit" x-cloak>
                     <label for="mobile_reference" class="block text-sm font-medium text-gray-700 mb-1">
                         Número de Referencia *
                     </label>
@@ -244,7 +245,7 @@
                         type="text"
                         id="mobile_reference"
                         x-model="mobileReference"
-                        :required="paymentMethod === 'mobile'"
+                        :required="paymentMethod === 'mobile' && !isCredit"
                         class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         placeholder="Ej: 123456789"
                         maxlength="20">

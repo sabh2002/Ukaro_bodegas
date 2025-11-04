@@ -46,6 +46,18 @@ class ExpenseForm(forms.ModelForm):
                 raise forms.ValidationError('Usuario es requerido para crear un gasto.')
             expense.created_by = self.user
 
+            # ⭐ NUEVO: Calcular USD y guardar tasa de cambio utilizada
+            from utils.models import ExchangeRate
+            current_rate = ExchangeRate.get_latest_rate()
+            if current_rate:
+                expense.exchange_rate_used = current_rate.bs_to_usd
+                expense.amount_usd = expense.amount_bs / current_rate.bs_to_usd
+            else:
+                # Fallback si no hay tasa configurada
+                from decimal import Decimal
+                expense.exchange_rate_used = Decimal('36.00')
+                expense.amount_usd = expense.amount_bs / Decimal('36.00')
+
         if commit:
             expense.save()
 

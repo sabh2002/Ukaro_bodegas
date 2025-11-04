@@ -99,8 +99,9 @@
                             <div class="text-xs text-gray-500">{{ credit.customer.phone }}</div>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        Bs {{ credit.amount_bs|floatformat:2 }}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <div class="text-blue-600 font-semibold">${{ credit.amount_usd|floatformat:2 }} USD</div>
+                        <div class="text-gray-500 text-xs">Bs {{ credit.amount_bs|floatformat:2 }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         {{ credit.date_due|date:"d/m/Y" }}

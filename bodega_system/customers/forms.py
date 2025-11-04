@@ -7,25 +7,31 @@ from .models import Customer, CustomerCredit, CreditPayment
 
 class CustomerForm(forms.ModelForm):
     """Formulario para clientes"""
-    
+
     class Meta:
         model = Customer
         fields = [
-            'name', 'phone', 'email', 'address', 
-            'credit_limit_bs', 'notes', 'is_active'
+            'name', 'phone', 'email', 'address',
+            'credit_limit_usd', 'notes', 'is_active'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-input'}),
             'phone': forms.TextInput(attrs={'class': 'form-input'}),
             'email': forms.EmailInput(attrs={'class': 'form-input'}),
             'address': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
-            'credit_limit_bs': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'credit_limit_usd': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
             'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
+        }
+        labels = {
+            'credit_limit_usd': 'Límite de Crédito (USD)',
+        }
+        help_texts = {
+            'credit_limit_usd': 'Límite de crédito en dólares. El equivalente en Bs se calcula automáticamente.',
         }
 
 class CreditForm(forms.ModelForm):
     """Formulario para créditos de clientes"""
-    
+
     class Meta:
         model = CustomerCredit
         fields = ['customer', 'amount_bs', 'date_due', 'notes']
@@ -35,76 +41,121 @@ class CreditForm(forms.ModelForm):
             'date_due': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
         }
-    
+        labels = {
+            'amount_bs': 'Monto (Bs)',
+        }
+        help_texts = {
+            'amount_bs': 'Monto en bolívares. El equivalente en USD se calcula automáticamente.',
+        }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # Establecer fecha de vencimiento por defecto (30 días)
         if not self.instance.pk and not self.initial.get('date_due'):
             self.initial['date_due'] = (timezone.now() + timedelta(days=30)).date()
-        
-        # Filtrar solo clientes con crédito disponible
+
+        # Filtrar solo clientes con crédito disponible (usar USD)
         self.fields['customer'].queryset = Customer.objects.filter(
-            is_active=True, 
-            credit_limit_bs__gt=0
+            is_active=True,
+            credit_limit_usd__gt=0
         )
-    
+
     def clean(self):
         """Validaciones adicionales"""
         cleaned_data = super().clean()
         customer = cleaned_data.get('customer')
         amount_bs = cleaned_data.get('amount_bs')
-        
+
         if customer and amount_bs:
-            # Validar límite de crédito disponible
+            # Validar límite de crédito disponible (usar USD)
             if not self.instance.pk:  # Solo para nuevos créditos
-                available_credit = customer.available_credit
-                if amount_bs > available_credit:
-                    self.add_error('amount_bs', 
-                        f'El monto excede el crédito disponible. '
-                        f'Disponible: {available_credit} Bs')
+                from utils.models import ExchangeRate
+                current_rate = ExchangeRate.get_latest_rate()
+                if current_rate:
+                    amount_usd = amount_bs / current_rate.bs_to_usd
+                    available_credit_usd = customer.available_credit
+                    if amount_usd > available_credit_usd:
+                        self.add_error('amount_bs',
+                            f'El monto excede el crédito disponible. '
+                            f'Disponible: ${available_credit_usd:.2f} USD '
+                            f'(Bs {available_credit_usd * current_rate.bs_to_usd:.2f})')
         
         return cleaned_data
 
 class CreditPaymentForm(forms.ModelForm):
     """Formulario para pagos de créditos"""
-    
+
     class Meta:
         model = CreditPayment
-        fields = ['amount_bs', 'notes']
+        fields = ['amount_bs', 'payment_method', 'mobile_reference', 'notes']
         widgets = {
             'amount_bs': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'}),
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
+            'mobile_reference': forms.TextInput(attrs={'class': 'form-input'}),
             'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 2}),
         }
     
     def __init__(self, *args, credit=None, **kwargs):
         self.credit = credit
         super().__init__(*args, **kwargs)
-        
+
         if credit:
-            # Establecer monto pendiente por defecto
-            pending_amount = credit.amount_bs
-            for payment in credit.payments.all():
-                pending_amount -= payment.amount_bs
-            
-            self.fields['amount_bs'].initial = pending_amount
-            self.fields['amount_bs'].widget.attrs['max'] = pending_amount
+            # ⭐ CORREGIDO: Calcular monto pendiente en USD
+            from django.db.models import Sum
+            total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            pending_amount_usd = credit.amount_usd - total_paid_usd
+
+            # Calcular en Bs (para backward compatibility)
+            total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
+            pending_amount_bs = credit.amount_bs - total_paid_bs
+
+            self.fields['amount_bs'].initial = pending_amount_bs
+            self.fields['amount_bs'].widget.attrs['max'] = pending_amount_bs
+
+            # ⭐ NUEVO: Agregar help_text con información USD
+            from utils.models import ExchangeRate
+            current_rate = ExchangeRate.get_latest_rate()
+            if current_rate:
+                equivalent_usd = pending_amount_bs / current_rate.bs_to_usd
+                self.fields['amount_bs'].help_text = (
+                    f'Pendiente: ${pending_amount_usd:.2f} USD '
+                    f'(Bs {pending_amount_bs:.2f} a tasa actual {current_rate.bs_to_usd}). '
+                    f'Ingrese monto en Bs, se calculará USD automáticamente.'
+                )
     
     def clean_amount_bs(self):
         """Validar monto de pago"""
         amount = self.cleaned_data.get('amount_bs')
-        
+
         if amount <= 0:
             raise forms.ValidationError('El monto debe ser mayor a cero.')
-        
+
         if self.credit:
-            # Calcular monto pendiente
-            pending_amount = self.credit.amount_bs
-            for payment in self.credit.payments.all():
-                pending_amount -= payment.amount_bs
-            
-            if amount > pending_amount:
-                raise forms.ValidationError(
-                    f'El monto excede el saldo pendiente ({pending_amount} Bs).')
-        
+            # ⭐ CORREGIDO: Calcular monto pendiente usando USD (más preciso)
+            from django.db.models import Sum
+            total_paid_usd = self.credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            pending_amount_usd = self.credit.amount_usd - total_paid_usd
+
+            # Convertir monto ingresado a USD para validar
+            from utils.models import ExchangeRate
+            current_rate = ExchangeRate.get_latest_rate()
+            if current_rate:
+                amount_usd = amount / current_rate.bs_to_usd
+                if amount_usd > pending_amount_usd:
+                    raise forms.ValidationError(
+                        f'El monto excede el saldo pendiente (${pending_amount_usd:.2f} USD).')
+
         return amount
+
+    def clean(self):
+        """Validar mobile_reference cuando payment_method es 'mobile'"""
+        cleaned_data = super().clean()
+        payment_method = cleaned_data.get('payment_method')
+        mobile_reference = cleaned_data.get('mobile_reference')
+
+        if payment_method == 'mobile' and not mobile_reference:
+            self.add_error('mobile_reference',
+                          'La referencia es requerida para pagos móviles.')
+
+        return cleaned_data
