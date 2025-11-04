@@ -43,7 +43,11 @@
                 </div>
                 <div class="flex justify-between py-1 border-b border-gray-200">
                     <dt class="text-sm font-medium text-gray-500">Monto:</dt>
-                    <dd class="text-sm font-bold text-gray-900">Bs {{ credit.amount_bs|floatformat:2 }}</dd>
+                    <dd class="text-sm font-bold text-gray-900">
+                        <div class="text-blue-600 text-lg">${{ credit.amount_usd|floatformat:2 }} USD</div>
+                        <div class="text-gray-600 text-sm">Bs {{ credit.amount_bs|floatformat:2 }}</div>
+                        <div class="text-gray-500 text-xs">Tasa usada: {{ credit.exchange_rate_used }}</div>
+                    </dd>
                 </div>
                 <div class="flex justify-between py-1 border-b border-gray-200">
                     <dt class="text-sm font-medium text-gray-500">Fecha de Creación:</dt>
@@ -106,7 +110,10 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-500">Monto:</span>
-                        <span class="text-sm font-medium text-gray-900">Bs {{ credit.sale.total_bs|floatformat:2 }}</span>
+                        <span class="text-sm font-medium text-gray-900">
+                            <div class="text-blue-600">${{ credit.sale.total_usd|floatformat:2 }} USD</div>
+                            <div class="text-gray-500 text-xs">Bs {{ credit.sale.total_bs|floatformat:2 }}</div>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -121,21 +128,26 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <p class="text-sm text-indigo-800">Monto Total:</p>
-                        <p class="text-xl font-bold text-indigo-900">Bs {{ credit.amount_bs|floatformat:2 }}</p>
+                        <p class="text-xl font-bold text-indigo-900">${{ credit.amount_usd|floatformat:2 }} USD</p>
+                        <p class="text-xs text-indigo-600">Bs {{ credit.amount_bs|floatformat:2 }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-indigo-800">Total Pagado:</p>
-                        <p class="text-xl font-bold {% if total_paid >= credit.amount_bs %}text-green-600{% else %}text-indigo-900{% endif %}">
-                            Bs {{ total_paid|floatformat:2 }}
+                        <p class="text-xl font-bold {% if total_paid_usd >= credit.amount_usd %}text-green-600{% else %}text-indigo-900{% endif %}">
+                            ${{ total_paid_usd|floatformat:2 }} USD
                         </p>
+                        <p class="text-xs text-indigo-600">Bs {{ total_paid_bs|floatformat:2 }}</p>
                     </div>
                 </div>
                 <div class="mt-4 pt-2 border-t border-indigo-200">
                     <div class="flex justify-between items-center">
                         <p class="text-sm font-medium text-indigo-800">Saldo Pendiente:</p>
-                        <p class="text-lg font-bold {% if pending_amount > 0 %}text-red-600{% else %}text-green-600{% endif %}">
-                            Bs {{ pending_amount|floatformat:2 }}
-                        </p>
+                        <div class="text-right">
+                            <p class="text-lg font-bold {% if pending_amount_usd > 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                                ${{ pending_amount_usd|floatformat:2 }} USD
+                            </p>
+                            <p class="text-xs text-indigo-600">Bs {{ pending_amount_bs|floatformat:2 }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -163,8 +175,9 @@
                             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                                 {{ payment.payment_date|date:"d/m/Y H:i" }}
                             </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
-                                Bs {{ payment.amount_bs|floatformat:2 }}
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
+                                <div class="text-blue-600 font-semibold">${{ payment.amount_usd|floatformat:2 }} USD</div>
+                                <div class="text-gray-500 text-xs">Bs {{ payment.amount_bs|floatformat:2 }}</div>
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                                 {{ payment.received_by.get_full_name|default:payment.received_by.username }}
