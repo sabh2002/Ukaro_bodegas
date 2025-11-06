@@ -29,6 +29,34 @@ def finance_dashboard(request):
     today_sales_total_usd = today_sales.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
     today_sales_count = today_sales.count()
 
+    # ⭐ NUEVO: Dashboard Híbrido - Separar ventas de contado vs crédito
+    # Ventas de CONTADO (dinero que entró hoy por ventas)
+    today_cash_sales = today_sales.filter(is_credit=False)
+    today_cash_sales_usd = today_cash_sales.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
+    today_cash_sales_bs = today_cash_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+    today_cash_sales_count = today_cash_sales.count()
+
+    # Ventas a CRÉDITO (dinero pendiente de cobro)
+    today_credit_sales = today_sales.filter(is_credit=True)
+    today_credit_sales_usd = today_credit_sales.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
+    today_credit_sales_bs = today_credit_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+    today_credit_sales_count = today_credit_sales.count()
+
+    # PAGOS de créditos recibidos HOY (dinero que entró por cobro de deudas)
+    from customers.models import CreditPayment
+    today_credit_payments = CreditPayment.objects.filter(payment_date__date=today)
+    today_credit_payments_usd = today_credit_payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
+    today_credit_payments_bs = today_credit_payments.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    today_credit_payments_count = today_credit_payments.count()
+
+    # TOTAL COBRADO HOY = Ventas de contado + Pagos de créditos recibidos
+    today_collected_usd = today_cash_sales_usd + today_credit_payments_usd
+    today_collected_bs = today_cash_sales_bs + today_credit_payments_bs
+
+    # PENDIENTE DE COBRO = Ventas a crédito del día (aún no pagadas)
+    today_pending_collection_usd = today_credit_sales_usd
+    today_pending_collection_bs = today_credit_sales_bs
+
     today_expenses = Expense.objects.filter(date=today)
     today_expenses_total_usd = today_expenses.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
 
@@ -147,6 +175,22 @@ def finance_dashboard(request):
         'today_sales_count': today_sales_count,
         'today_sales_total_bs': today_sales_total_bs,
         'today_sales_total_usd': today_sales_total_usd,  # ⭐ NUEVO: En USD
+
+        # ⭐ NUEVO: Dashboard Híbrido - Vendido vs Cobrado
+        'today_cash_sales_usd': today_cash_sales_usd,
+        'today_cash_sales_bs': today_cash_sales_bs,
+        'today_cash_sales_count': today_cash_sales_count,
+        'today_credit_sales_usd': today_credit_sales_usd,
+        'today_credit_sales_bs': today_credit_sales_bs,
+        'today_credit_sales_count': today_credit_sales_count,
+        'today_credit_payments_usd': today_credit_payments_usd,
+        'today_credit_payments_bs': today_credit_payments_bs,
+        'today_credit_payments_count': today_credit_payments_count,
+        'today_collected_usd': today_collected_usd,
+        'today_collected_bs': today_collected_bs,
+        'today_pending_collection_usd': today_pending_collection_usd,
+        'today_pending_collection_bs': today_pending_collection_bs,
+
         'today_expenses_total': today_expenses_total_bs,  # ⭐ CORREGIDO: En Bs
         'today_expenses_total_usd': today_expenses_total_usd,  # ⭐ NUEVO: En USD
         # ⭐ CORREGIDO: Usar ganancia REAL del día, no solo ventas - gastos
