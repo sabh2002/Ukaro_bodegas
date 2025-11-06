@@ -67,31 +67,35 @@
                 <h2 class="text-lg font-medium text-gray-700 border-b pb-2">Información de Crédito</h2>
                 
                 <div>
-                    <label for="{{ form.credit_limit_bs.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Límite de Crédito (Bs)</label>
-                    {{ form.credit_limit_bs }}
-                    {% if form.credit_limit_bs.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.credit_limit_bs.errors.0 }}</p>
+                    <label for="{{ form.credit_limit_usd.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Límite de Crédito (USD) *</label>
+                    {{ form.credit_limit_usd }}
+                    {% if form.credit_limit_usd.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.credit_limit_usd.errors.0 }}</p>
                     {% endif %}
-                    <p class="mt-1 text-xs text-gray-500">Establezca en 0 si no desea otorgar crédito a este cliente.</p>
+                    {% if form.credit_limit_usd.help_text %}
+                    <p class="mt-1 text-xs text-gray-500">{{ form.credit_limit_usd.help_text }}</p>
+                    {% endif %}
                 </div>
-                
+
                 {% if customer %}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Crédito Utilizado</label>
-                    <input 
-                        type="text" 
-                        value="Bs {{ customer.total_credit_used|floatformat:2 }}"
-                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md"
+                    <input
+                        type="text"
+                        value="${{ customer.total_credit_used|floatformat:2 }} USD"
+                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md font-semibold {% if customer.total_credit_used > 0 %}text-red-600{% else %}text-gray-900{% endif %}"
                         disabled>
+                    <p class="mt-1 text-xs text-gray-500">Equivalente: Bs {{ customer.total_credit_used_bs|floatformat:2 }}</p>
                 </div>
-                
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Crédito Disponible</label>
-                    <input 
-                        type="text" 
-                        value="Bs {{ customer.available_credit|floatformat:2 }}"
-                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md {% if customer.available_credit > 0 %}text-green-600{% else %}text-red-600{% endif %}"
+                    <input
+                        type="text"
+                        value="${{ customer.available_credit|floatformat:2 }} USD"
+                        class="shadow-sm bg-gray-100 block w-full sm:text-sm border-gray-300 rounded-md font-semibold {% if customer.available_credit > 0 %}text-green-600{% else %}text-red-600{% endif %}"
                         disabled>
+                    <p class="mt-1 text-xs text-gray-500">Equivalente: Bs {{ customer.available_credit_bs|floatformat:2 }}</p>
                 </div>
                 {% endif %}
                 
