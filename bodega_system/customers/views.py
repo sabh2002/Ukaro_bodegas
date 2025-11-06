@@ -31,7 +31,7 @@ def customer_list(request):
         )
     
     if credit_filter == 'with_credit':
-        customers = customers.filter(credit_limit_bs__gt=0)
+        customers = customers.filter(credit_limit_usd__gt=0)
     elif credit_filter == 'with_pending':
         customers_with_pending = CustomerCredit.objects.filter(
             is_paid=False
@@ -186,9 +186,10 @@ def credit_detail(request, pk):
     # Obtener pagos
     payments = credit.payments.all().order_by('-payment_date')
 
-    # ⭐ CORREGIDO: Calcular saldo pendiente en ambas monedas
-    total_paid_bs = payments.aggregate(total=Sum('amount_bs'))['total'] or 0
-    total_paid_usd = payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+    # ⭐ CORREGIDO: Calcular saldo pendiente en ambas monedas (usar Decimal)
+    from decimal import Decimal
+    total_paid_bs = payments.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    total_paid_usd = payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
 
     pending_amount_bs = credit.amount_bs - total_paid_bs
     pending_amount_usd = credit.amount_usd - total_paid_usd
@@ -267,23 +268,35 @@ def credit_payment(request, pk):
 
             payment.save()
 
-            # ⭐ CORREGIDO: Calcular si el crédito está pagado completamente (usar USD)
-            total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
-            if total_paid_usd >= credit.amount_usd:
+            # ⭐ CORREGIDO: Calcular si el crédito está pagado completamente (usar USD con Decimal)
+            total_paid_usd = credit.payments.aggregate(
+                total=Sum('amount_usd')
+            )['total'] or Decimal('0.00')
+
+            # Redondear ambos valores a 2 decimales para comparación precisa
+            total_paid_rounded = round(total_paid_usd, 2)
+            credit_amount_rounded = round(credit.amount_usd, 2)
+
+            if total_paid_rounded >= credit_amount_rounded:
                 credit.is_paid = True
                 credit.date_paid = timezone.now()
                 credit.save()
                 messages.success(request, 'Crédito pagado completamente.')
             else:
-                messages.success(request, 'Pago registrado exitosamente.')
+                remaining_usd = credit_amount_rounded - total_paid_rounded
+                messages.success(
+                    request,
+                    f'Pago registrado exitosamente. Saldo pendiente: ${remaining_usd:.2f} USD'
+                )
 
             return redirect('customers:customer_detail', pk=credit.customer.pk)
     else:
         form = CreditPaymentForm(credit=credit)
 
-    # ⭐ CORREGIDO: Calcular saldo pendiente en ambas monedas
-    total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
-    total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+    # ⭐ CORREGIDO: Calcular saldo pendiente en ambas monedas (usar Decimal)
+    from decimal import Decimal
+    total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
+    total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
     pending_amount_bs = credit.amount_bs - total_paid_bs
     pending_amount_usd = credit.amount_usd - total_paid_usd
 
