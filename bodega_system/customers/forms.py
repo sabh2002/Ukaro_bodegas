@@ -100,6 +100,9 @@ class CreditPaymentForm(forms.ModelForm):
         self.credit = credit
         super().__init__(*args, **kwargs)
 
+        # mobile_reference es opcional por defecto (solo requerido en clean() si payment_method='mobile')
+        self.fields['mobile_reference'].required = False
+
         if credit:
             # ⭐ CORREGIDO: Calcular monto pendiente en USD con Decimal
             from django.db.models import Sum
