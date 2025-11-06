@@ -101,13 +101,15 @@ class CreditPaymentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if credit:
-            # ⭐ CORREGIDO: Calcular monto pendiente en USD
+            # ⭐ CORREGIDO: Calcular monto pendiente en USD con Decimal
             from django.db.models import Sum
-            total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            from decimal import Decimal
+
+            total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
             pending_amount_usd = credit.amount_usd - total_paid_usd
 
             # Calcular en Bs (para backward compatibility)
-            total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or 0
+            total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
             pending_amount_bs = credit.amount_bs - total_paid_bs
 
             self.fields['amount_bs'].initial = pending_amount_bs
@@ -132,19 +134,25 @@ class CreditPaymentForm(forms.ModelForm):
             raise forms.ValidationError('El monto debe ser mayor a cero.')
 
         if self.credit:
-            # ⭐ CORREGIDO: Calcular monto pendiente usando USD (más preciso)
+            # ⭐ CORREGIDO: Calcular monto pendiente usando USD con Decimal y tolerancia
             from django.db.models import Sum
-            total_paid_usd = self.credit.payments.aggregate(total=Sum('amount_usd'))['total'] or 0
+            from decimal import Decimal
+
+            total_paid_usd = self.credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
             pending_amount_usd = self.credit.amount_usd - total_paid_usd
 
             # Convertir monto ingresado a USD para validar
             from utils.models import ExchangeRate
             current_rate = ExchangeRate.get_latest_rate()
             if current_rate:
-                amount_usd = amount / current_rate.bs_to_usd
-                if amount_usd > pending_amount_usd:
+                # Redondear a 2 decimales para comparación precisa
+                amount_usd = round(amount / current_rate.bs_to_usd, 2)
+                pending_rounded = round(pending_amount_usd, 2)
+
+                # Permitir tolerancia de 1 centavo para evitar errores de precisión
+                if amount_usd > pending_rounded + Decimal('0.01'):
                     raise forms.ValidationError(
-                        f'El monto excede el saldo pendiente (${pending_amount_usd:.2f} USD).')
+                        f'El monto excede el saldo pendiente (${pending_rounded:.2f} USD).')
 
         return amount
 

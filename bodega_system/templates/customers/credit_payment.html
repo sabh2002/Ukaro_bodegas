@@ -420,7 +420,7 @@
                         </div>
 
                         <!-- Referencia de Pago Móvil (condicional) -->
-                        <div class="form-group" x-show="paymentMethod === 'mobile'" x-cloak>
+                        <div class="form-group" x-show="paymentMethod === 'mobile'" x-transition>
                             <label for="{{ form.mobile_reference.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
                                 Referencia de Pago Móvil *
                             </label>
