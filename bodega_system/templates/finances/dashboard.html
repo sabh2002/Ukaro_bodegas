@@ -43,7 +43,8 @@
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Ventas Hoy</p>
                     <p class="text-2xl font-semibold text-gray-900">{{ today_sales_count }}</p>
-                    <p class="text-sm text-gray-600">Bs {{ today_sales_total_bs|floatformat:2 }}</p>
+                    <p class="text-sm font-bold text-gray-900">${{ today_sales_total_usd|floatformat:2 }} USD</p>
+                    <p class="text-xs text-gray-500">Equiv: Bs {{ today_sales_total_bs|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -57,23 +58,25 @@
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Gastos Hoy</p>
-                    <p class="text-2xl font-semibold text-gray-900">Bs {{ today_expenses_total|floatformat:2 }}</p>
+                    <p class="text-2xl font-semibold text-red-600">${{ today_expenses_total_usd|floatformat:2 }} USD</p>
+                    <p class="text-xs text-gray-500">Equiv: Bs {{ today_expenses_total|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
 
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center">
-                <div class="p-3 rounded-full {% if today_profit >= 0 %}bg-green-100{% else %}bg-red-100{% endif %}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 {% if today_profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="p-3 rounded-full {% if today_net_profit_usd >= 0 %}bg-green-100{% else %}bg-red-100{% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 {% if today_net_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Ganancia Hoy</p>
-                    <p class="text-2xl font-semibold {% if today_profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
-                        Bs {{ today_profit|floatformat:2 }}
+                    <p class="text-2xl font-semibold {% if today_net_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        ${{ today_net_profit_usd|floatformat:2 }} USD
                     </p>
+                    <p class="text-xs text-gray-500">Equiv: Bs {{ today_profit|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -129,7 +132,8 @@
                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <div>
                         <p class="text-sm font-medium text-gray-800">Gastos</p>
-                        <p class="text-lg font-bold text-gray-900">Bs {{ month_expenses_total|floatformat:2 }}</p>
+                        <p class="text-lg font-bold text-gray-900">${{ month_expenses_total_usd|floatformat:2 }} USD</p>
+                        <p class="text-sm text-gray-700">Equiv: Bs {{ month_expenses_total|floatformat:2 }}</p>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -137,20 +141,20 @@
                 </div>
 
                 <div class="border-t pt-4">
-                    <div class="flex justify-between items-center p-3 {% if net_profit_real_bs >= 0 %}bg-green-50{% else %}bg-red-50{% endif %} rounded-lg">
+                    <div class="flex justify-between items-center p-3 {% if month_real_profit_usd >= 0 %}bg-green-50{% else %}bg-red-50{% endif %} rounded-lg">
                         <div>
-                            <p class="text-sm font-medium {% if net_profit_real_bs >= 0 %}text-green-800{% else %}text-red-800{% endif %}">Ganancia Neta Real</p>
-                            <p class="text-xl font-bold {% if net_profit_real_bs >= 0 %}text-green-900{% else %}text-red-900{% endif %}">
-                                Bs {{ net_profit_real_bs|floatformat:2 }}
+                            <p class="text-sm font-medium {% if month_real_profit_usd >= 0 %}text-green-800{% else %}text-red-800{% endif %}">Ganancia Neta Real</p>
+                            <p class="text-xl font-bold {% if month_real_profit_usd >= 0 %}text-green-900{% else %}text-red-900{% endif %}">
+                                ${{ month_real_profit_usd|floatformat:2 }} USD
                             </p>
-                            <p class="text-sm {% if net_profit_real_bs >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
-                                ${{ month_real_profit_usd|floatformat:2 }} USD (ganancia por productos)
+                            <p class="text-sm {% if month_real_profit_usd >= 0 %}text-green-700{% else %}text-red-700{% endif %}">
+                                Equiv: Bs {{ net_profit_real_bs|floatformat:2 }}
                             </p>
                             <p class="text-xs text-gray-500 mt-1">
                                 Calculada: (precio venta - precio compra) × cantidad - gastos
                             </p>
                         </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 {% if net_profit_real_bs >= 0 %}text-green-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 {% if month_real_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
                     </div>
@@ -193,7 +197,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-sm font-medium text-red-800">{{ expense.category|capfirst }}</p>
-                        <p class="text-lg font-bold text-red-900">Bs {{ expense.total|floatformat:2 }}</p>
+                        <p class="text-lg font-bold text-red-900">${{ expense.total_usd|floatformat:2 }} USD</p>
                         <p class="text-xs text-red-600">{{ expense.count }} gasto{{ expense.count|pluralize }}</p>
                     </div>
                 </div>
