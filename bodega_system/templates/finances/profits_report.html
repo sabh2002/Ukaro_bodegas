@@ -45,31 +45,32 @@
             <!-- Ventas Totales -->
             <div class="p-4 bg-blue-50 rounded-lg">
                 <p class="text-sm font-medium text-blue-800">Ventas Totales</p>
-                <p class="text-2xl font-bold text-blue-900">Bs {{ total_sales_bs|floatformat:2 }}</p>
-                <p class="text-sm text-blue-700">${{ total_sales_usd|floatformat:2 }} USD</p>
+                <p class="text-2xl font-bold text-blue-900">${{ total_sales_usd|floatformat:2 }} USD</p>
+                <p class="text-sm text-blue-700">Equiv: Bs {{ total_sales_bs|floatformat:2 }}</p>
                 <p class="text-xs text-blue-600 mt-1">{{ sales_count }} venta{{ sales_count|pluralize }}</p>
             </div>
 
             <!-- Compras Totales -->
             <div class="p-4 bg-orange-50 rounded-lg">
                 <p class="text-sm font-medium text-orange-800">Compras Totales</p>
-                <p class="text-2xl font-bold text-orange-900">Bs {{ total_purchases_bs|floatformat:2 }}</p>
-                <p class="text-sm text-orange-700">${{ total_purchases_usd|floatformat:2 }} USD</p>
+                <p class="text-2xl font-bold text-orange-900">${{ total_purchases_usd|floatformat:2 }} USD</p>
+                <p class="text-sm text-orange-700">Equiv: Bs {{ total_purchases_bs|floatformat:2 }}</p>
                 <p class="text-xs text-orange-600 mt-1">{{ purchases_count }} compra{{ purchases_count|pluralize }}</p>
             </div>
 
             <!-- Gastos -->
             <div class="p-4 bg-red-50 rounded-lg">
                 <p class="text-sm font-medium text-red-800">Gastos</p>
-                <p class="text-2xl font-bold text-red-900">Bs {{ total_expenses|floatformat:2 }}</p>
+                <p class="text-2xl font-bold text-red-900">${{ total_expenses_usd|floatformat:2 }} USD</p>
+                <p class="text-sm text-red-700">Equiv: Bs {{ total_expenses|floatformat:2 }}</p>
                 <p class="text-xs text-red-600 mt-1">{{ expenses_count }} gasto{{ expenses_count|pluralize }}</p>
             </div>
 
             <!-- Ganancia Bruta Anterior (para comparación) -->
             <div class="p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
                 <p class="text-sm font-medium text-purple-800">Ganancia Bruta (Antigua)</p>
-                <p class="text-2xl font-bold text-purple-900">Bs {{ gross_profit_bs|floatformat:2 }}</p>
-                <p class="text-sm text-purple-700">${{ gross_profit_usd|floatformat:2 }} USD</p>
+                <p class="text-2xl font-bold text-purple-900">${{ gross_profit_usd|floatformat:2 }} USD</p>
+                <p class="text-sm text-purple-700">Equiv: Bs {{ gross_profit_bs|floatformat:2 }}</p>
                 <p class="text-xs text-purple-600 mt-1">Ventas - Compras</p>
             </div>
         </div>
@@ -78,43 +79,35 @@
         <div class="border-t pt-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">💰 Ganancia Real por Productos Vendidos</h3>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Ganancia Real en USD -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Ganancia Real por Productos -->
                 <div class="p-6 bg-green-50 rounded-lg border-2 border-green-300">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm font-medium text-green-800">Ganancia Real (USD)</p>
+                        <p class="text-sm font-medium text-green-800">Ganancia Real por Productos</p>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                         </svg>
                     </div>
-                    <p class="text-3xl font-bold text-green-900">${{ real_profit_usd|floatformat:2 }}</p>
-                    <p class="text-xs text-green-700 mt-2">Calculado: (precio_venta - precio_compra) × cantidad</p>
+                    <p class="text-3xl font-bold text-green-900">${{ real_profit_usd|floatformat:2 }} USD</p>
+                    <p class="text-sm text-green-700 mt-1">Equiv: Bs {{ real_profit_bs|floatformat:2 }}</p>
+                    <p class="text-xs text-green-600 mt-2">Calculado: (precio_venta - precio_compra) × cantidad</p>
                 </div>
 
-                <!-- Ganancia Real en Bs -->
-                <div class="p-6 bg-green-50 rounded-lg border-2 border-green-300">
+                <!-- Ganancia Neta Real (Ganancia - Gastos) -->
+                <div class="p-6 {% if net_profit_real_usd >= 0 %}bg-emerald-50 border-emerald-400{% else %}bg-red-50 border-red-400{% endif %} rounded-lg border-2">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm font-medium text-green-800">Ganancia Real (Bs)</p>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                    </div>
-                    <p class="text-3xl font-bold text-green-900">Bs {{ real_profit_bs|floatformat:2 }}</p>
-                    <p class="text-xs text-green-700 mt-2">Suma de ganancias por cada producto vendido</p>
-                </div>
-
-                <!-- Ganancia Neta Real -->
-                <div class="p-6 {% if net_profit_real_bs >= 0 %}bg-emerald-50 border-emerald-400{% else %}bg-red-50 border-red-400{% endif %} rounded-lg border-2">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm font-medium {% if net_profit_real_bs >= 0 %}text-emerald-800{% else %}text-red-800{% endif %}">Ganancia Neta Real</p>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 {% if net_profit_real_bs >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <p class="text-sm font-medium {% if net_profit_real_usd >= 0 %}text-emerald-800{% else %}text-red-800{% endif %}">Ganancia Neta Real</p>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 {% if net_profit_real_usd >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                         </svg>
                     </div>
-                    <p class="text-3xl font-bold {% if net_profit_real_bs >= 0 %}text-emerald-900{% else %}text-red-900{% endif %}">
-                        Bs {{ net_profit_real_bs|floatformat:2 }}
+                    <p class="text-3xl font-bold {% if net_profit_real_usd >= 0 %}text-emerald-900{% else %}text-red-900{% endif %}">
+                        ${{ net_profit_real_usd|floatformat:2 }} USD
                     </p>
-                    <p class="text-xs {% if net_profit_real_bs >= 0 %}text-emerald-700{% else %}text-red-700{% endif %} mt-2">
+                    <p class="text-sm {% if net_profit_real_usd >= 0 %}text-emerald-700{% else %}text-red-700{% endif %} mt-1">
+                        Equiv: Bs {{ net_profit_real_bs|floatformat:2 }}
+                    </p>
+                    <p class="text-xs {% if net_profit_real_usd >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} mt-2">
                         Ganancia Real - Gastos
                     </p>
                 </div>
