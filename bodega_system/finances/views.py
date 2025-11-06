@@ -26,6 +26,7 @@ def finance_dashboard(request):
     # Métricas del día
     today_sales = Sale.objects.filter(date__date=today)
     today_sales_total_bs = today_sales.aggregate(total=Sum('total_bs'))['total'] or Decimal('0.00')
+    today_sales_total_usd = today_sales.aggregate(total=Sum('total_usd'))['total'] or Decimal('0.00')
     today_sales_count = today_sales.count()
 
     today_expenses = Expense.objects.filter(date=today)
@@ -145,6 +146,7 @@ def finance_dashboard(request):
     context = {
         'today_sales_count': today_sales_count,
         'today_sales_total_bs': today_sales_total_bs,
+        'today_sales_total_usd': today_sales_total_usd,  # ⭐ NUEVO: En USD
         'today_expenses_total': today_expenses_total_bs,  # ⭐ CORREGIDO: En Bs
         'today_expenses_total_usd': today_expenses_total_usd,  # ⭐ NUEVO: En USD
         # ⭐ CORREGIDO: Usar ganancia REAL del día, no solo ventas - gastos
