@@ -67,15 +67,13 @@ class ExchangeRateForm(forms.ModelForm):
         """Validaciones adicionales"""
         cleaned_data = super().clean()
         date = cleaned_data.get('date')
-        
+
         if date:
-            # Verificar si ya existe una tasa para esta fecha
-            existing_rate = ExchangeRate.objects.filter(date=date).first()
-            if existing_rate and (not self.instance.pk or existing_rate.pk != self.instance.pk):
-                # Si existe, advertir al usuario (pero permitir la actualización)
-                self.add_error('date', 
-                    f'Ya existe una tasa de cambio para {date.strftime("%d/%m/%Y")} '
-                    f'({existing_rate.bs_to_usd} Bs/USD). Se sobrescribirá si continúa.'
-                )
-        
+            # ⭐ CORREGIDO: Verificar si ya existe una tasa para esta fecha
+            # Guardar el registro existente para poder actualizarlo después
+            existing_rate = ExchangeRate.objects.filter(date=date).exclude(pk=self.instance.pk if self.instance.pk else None).first()
+            if existing_rate:
+                # Guardar el ID del registro existente para actualizarlo en lugar de crear uno nuevo
+                self._existing_rate_to_update = existing_rate
+
         return cleaned_data

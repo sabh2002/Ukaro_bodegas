@@ -56,3 +56,13 @@ def customer_access_required(view_func):
             raise PermissionDenied("No tienes permisos para acceder al módulo de clientes.")
         return view_func(request, *args, **kwargs)
     return wrapper
+
+def inventory_access_required(view_func):
+    """Decorador para acceso de solo lectura al inventario (empleados y administradores)"""
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not is_admin_or_employee(request.user):
+            raise PermissionDenied("No tienes permisos para acceder al módulo de inventario.")
+        return view_func(request, *args, **kwargs)
+    return wrapper

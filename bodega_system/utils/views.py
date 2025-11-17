@@ -33,15 +33,30 @@ def exchange_rate_management(request):
     if request.method == 'POST':
         form = ExchangeRateForm(request.POST)
         if form.is_valid():
-            # Crear nueva tasa de cambio
-            new_rate = form.save(commit=False)
-            new_rate.updated_by = request.user
-            new_rate.save()
-            
-            messages.success(
-                request, 
-                f'Tasa de cambio actualizada exitosamente a {new_rate.bs_to_usd} Bs/USD'
-            )
+            # ⭐ CORREGIDO: Verificar si existe una tasa para esta fecha y actualizarla
+            existing_rate = getattr(form, '_existing_rate_to_update', None)
+
+            if existing_rate:
+                # Actualizar el registro existente
+                existing_rate.bs_to_usd = form.cleaned_data['bs_to_usd']
+                existing_rate.updated_by = request.user
+                existing_rate.save()
+
+                messages.success(
+                    request,
+                    f'Tasa de cambio del {existing_rate.date.strftime("%d/%m/%Y")} actualizada exitosamente a {existing_rate.bs_to_usd} Bs/USD'
+                )
+            else:
+                # Crear nueva tasa de cambio
+                new_rate = form.save(commit=False)
+                new_rate.updated_by = request.user
+                new_rate.save()
+
+                messages.success(
+                    request,
+                    f'Tasa de cambio registrada exitosamente: {new_rate.bs_to_usd} Bs/USD para {new_rate.date.strftime("%d/%m/%Y")}'
+                )
+
             return redirect('utils:exchange_rate_management')
     else:
         # Pre-rellenar con la fecha de hoy
