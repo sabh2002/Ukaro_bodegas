@@ -170,12 +170,28 @@ def credit_list(request):
     customers = Customer.objects.filter(
         is_active=True
     ).order_by('name')
+
+    # ⭐ NUEVO: Calcular montos en Bs a tasa actual
+    from utils.models import ExchangeRate
+    from decimal import Decimal
+    current_rate = ExchangeRate.get_latest_rate()
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+
+    for credit in page_obj:
+        # Calcular saldo pendiente en USD
+        total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
+        pending_amount_usd = credit.amount_usd - total_paid_usd
+        
+        # Calcular equivalentes en Bs
+        credit.amount_bs_current = round(credit.amount_usd * rate_value, 2)
+        credit.pending_amount_bs_current = round(pending_amount_usd * rate_value, 2)
     
     return render(request, 'customers/credit_list.html', {
         'page_obj': page_obj,
         'customers': customers,
         'selected_customer': int(customer_id) if customer_id else None,
         'status': status,
+        'current_rate': current_rate,
     })
 
 @admin_required
@@ -197,9 +213,9 @@ def credit_detail(request, pk):
 
     # ⭐ CORREGIDO: Calcular cuántos Bs debe con la tasa ACTUAL
     if current_rate:
-        pending_amount_bs_current = pending_amount_usd * current_rate.bs_to_usd
+        pending_amount_bs_current = round(pending_amount_usd * current_rate.bs_to_usd, 2)
     else:
-        pending_amount_bs_current = pending_amount_usd * Decimal('36.00')
+        pending_amount_bs_current = round(pending_amount_usd * Decimal('36.00'), 2)
 
     return render(request, 'customers/credit_detail.html', {
         'credit': credit,
@@ -307,9 +323,9 @@ def credit_payment(request, pk):
 
     # ⭐ CORREGIDO: Calcular cuántos Bs debe con la tasa ACTUAL (no la del crédito original)
     if current_rate:
-        pending_amount_bs_current = pending_amount_usd * current_rate.bs_to_usd
+        pending_amount_bs_current = round(pending_amount_usd * current_rate.bs_to_usd, 2)
     else:
-        pending_amount_bs_current = pending_amount_usd * Decimal('36.00')
+        pending_amount_bs_current = round(pending_amount_usd * Decimal('36.00'), 2)
 
     return render(request, 'customers/credit_payment.html', {
         'form': form,
