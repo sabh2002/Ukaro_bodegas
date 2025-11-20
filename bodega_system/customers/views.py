@@ -223,8 +223,10 @@ def credit_detail(request, pk):
         'credit': credit,
         'payments': payments,
         'total_paid': total_paid_bs,  # ⭐ CORREGIDO: Bs equivalente con tasa actual
+        'total_paid_bs': total_paid_bs,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre alternativo
         'total_paid_usd': total_paid_usd,
         'pending_amount': pending_amount_bs_current,  # ⭐ CORREGIDO: Bs que debe pagar HOY con tasa actual
+        'pending_amount_bs': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre alternativo
         'pending_amount_bs_current': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre original
         'pending_amount_usd': pending_amount_usd,
         'current_rate': current_rate,
@@ -337,8 +339,10 @@ def credit_payment(request, pk):
         'form': form,
         'credit': credit,
         'total_paid': total_paid_bs,  # ⭐ CORREGIDO: Bs equivalente del USD pagado con tasa actual
+        'total_paid_bs': total_paid_bs,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre alternativo
         'total_paid_usd': total_paid_usd,
         'pending_amount': pending_amount_bs_current,  # ⭐ CORREGIDO: Bs que debe pagar HOY con tasa actual
+        'pending_amount_bs': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre alternativo
         'pending_amount_bs_current': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre original
         'pending_amount_usd': pending_amount_usd,
         'current_rate': current_rate,
