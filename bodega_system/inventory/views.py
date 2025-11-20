@@ -10,26 +10,26 @@ from django.db import transaction
 from decimal import Decimal, InvalidOperation
 
 from .models import Category, Product, InventoryAdjustment, ProductCombo, ComboItem
-from .forms import (CategoryForm, ProductForm, InventoryAdjustmentForm, 
+from .forms import (CategoryForm, ProductForm, InventoryAdjustmentForm,
                    ProductComboForm, ComboItemFormset)
-from utils.decorators import admin_required
+from utils.decorators import admin_required, inventory_access_required
 
-# Vistas de Productos - Solo Administradores
-@admin_required
+# Vistas de Productos - Empleados y Administradores (Solo Lectura para Empleados)
+@inventory_access_required
 def product_list(request):
-    """Vista para listar productos - Solo Administradores"""
+    """Vista para listar productos - Empleados y Administradores (Solo Lectura para Empleados)"""
     # Filtros
     category_id = request.GET.get('category')
     search_query = request.GET.get('q')
     stock_filter = request.GET.get('stock')
-    
+
     # Consulta base
     products = Product.objects.all()
-    
+
     # Aplicar filtros
     if category_id:
         products = products.filter(category_id=category_id)
-    
+
     if search_query:
         products = products.filter(
             name__icontains=search_query
@@ -38,46 +38,54 @@ def product_list(request):
         ) | products.filter(
             description__icontains=search_query
         )
-    
+
     if stock_filter == 'low':
         products = products.filter(stock__lte=F('min_stock'))
     elif stock_filter == 'out':
         products = products.filter(stock=0)
-    
+
     # Ordenar
     products = products.order_by('category__name', 'name')
-    
+
     # Paginación
     paginator = Paginator(products, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     # Obtener categorías para filtro
     categories = Category.objects.all().order_by('name')
-    
+
+    # ⭐ NUEVO: Pasar información de permisos
+    is_admin = request.user.is_admin or request.user.is_superuser
+
     return render(request, 'inventory/product_list.html', {
         'page_obj': page_obj,
         'categories': categories,
         'selected_category': int(category_id) if category_id else None,
         'search_query': search_query,
         'stock_filter': stock_filter,
+        'is_admin': is_admin,  # ⭐ NUEVO: Para controlar botones de edición
     })
 
-@admin_required
+@inventory_access_required
 def product_detail(request, pk):
-    """Vista para ver detalles de un producto - Solo Administradores"""
+    """Vista para ver detalles de un producto - Empleados y Administradores (Solo Lectura para Empleados)"""
     product = get_object_or_404(Product, pk=pk)
-    
+
     # Obtener historial de ajustes
     adjustments = product.adjustments.all().order_by('-adjusted_at')[:10]
-    
+
     # Obtener historial de ventas
     sales = product.sale_items.all().order_by('-sale__date')[:10]
-    
+
+    # ⭐ NUEVO: Pasar información de permisos
+    is_admin = request.user.is_admin or request.user.is_superuser
+
     return render(request, 'inventory/product_detail.html', {
         'product': product,
         'adjustments': adjustments,
         'sales': sales,
+        'is_admin': is_admin,  # ⭐ NUEVO: Para controlar botones de edición
     })
 
 @admin_required
@@ -88,18 +96,18 @@ def product_create(request):
         if form.is_valid():
             product = form.save()
             messages.success(request, f'Producto "{product.name}" creado exitosamente.')
-            
+
             # Registrar ajuste inicial si se especificó stock
             initial_stock = request.POST.get('initial_stock')
             if initial_stock:
                 try:
                     initial_stock_decimal = Decimal(str(initial_stock))
-                    
+
                     if initial_stock_decimal > 0:
                         with transaction.atomic():
                             product.stock = initial_stock_decimal
                             product.save()
-                            
+
                             InventoryAdjustment.objects.create(
                                 product=product,
                                 adjustment_type='set',
@@ -111,22 +119,27 @@ def product_create(request):
                             )
                 except (InvalidOperation, ValueError) as e:
                     messages.warning(request, f'El stock inicial "{initial_stock}" no es válido. Se estableció en 0.')
-            
+
             return redirect('inventory:product_detail', pk=product.pk)
     else:
         form = ProductForm()
-    
+
+    # ⭐ CORREGIDO: Obtener tasa de cambio actual para mostrar equivalente en Bs
+    from utils.models import ExchangeRate
+    latest_exchange_rate = ExchangeRate.get_latest_rate()
+
     return render(request, 'inventory/product_form.html', {
         'form': form,
         'title': 'Nuevo Producto',
         'show_initial_stock': True,
+        'latest_exchange_rate': latest_exchange_rate,  # ⭐ NUEVO: Para mostrar conversión USD→Bs
     })
 
 @admin_required
 def product_update(request, pk):
     """Vista para actualizar un producto - Solo Administradores"""
     product = get_object_or_404(Product, pk=pk)
-    
+
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
@@ -135,12 +148,17 @@ def product_update(request, pk):
             return redirect('inventory:product_detail', pk=product.pk)
     else:
         form = ProductForm(instance=product)
-    
+
+    # ⭐ CORREGIDO: Obtener tasa de cambio actual para mostrar equivalente en Bs
+    from utils.models import ExchangeRate
+    latest_exchange_rate = ExchangeRate.get_latest_rate()
+
     return render(request, 'inventory/product_form.html', {
         'form': form,
         'product': product,
         'title': 'Editar Producto',
         'show_initial_stock': False,
+        'latest_exchange_rate': latest_exchange_rate,  # ⭐ NUEVO: Para mostrar conversión USD→Bs
     })
 
 @admin_required
@@ -160,12 +178,12 @@ def product_delete(request, pk):
         'product': product
     })
 
-# Vistas de Categorías - Solo Administradores
-@admin_required
+# Vistas de Categorías - Empleados y Administradores (Solo Lectura para Empleados)
+@inventory_access_required
 def category_list(request):
-    """Vista para listar categorías - Solo Administradores"""
+    """Vista para listar categorías - Empleados y Administradores (Solo Lectura para Empleados)"""
     categories = Category.objects.all().order_by('name')
-    
+
     categories_with_count = []
     for category in categories:
         product_count = Product.objects.filter(category=category).count()
@@ -173,20 +191,28 @@ def category_list(request):
             'category': category,
             'product_count': product_count
         })
-    
+
+    # ⭐ NUEVO: Pasar información de permisos
+    is_admin = request.user.is_admin or request.user.is_superuser
+
     return render(request, 'inventory/category_list.html', {
-        'categories': categories_with_count
+        'categories': categories_with_count,
+        'is_admin': is_admin,  # ⭐ NUEVO: Para controlar botones de edición
     })
 
-@admin_required
+@inventory_access_required
 def category_detail(request, pk):
-    """Vista para ver detalles de una categoría - Solo Administradores"""
+    """Vista para ver detalles de una categoría - Empleados y Administradores (Solo Lectura para Empleados)"""
     category = get_object_or_404(Category, pk=pk)
     products = Product.objects.filter(category=category).order_by('name')
-    
+
+    # ⭐ NUEVO: Pasar información de permisos
+    is_admin = request.user.is_admin or request.user.is_superuser
+
     return render(request, 'inventory/category_detail.html', {
         'category': category,
-        'products': products
+        'products': products,
+        'is_admin': is_admin,  # ⭐ NUEVO: Para controlar botones de edición
     })
 
 @admin_required

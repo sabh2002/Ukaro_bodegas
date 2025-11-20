@@ -231,9 +231,8 @@ def order_create(request):
         # Debug supplier field specifically
         supplier_value = request.POST.get('supplier')
         print(f"Supplier field value: {supplier_value}")
-        
-        # Check if suppliers exist
-        from .models import Supplier
+
+        # Check if suppliers exist (Supplier ya está importado al inicio del archivo)
         supplier_count = Supplier.objects.filter(is_active=True).count()
         print(f"Active suppliers in database: {supplier_count}")
         print("Formset valid:", formset.is_valid())
