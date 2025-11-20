@@ -598,12 +598,16 @@
 function creditPaymentForm() {
     return {
         paymentAmount: '',
-        pendingAmount: {{ pending_amount|unlocalize|default:"0" }},
+        // ⭐ CORREGIDO: Redondear pendingAmount a 2 decimales para evitar problemas de validación
+        pendingAmount: Math.round(({{ pending_amount|unlocalize|default:"0" }}) * 100) / 100,
         paymentMethod: 'cash',
 
         setPaymentAmount(amount) {
-            this.paymentAmount = Math.min(amount, this.pendingAmount).toFixed(2);
-            // Actualizar el input
+            // ⭐ CORREGIDO: Redondear correctamente y actualizar tanto el modelo como el input
+            const roundedAmount = Math.round(amount * 100) / 100;
+            this.paymentAmount = roundedAmount.toFixed(2);
+
+            // Actualizar el input directamente
             const input = document.getElementById('{{ form.amount_bs.id_for_label }}');
             if (input) {
                 input.value = this.paymentAmount;

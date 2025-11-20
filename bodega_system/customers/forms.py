@@ -104,30 +104,35 @@ class CreditPaymentForm(forms.ModelForm):
         self.fields['mobile_reference'].required = False
 
         if credit:
-            # ⭐ CORREGIDO: Calcular monto pendiente en USD con Decimal
+            # ⭐ CORREGIDO: Calcular monto pendiente usando USD como fuente de verdad
             from django.db.models import Sum
             from decimal import Decimal
+            from utils.models import ExchangeRate
 
+            # Calcular saldo pendiente en USD (fuente de verdad)
             total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
             pending_amount_usd = credit.amount_usd - total_paid_usd
 
-            # Calcular en Bs (para backward compatibility)
-            total_paid_bs = credit.payments.aggregate(total=Sum('amount_bs'))['total'] or Decimal('0.00')
-            pending_amount_bs = credit.amount_bs - total_paid_bs
-
-            self.fields['amount_bs'].initial = pending_amount_bs
-            self.fields['amount_bs'].widget.attrs['max'] = pending_amount_bs
-
-            # ⭐ NUEVO: Agregar help_text con información USD
-            from utils.models import ExchangeRate
+            # ⭐ CORREGIDO: Calcular en Bs usando la TASA ACTUAL (no la tasa original del crédito)
             current_rate = ExchangeRate.get_latest_rate()
             if current_rate:
-                equivalent_usd = pending_amount_bs / current_rate.bs_to_usd
-                self.fields['amount_bs'].help_text = (
-                    f'Pendiente: ${pending_amount_usd:.2f} USD '
-                    f'(Bs {pending_amount_bs:.2f} a tasa actual {current_rate.bs_to_usd}). '
-                    f'Ingrese monto en Bs, se calculará USD automáticamente.'
-                )
+                # Redondear a 2 decimales para evitar problemas de precisión
+                pending_amount_bs = round(pending_amount_usd * current_rate.bs_to_usd, 2)
+                rate_value = current_rate.bs_to_usd
+            else:
+                pending_amount_bs = round(pending_amount_usd * Decimal('36.00'), 2)
+                rate_value = Decimal('36.00')
+
+            # ⭐ IMPORTANTE: Redondear a 2 decimales para que coincida con el JavaScript
+            self.fields['amount_bs'].initial = pending_amount_bs
+            self.fields['amount_bs'].widget.attrs['max'] = float(pending_amount_bs)
+
+            # Help text con información clara
+            self.fields['amount_bs'].help_text = (
+                f'Pendiente: ${pending_amount_usd:.2f} USD '
+                f'(Bs {pending_amount_bs:.2f} a tasa actual {rate_value}). '
+                f'Ingrese monto en Bs, se calculará USD automáticamente.'
+            )
     
     def clean_amount_bs(self):
         """Validar monto de pago"""
