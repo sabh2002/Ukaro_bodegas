@@ -39,7 +39,7 @@
                         class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
                         <option value="">Todos los clientes</option>
                         {% for customer in customers %}
-                        <option value="{{ customer.id }}" {% if selected_customer==customer.id %}selected{% endif %}>
+                        <option value="{{ customer.id }}" {% if selected_customer == customer.id %}selected{% endif %}>
                             {{ customer.name }}
                         </option>
                         {% endfor %}
@@ -50,9 +50,9 @@
                     <select id="status" name="status"
                         class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
                         <option value="">Todos los estados</option>
-                        <option value="pending" {% if status=='pending' %}selected{% endif %}>Pendientes</option>
-                        <option value="paid" {% if status=='paid' %}selected{% endif %}>Pagados</option>
-                        <option value="overdue" {% if status=='overdue' %}selected{% endif %}>Vencidos</option>
+                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pendientes</option>
+                        <option value="paid" {% if status == 'paid' %}selected{% endif %}>Pagados</option>
+                        <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>Vencidos</option>
                     </select>
                 </div>
                 <div class="flex items-end">
