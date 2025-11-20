@@ -213,11 +213,11 @@ def credit_detail(request, pk):
 
     # ⭐ CORREGIDO: Calcular cuántos Bs debe con la tasa ACTUAL
     if current_rate:
-        pending_amount_bs_current = pending_amount_usd * current_rate.bs_to_usd
-        total_paid_bs = total_paid_usd * current_rate.bs_to_usd
+        pending_amount_bs_current = round(pending_amount_usd * current_rate.bs_to_usd, 2)
+        total_paid_bs = round(total_paid_usd * current_rate.bs_to_usd, 2)
     else:
-        pending_amount_bs_current = pending_amount_usd * Decimal('36.00')
-        total_paid_bs = total_paid_usd * Decimal('36.00')
+        pending_amount_bs_current = round(pending_amount_usd * Decimal('36.00'), 2)
+        total_paid_bs = round(total_paid_usd * Decimal('36.00'), 2)
 
     return render(request, 'customers/credit_detail.html', {
         'credit': credit,
@@ -225,6 +225,7 @@ def credit_detail(request, pk):
         'total_paid': total_paid_bs,  # ⭐ CORREGIDO: Bs equivalente con tasa actual
         'total_paid_usd': total_paid_usd,
         'pending_amount': pending_amount_bs_current,  # ⭐ CORREGIDO: Bs que debe pagar HOY con tasa actual
+        'pending_amount_bs_current': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre original
         'pending_amount_usd': pending_amount_usd,
         'current_rate': current_rate,
     })
@@ -325,12 +326,12 @@ def credit_payment(request, pk):
 
     # ⭐ CORREGIDO: Calcular cuántos Bs debe con la tasa ACTUAL (no la del crédito original)
     if current_rate:
-        pending_amount_bs_current = pending_amount_usd * current_rate.bs_to_usd
+        pending_amount_bs_current = round(pending_amount_usd * current_rate.bs_to_usd, 2)
         # También calcular cuánto se ha pagado en total para el template
-        total_paid_bs = total_paid_usd * current_rate.bs_to_usd
+        total_paid_bs = round(total_paid_usd * current_rate.bs_to_usd, 2)
     else:
-        pending_amount_bs_current = pending_amount_usd * Decimal('36.00')
-        total_paid_bs = total_paid_usd * Decimal('36.00')
+        pending_amount_bs_current = round(pending_amount_usd * Decimal('36.00'), 2)
+        total_paid_bs = round(total_paid_usd * Decimal('36.00'), 2)
 
     return render(request, 'customers/credit_payment.html', {
         'form': form,
@@ -338,6 +339,7 @@ def credit_payment(request, pk):
         'total_paid': total_paid_bs,  # ⭐ CORREGIDO: Bs equivalente del USD pagado con tasa actual
         'total_paid_usd': total_paid_usd,
         'pending_amount': pending_amount_bs_current,  # ⭐ CORREGIDO: Bs que debe pagar HOY con tasa actual
+        'pending_amount_bs_current': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre original
         'pending_amount_usd': pending_amount_usd,
         'current_rate': current_rate,
         'title': 'Registrar Pago'
