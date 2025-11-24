@@ -7,9 +7,10 @@ from inventory.models import Product
 class Sale(models.Model):
     """Modelo para las ventas"""
     
+    # ⭐ ORDEN ACTUALIZADO: Punto de Venta primero (requerimiento del jefe)
     PAYMENT_METHODS = (
-        ('cash', 'Efectivo'),
         ('card', 'Punto de Venta'),
+        ('cash', 'Efectivo'),
         ('mobile', 'Pago Móvil'),
     )
     

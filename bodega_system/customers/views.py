@@ -61,14 +61,18 @@ def customer_detail(request, pk):
     
     # Obtener créditos
     credits = customer.credits.all().order_by('-date_created')
-    
+
     # Obtener historial de ventas
-    sales = Sale.objects.filter(customer=customer).order_by('-date')[:10]
-    
+    # ⭐ CORREGIDO: Filtrar ANTES de hacer slice para evitar error de Django
+    sales = Sale.objects.filter(customer=customer).order_by('-date')
+
     # Si es empleado, solo mostrar sus propias ventas
     if not (request.user.is_admin or request.user.is_superuser):
         sales = sales.filter(user=request.user)
-    
+
+    # Ahora sí aplicar el slice de últimas 10 ventas
+    sales = sales[:10]
+
     return render(request, 'customers/customer_detail.html', {
         'customer': customer,
         'credits': credits,
@@ -194,9 +198,9 @@ def credit_list(request):
         'current_rate': current_rate,
     })
 
-@admin_required
+@customer_access_required
 def credit_detail(request, pk):
-    """Vista para ver detalles de un crédito - Solo Administradores"""
+    """Vista para ver detalles de un crédito - Empleados y Administradores"""
     credit = get_object_or_404(CustomerCredit, pk=pk)
 
     # Obtener pagos

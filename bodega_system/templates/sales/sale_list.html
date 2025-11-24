@@ -92,7 +92,10 @@
 </div>
 
 <!-- RESUMEN RÁPIDO -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+<!-- ⭐ NOTA: Total Ventas y Promedio solo visibles para administradores -->
+<div class="grid grid-cols-1 {% if user.is_admin or user.is_superuser %}sm:grid-cols-3{% else %}sm:grid-cols-1{% endif %} gap-4 mb-6">
+    <!-- ⭐ OCULTADO: Total Ventas - Solo visible para Administradores -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
         <div class="flex items-center">
             <div class="bg-green-100 rounded-full p-3 mr-3">
@@ -106,6 +109,8 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
     <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
         <div class="flex items-center">
             <div class="bg-blue-100 rounded-full p-3 mr-3">
@@ -119,6 +124,9 @@
             </div>
         </div>
     </div>
+
+    <!-- ⭐ OCULTADO: Promedio - Solo visible para Administradores -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
         <div class="flex items-center">
             <div class="bg-yellow-100 rounded-full p-3 mr-3">
@@ -132,6 +140,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- TABLA DESKTOP -->
