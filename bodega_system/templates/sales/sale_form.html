@@ -230,8 +230,8 @@
                         x-model="paymentMethod"
                         :required="!isCredit"
                         class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                        <option value="cash">💵 Efectivo</option>
                         <option value="card">💳 Punto de Venta</option>
+                        <option value="cash">💵 Efectivo</option>
                         <option value="mobile">📱 Pago Móvil</option>
                     </select>
                 </div>
@@ -392,7 +392,7 @@
             selectedCustomer: null,
             isCredit: false,
             notes: '',
-            paymentMethod: 'cash', // Método de pago por defecto: Efectivo
+            paymentMethod: 'card', // Método de pago por defecto: Punto de Venta
             mobileReference: '', // Referencia de pago móvil
             exchangeRate: 1, // VALOR POR DEFECTO SEGURO
             
@@ -680,7 +680,7 @@
                 this.selectedCustomer = null;
                 this.isCredit = false;
                 this.notes = '';
-                this.paymentMethod = 'cash';
+                this.paymentMethod = 'card';
                 this.mobileReference = '';
                 this.closeQuantityModal();
                 this.clearCustomerSearch();
