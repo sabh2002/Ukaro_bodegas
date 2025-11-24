@@ -6,12 +6,12 @@ from django.db.models import Sum, Count, Q, F
 from django.utils import timezone
 from datetime import timedelta
 
-from utils.decorators import is_admin
+from utils.decorators import is_admin, admin_required
 
-@login_required
+@admin_required
 def dashboard(request):
     """
-    Vista del dashboard con datos filtrados según el rol del usuario
+    Vista del dashboard - Solo para administradores
     """
     today = timezone.now().date()
     
