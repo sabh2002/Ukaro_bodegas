@@ -34,7 +34,8 @@
 
 <!-- MÉTRICAS PRINCIPALES - ADAPTADAS POR ROL -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-    <!-- Ventas del Día - Para todos -->
+    <!-- ⭐ OCULTADO: Ventas del Día - Solo visible para Administradores -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex-1">
@@ -45,17 +46,17 @@
                         </svg>
                     </div>
                     <div>
-                        <div class="text-xs sm:text-sm font-medium opacity-90">
-                            {% if user.is_admin or user.is_superuser %}Ventas del Día{% else %}Mis Ventas Hoy{% endif %}
-                        </div>
+                        <div class="text-xs sm:text-sm font-medium opacity-90">Ventas del Día</div>
                         <div class="text-lg sm:text-xl lg:text-2xl font-bold">Bs {{ sales_total|default:"0.00"|floatformat:2 }}</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Ventas Realizadas - Para todos -->
+    {% endif %}
+
+    <!-- ⭐ OCULTADO: Ventas Realizadas - Solo visible para Administradores -->
+    {% if user.is_admin or user.is_superuser %}
     <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 sm:p-6 text-white shadow-lg">
         <div class="flex items-center justify-between">
             <div class="flex-1">
@@ -66,15 +67,14 @@
                         </svg>
                     </div>
                     <div>
-                        <div class="text-xs sm:text-sm font-medium opacity-90">
-                            {% if user.is_admin or user.is_superuser %}Ventas Realizadas{% else %}Mis Ventas{% endif %}
-                        </div>
+                        <div class="text-xs sm:text-sm font-medium opacity-90">Ventas Realizadas</div>
                         <div class="text-lg sm:text-xl lg:text-2xl font-bold">{{ sales_count|default:"0" }}</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
     
     <!-- Stock Bajo - Solo Administradores -->
     {% if user.is_admin or user.is_superuser %}
