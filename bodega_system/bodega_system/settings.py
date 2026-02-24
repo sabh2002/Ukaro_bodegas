@@ -12,7 +12,7 @@ SECRET_KEY = 'django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['bodegaleida.pythonanywhere.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -22,14 +22,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # Third party apps
     'rest_framework',
     'crispy_forms',
     'crispy_tailwind',
     'simple_history',
     'django_htmx',
-    
+
     # Local apps
     'accounts',
     'inventory',

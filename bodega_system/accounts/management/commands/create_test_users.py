@@ -12,7 +12,7 @@ class Command(BaseCommand):
             admin = User.objects.create_user(
                 username='Leida',
                 email='leida@gmail.com',
-                password='..Leida2025..',
+                password='..LeidaBodega2025..',
                 first_name='Administrador',
                 last_name='Principal',
                 is_admin=True,
@@ -26,13 +26,13 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING('⚠️ Usuario admin ya existe')
             )
-        
+
         # Crear empleado si no existe
         if not User.objects.filter(username='empleado').exists():
             employee = User.objects.create_user(
                 username='Miguel',
                 email='empleado@bodega.com',
-                password='Miguel2025',
+                password='BodegaEmpleadoMiguel2025',
                 first_name='Miguel',
                 last_name='Ventas',
                 is_employee=True
@@ -44,7 +44,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING('⚠️ Usuario empleado ya existe')
             )
-        
+
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('✅ USUARIOS DE PRUEBA DISPONIBLES:'))
         self.stdout.write('')

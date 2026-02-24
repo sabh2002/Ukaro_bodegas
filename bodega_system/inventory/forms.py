@@ -10,7 +10,7 @@ from .models import Category, Product, InventoryAdjustment, ProductCombo, ComboI
 
 class ProductForm(forms.ModelForm):
     """Formulario para productos con precios en USD"""
-    
+
     class Meta:
         model = Product
         fields = [
@@ -46,13 +46,13 @@ class ProductForm(forms.ModelForm):
             # ⭐ PRECIOS EN USD
             'purchase_price_usd': forms.NumberInput(attrs={
                 'class': 'shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md',
-                'step': '0.01',
+                'step': '0.001',
                 'min': '0',
                 'placeholder': '0.00'
             }),
             'selling_price_usd': forms.NumberInput(attrs={
                 'class': 'shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md',
-                'step': '0.01',
+                'step': '0.001',
                 'min': '0',
                 'placeholder': '0.00'
             }),
@@ -81,48 +81,48 @@ class ProductForm(forms.ModelForm):
                 'placeholder': '0.00'
             }),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # Personalizar labels
         self.fields['purchase_price_usd'].label = 'Precio de Compra (USD)'
         self.fields['selling_price_usd'].label = 'Precio de Venta (USD)'
         self.fields['bulk_price_usd'].label = 'Precio al Mayor (USD)'
-        
+
         # Help text
         self.fields['purchase_price_usd'].help_text = 'Precio de compra en dólares estadounidenses'
         self.fields['selling_price_usd'].help_text = 'Precio de venta en dólares estadounidenses'
-        
+
         # Hacer algunos campos requeridos
         self.fields['category'].required = True
         self.fields['purchase_price_usd'].required = True
         self.fields['selling_price_usd'].required = True
-    
+
     def clean_purchase_price_usd(self):
         """Validar precio de compra"""
         price = self.cleaned_data.get('purchase_price_usd')
-        
+
         if price is None:
             raise forms.ValidationError("El precio de compra es requerido.")
-        
+
         if price <= 0:
             raise forms.ValidationError("El precio de compra debe ser mayor que cero.")
-        
+
         return price
-    
+
     def clean_selling_price_usd(self):
         """Validar precio de venta"""
         price = self.cleaned_data.get('selling_price_usd')
-        
+
         if price is None:
             raise forms.ValidationError("El precio de venta es requerido.")
-        
+
         if price <= 0:
             raise forms.ValidationError("El precio de venta debe ser mayor que cero.")
-        
+
         return price
-    
+
     def clean(self):
         """Validaciones adicionales"""
         cleaned_data = super().clean()
@@ -131,33 +131,33 @@ class ProductForm(forms.ModelForm):
         bulk_price = cleaned_data.get('bulk_price_usd')
         is_bulk_pricing = cleaned_data.get('is_bulk_pricing')
         bulk_min_quantity = cleaned_data.get('bulk_min_quantity')
-        
+
         # Validar que precio de venta sea mayor que precio de compra
         if purchase_price and selling_price:
             if selling_price <= purchase_price:
-                self.add_error('selling_price_usd', 
+                self.add_error('selling_price_usd',
                     'El precio de venta debe ser mayor que el precio de compra.')
-        
+
         # Validar precios al mayor
         if is_bulk_pricing:
             if not bulk_min_quantity or bulk_min_quantity <= 0:
-                self.add_error('bulk_min_quantity', 
+                self.add_error('bulk_min_quantity',
                     'La cantidad mínima es requerida para precios al mayor.')
-            
+
             if not bulk_price or bulk_price <= 0:
-                self.add_error('bulk_price_usd', 
+                self.add_error('bulk_price_usd',
                     'El precio al mayor es requerido.')
-            
+
             if selling_price and bulk_price and bulk_price >= selling_price:
-                self.add_error('bulk_price_usd', 
+                self.add_error('bulk_price_usd',
                     'El precio al mayor debe ser menor que el precio regular.')
-        
+
         return cleaned_data
 
 
 class CategoryForm(forms.ModelForm):
     """Formulario para categorías"""
-    
+
     class Meta:
         model = Category
         fields = ['name', 'description']
@@ -174,7 +174,7 @@ class CategoryForm(forms.ModelForm):
 
 class InventoryAdjustmentForm(forms.ModelForm):
     """Formulario para ajustes de inventario"""
-    
+
     class Meta:
         model = InventoryAdjustment
         fields = ['product', 'adjustment_type', 'quantity', 'reason']
@@ -182,29 +182,29 @@ class InventoryAdjustmentForm(forms.ModelForm):
             'product': forms.Select(attrs={'class': 'form-select'}),
             'adjustment_type': forms.Select(attrs={'class': 'form-select'}),
             'quantity': forms.NumberInput(attrs={
-                'class': 'form-input', 
-                'step': '0.001', 
+                'class': 'form-input',
+                'step': '0.001',
                 'min': '0.001'
             }),
             'reason': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
+
         # Filtrar solo productos activos
         self.fields['product'].queryset = Product.objects.filter(is_active=True)
-    
+
     def clean_quantity(self):
         """Validar cantidad"""
         quantity = self.cleaned_data.get('quantity')
         adjustment_type = self.cleaned_data.get('adjustment_type')
         product = self.cleaned_data.get('product')
-        
+
         if quantity <= 0:
             raise forms.ValidationError("La cantidad debe ser mayor que cero.")
-        
+
         # Validar que no se quite más stock del disponible
         if adjustment_type == 'remove' and product:
             if quantity > product.stock:
@@ -212,35 +212,35 @@ class InventoryAdjustmentForm(forms.ModelForm):
                     f"No se puede quitar más stock del disponible. "
                     f"Stock actual: {product.stock}"
                 )
-        
+
         return quantity
-    
+
     def save(self, commit=True):
         adjustment = super().save(commit=False)
         adjustment.adjusted_by = self.user
-        
+
         # Calcular nuevo stock
         product = adjustment.product
         adjustment.previous_stock = product.stock
-        
+
         if adjustment.adjustment_type == 'add':
             new_stock = product.stock + adjustment.quantity
         elif adjustment.adjustment_type == 'remove':
             new_stock = product.stock - adjustment.quantity
         elif adjustment.adjustment_type == 'set':
             new_stock = adjustment.quantity
-        
+
         adjustment.new_stock = new_stock
-        
+
         if commit:
             with transaction.atomic():
                 # Actualizar stock del producto
                 product.stock = new_stock
                 product.save()
-                
+
                 # Guardar ajuste
                 adjustment.save()
-        
+
         return adjustment
 
 
@@ -248,7 +248,7 @@ class InventoryAdjustmentForm(forms.ModelForm):
 
 class ProductComboForm(forms.ModelForm):
     """Formulario para crear combos de productos - PENDIENTE"""
-    
+
     class Meta:
         model = ProductCombo
         fields = ['name', 'description', 'combo_price_bs', 'is_active']
@@ -261,7 +261,7 @@ class ProductComboForm(forms.ModelForm):
 
 class ComboItemForm(forms.ModelForm):
     """Formulario para ítems de combo - PENDIENTE"""
-    
+
     class Meta:
         model = ComboItem
         fields = ['product', 'quantity']
@@ -269,7 +269,7 @@ class ComboItemForm(forms.ModelForm):
             'product': forms.Select(attrs={'class': 'form-select'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.001', 'min': '0.001'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filtrar solo productos activos
@@ -278,7 +278,7 @@ class ComboItemForm(forms.ModelForm):
 
 # Formset para manejo de ítems de combo
 ComboItemFormset = forms.inlineformset_factory(
-    ProductCombo, 
+    ProductCombo,
     ComboItem,
     form=ComboItemForm,
     extra=1,
