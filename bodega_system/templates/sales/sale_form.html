@@ -63,10 +63,10 @@
         <!-- Debug Panel (solo en modo desarrollo) -->
         <div x-show="showDebug" class="debug-info mb-4">
             <h4 class="font-medium mb-2">Debug Info:</h4>
-            <div>Último producto escaneado: <span x-text="lastScannedProduct"></span></div>
+            <div>Búsqueda actual: <span x-text="productSearch"></span></div>
+            <div>Resultados: <span x-text="productResults.length"></span></div>
             <div>Items actuales: <span x-text="items.length"></span></div>
             <div>Total calculado: <span x-text="total"></span></div>
-            <div>Código actual: <span x-text="barcode"></span></div>
             <div>Notas actuales: <span x-text="notes"></span></div>
             <div>Exchange rate: <span x-text="exchangeRate"></span></div>
         </div>
@@ -74,30 +74,66 @@
         <!-- Panel de búsqueda de productos -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="md:col-span-2">
-                <label for="barcode" class="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
+                <label for="product_search" class="block text-sm font-medium text-gray-700 mb-1">
+                    Buscar Producto (Código o Nombre)
+                </label>
                 <div class="relative rounded-md shadow-sm">
-                    <input 
-                        type="text" 
-                        id="barcode" 
-                        x-model="barcode"
-                        @keydown.enter.prevent="scanBarcode"
-                        @input="lastScannedProduct = $event.target.value"
+                    <input
+                        type="text"
+                        id="product_search"
+                        x-model="productSearch"
+                        @input="searchProducts"
+                        @keydown.enter.prevent="handleProductSearch"
+                        @keydown.down.prevent="navigateProduct(1)"
+                        @keydown.up.prevent="navigateProduct(-1)"
+                        @keydown.escape="clearProductSearch"
                         class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 rounded-md"
-                        placeholder="Escanee o ingrese el código de barras"
+                        placeholder="Escanee código o busque por nombre..."
                         autocomplete="off"
                         autofocus>
-                    <div class="absolute inset-y-0 right-0 flex items-center">
-                        <button 
-                            @click="scanBarcode"
-                            type="button"
-                            class="h-full py-0 px-3 border-transparent bg-transparent text-gray-500 sm:text-sm rounded-r-md hover:text-indigo-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
                     </div>
                 </div>
-                <button 
+
+                <!-- Dropdown de resultados de búsqueda -->
+                <div x-show="productResults.length > 0 && showProductDropdown"
+                     x-cloak
+                     class="absolute z-20 w-full md:w-2/3 bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-80 overflow-y-auto">
+                    <template x-for="(product, index) in productResults" :key="product.id">
+                        <div
+                            @click="selectProduct(product)"
+                            @mouseenter="productSelectedIndex = index"
+                            :class="{'bg-indigo-50': index === productSelectedIndex}"
+                            class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <div class="font-medium text-sm text-gray-900" x-text="product.name"></div>
+                                    <div class="text-xs text-gray-500">
+                                        Código: <span x-text="product.barcode"></span>
+                                    </div>
+                                </div>
+                                <div class="text-right ml-4">
+                                    <div class="text-sm font-semibold text-gray-900">
+                                        Bs <span x-text="parseFloat(product.selling_price_bs).toFixed(2)"></span>
+                                    </div>
+                                    <div class="text-xs"
+                                         :class="{
+                                            'text-red-600': product.stock_status === 'out',
+                                            'text-yellow-600': product.stock_status === 'low',
+                                            'text-green-600': product.stock_status === 'normal'
+                                         }">
+                                        Stock: <span x-text="product.stock"></span> <span x-text="product.unit_display"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <button
                     @click="showDebug = !showDebug"
                     type="button"
                     class="mt-1 text-xs text-gray-500 hover:text-gray-700">
@@ -385,7 +421,11 @@
         Alpine.data('salesApp', () => ({
             // Estados principales - INICIALIZAR SIEMPRE COMO STRINGS VACÍOS
             items: [],
-            barcode: '',
+            productSearch: '',
+            productResults: [],
+            productSelectedIndex: -1,
+            showProductDropdown: false,
+            searchTimeout: null,
             customerSearch: '',
             customerResults: [],
             customerSelectedIndex: -1,
@@ -395,12 +435,12 @@
             paymentMethod: 'card', // Método de pago por defecto: Punto de Venta
             mobileReference: '', // Referencia de pago móvil
             exchangeRate: 1, // VALOR POR DEFECTO SEGURO
-            
+
             // Variables para el modal de cantidad
             showQuantityModal: false,
             pendingProduct: null,
             quantityInput: '',
-            
+
             // Debug
             showDebug: false,
             lastScannedProduct: '',
@@ -414,87 +454,182 @@
                 return this.subtotal;
             },
             
-            // Métodos principales
-            async scanBarcode() {
-                const code = this.barcode ? this.barcode.trim() : '';
-                if (!code) {
-                    this.focusBarcodeInput();
+            // Métodos de búsqueda de productos
+            async searchProducts() {
+                const query = this.productSearch.trim();
+
+                // Si está vacío, limpiar resultados
+                if (query.length === 0) {
+                    this.productResults = [];
+                    this.showProductDropdown = false;
+                    this.productSelectedIndex = -1;
                     return;
                 }
-                
-                console.log('Escaneando código:', code);
-                this.lastScannedProduct = code;
-                
-                try {
-                    const response = await fetch(`/api/products/barcode/${encodeURIComponent(code)}/`);
-                    
-                    if (!response.ok) {
-                        if (response.status === 404) {
-                            alert('Producto no encontrado');
-                        } else {
-                            const errorData = await response.json();
-                            alert(errorData.error || 'Error al buscar el producto');
-                        }
-                        this.barcode = '';
-                        this.focusBarcodeInput();
-                        return;
-                    }
-                    
-                    const product = await response.json();
-                    console.log('Producto encontrado:', product);
-                    
-                    // Verificar stock
-                    if (product.stock <= 0) {
-                        alert(`El producto "${product.name}" no tiene stock disponible`);
-                        this.barcode = '';
-                        this.focusBarcodeInput();
-                        return;
-                    }
-                    
-                    // Verificar si ya está en la lista
-                    const existingIndex = this.items.findIndex(item => item.id === product.id);
-                    
-                    if (existingIndex !== -1) {
-                        // Producto ya existe, incrementar cantidad
-                        const currentQuantity = this.items[existingIndex].quantity;
-                        const newQuantity = product.is_weight_based ? currentQuantity + 1 : currentQuantity + 1;
-                        
-                        if (newQuantity > product.stock) {
-                            alert(`Stock insuficiente. Disponible: ${product.stock}`);
-                            this.barcode = '';
-                            this.focusBarcodeInput();
+
+                // Si es muy corto, no buscar (esperar al menos 2 caracteres)
+                if (query.length < 2) {
+                    return;
+                }
+
+                // Debounce para evitar búsquedas excesivas
+                clearTimeout(this.searchTimeout);
+
+                this.searchTimeout = setTimeout(async () => {
+                    try {
+                        const response = await fetch(
+                            `/api/products/search/?q=${encodeURIComponent(query)}&limit=10`
+                        );
+
+                        if (!response.ok) {
+                            console.error('Error en búsqueda:', response.status);
                             return;
                         }
-                        
-                        this.items[existingIndex].quantity = newQuantity;
-                        this.updateItemSubtotal(existingIndex);
-                    } else {
-                        // Producto nuevo
-                        if (product.is_weight_based) {
-                            // Mostrar modal para productos por peso
-                            this.pendingProduct = product;
-                            this.quantityInput = '1';
-                            this.showQuantityModal = true;
-                            setTimeout(() => {
-                                this.$refs.quantityModalInput?.focus();
-                            }, 100);
-                        } else {
-                            // Agregar directamente productos por unidad
-                            this.addProductToSale(product, 1);
-                        }
+
+                        const data = await response.json();
+                        this.productResults = data.products || [];
+                        this.showProductDropdown = this.productResults.length > 0;
+                        this.productSelectedIndex = -1;
+
+                    } catch (error) {
+                        console.error('Error al buscar productos:', error);
+                        this.productResults = [];
                     }
-                    
-                    this.barcode = '';
-                    if (!this.showQuantityModal) {
-                        this.focusBarcodeInput();
-                    }
-                    
-                } catch (error) {
-                    console.error('Error al escanear código:', error);
-                    alert('Error de conexión. Intente nuevamente.');
-                    this.barcode = '';
-                    this.focusBarcodeInput();
+                }, 300); // Debounce de 300ms
+            },
+
+            handleProductSearch() {
+                const query = this.productSearch.trim();
+
+                if (!query) return;
+
+                // Si hay resultados en dropdown, seleccionar el primero o el seleccionado
+                if (this.productResults.length > 0) {
+                    const selectedProduct = this.productSelectedIndex >= 0
+                        ? this.productResults[this.productSelectedIndex]
+                        : this.productResults[0];
+                    this.selectProduct(selectedProduct);
+                } else {
+                    // Si no hay resultados, intentar búsqueda exacta por barcode
+                    this.searchExactBarcode(query);
                 }
+            },
+
+            async searchExactBarcode(barcode) {
+                try {
+                    const response = await fetch(
+                        `/api/products/barcode/${encodeURIComponent(barcode)}/`
+                    );
+
+                    if (!response.ok) {
+                        alert('Producto no encontrado');
+                        this.clearProductSearch();
+                        return;
+                    }
+
+                    const product = await response.json();
+                    this.addProductToCart(product);
+                    this.clearProductSearch();
+
+                } catch (error) {
+                    console.error('Error al buscar por barcode:', error);
+                    alert('Error al buscar producto');
+                    this.clearProductSearch();
+                }
+            },
+
+            navigateProduct(direction) {
+                if (this.productResults.length === 0) return;
+
+                this.productSelectedIndex += direction;
+
+                // Wrap around
+                if (this.productSelectedIndex < 0) {
+                    this.productSelectedIndex = this.productResults.length - 1;
+                } else if (this.productSelectedIndex >= this.productResults.length) {
+                    this.productSelectedIndex = 0;
+                }
+            },
+
+            selectProduct(product) {
+                if (!product) return;
+
+                // Verificar stock
+                if (product.stock <= 0) {
+                    alert(`El producto "${product.name}" no tiene stock disponible`);
+                    this.clearProductSearch();
+                    return;
+                }
+
+                // Verificar si ya está en la lista
+                const existingIndex = this.items.findIndex(item => item.id === product.id);
+
+                if (existingIndex !== -1) {
+                    // Incrementar cantidad
+                    const currentQuantity = this.items[existingIndex].quantity;
+                    const newQuantity = currentQuantity + 1;
+
+                    if (newQuantity > product.stock) {
+                        alert(`Stock insuficiente. Disponible: ${product.stock}`);
+                        this.clearProductSearch();
+                        return;
+                    }
+
+                    this.items[existingIndex].quantity = newQuantity;
+                    this.updateItemSubtotal(existingIndex);
+                } else {
+                    // Producto nuevo
+                    if (product.is_weight_based) {
+                        // Mostrar modal para productos por peso
+                        this.pendingProduct = {
+                            id: product.id,
+                            name: product.name,
+                            barcode: product.barcode,
+                            selling_price_bs: product.selling_price_bs,
+                            stock: product.stock,
+                            unit_display: product.unit_display,
+                            is_weight_based: product.is_weight_based
+                        };
+                        this.quantityInput = '1';
+                        this.showQuantityModal = true;
+                        setTimeout(() => {
+                            this.$refs.quantityModalInput?.focus();
+                        }, 100);
+                    } else {
+                        // Agregar directamente productos por unidad
+                        this.addProductToCart(product);
+                    }
+                }
+
+                this.clearProductSearch();
+
+                // Re-focus en el input de búsqueda
+                setTimeout(() => {
+                    document.getElementById('product_search')?.focus();
+                }, 100);
+            },
+
+            addProductToCart(product) {
+                const item = {
+                    id: product.id,
+                    name: product.name,
+                    barcode: product.barcode,
+                    price: product.selling_price_bs,
+                    quantity: 1,
+                    subtotal: product.selling_price_bs,
+                    stock: product.stock,
+                    unit_display: product.unit_display || product.unit_code,
+                    is_weight_based: product.is_weight_based
+                };
+
+                this.items.push(item);
+                console.log('Producto agregado al carrito:', item);
+            },
+
+            clearProductSearch() {
+                this.productSearch = '';
+                this.productResults = [];
+                this.showProductDropdown = false;
+                this.productSelectedIndex = -1;
             },
             
             addProductToSale(product, quantity) {
@@ -506,10 +641,10 @@
                     quantity: quantity,
                     subtotal: product.selling_price_bs * quantity,
                     stock: product.stock,
-                    unit_display: product.unit_display,
+                    unit_display: product.unit_display || product.unit_code,
                     is_weight_based: product.is_weight_based
                 };
-                
+
                 this.items.push(item);
                 console.log('Producto agregado:', item);
             },
@@ -676,7 +811,7 @@
             
             resetSale() {
                 this.items = [];
-                this.barcode = '';
+                this.productSearch = '';
                 this.selectedCustomer = null;
                 this.isCredit = false;
                 this.notes = '';
@@ -684,11 +819,12 @@
                 this.mobileReference = '';
                 this.closeQuantityModal();
                 this.clearCustomerSearch();
+                this.clearProductSearch();
             },
-            
+
             focusBarcodeInput() {
                 setTimeout(() => {
-                    const input = document.getElementById('barcode');
+                    const input = document.getElementById('product_search');
                     if (input) {
                         input.focus();
                     }

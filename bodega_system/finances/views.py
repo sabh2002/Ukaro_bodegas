@@ -77,10 +77,19 @@ def finance_dashboard(request):
 
     # Convertir a Bs
     current_rate = ExchangeRate.get_latest_rate()
-    today_real_profit_bs = today_real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
-
-    # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
-    today_expenses_total_bs = today_expenses_total_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+    if not current_rate:
+        # Si no hay tasa, mostrar advertencia pero continuar con cálculos en USD
+        messages.warning(
+            request,
+            '⚠️ No hay tasa de cambio configurada. Los montos en Bs pueden no ser precisos. '
+            'Configure una tasa en Utils > Tasas de Cambio.'
+        )
+        today_real_profit_bs = Decimal('0.00')
+        today_expenses_total_bs = Decimal('0.00')
+    else:
+        today_real_profit_bs = today_real_profit_usd * current_rate.bs_to_usd
+        # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
+        today_expenses_total_bs = today_expenses_total_usd * current_rate.bs_to_usd
 
     # Ganancia neta del día = ganancia por productos - gastos (ambos en Bs)
     today_net_profit_bs = today_real_profit_bs - today_expenses_total_bs
@@ -142,19 +151,26 @@ def finance_dashboard(request):
         month_real_profit_usd += profit  # ⭐ NUEVO: Sumar a ganancia total del mes
 
     # Convertir ganancia real del mes a Bs
-    month_real_profit_bs = month_real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
-
-    # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
-    month_expenses_total_bs = month_expenses_total_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+    if not current_rate:
+        month_real_profit_bs = Decimal('0.00')
+        month_expenses_total_bs = Decimal('0.00')
+    else:
+        month_real_profit_bs = month_real_profit_usd * current_rate.bs_to_usd
+        # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
+        month_expenses_total_bs = month_expenses_total_usd * current_rate.bs_to_usd
 
     # ⭐ CORREGIDO: Ganancia neta REAL del mes = ganancia por productos - gastos (ambos en Bs)
     net_profit_real_bs = month_real_profit_bs - month_expenses_total_bs
 
-    # Mantener cálculo aproximado para comparación (opcional)
+    # ⚠️ MÉTODO APROXIMADO - Solo para referencia informativa, NO usar para decisiones financieras
+    # Este cálculo (ventas - compras) no refleja la ganancia real porque:
+    # 1. Las ventas del mes pueden incluir productos comprados en meses anteriores
+    # 2. Las compras del mes pueden no haberse vendido todavía
+    # Para toma de decisiones, SIEMPRE usar 'net_profit_real_bs' que calcula
+    # la ganancia real por margen de cada producto vendido
     gross_profit_bs = month_sales_total_bs - month_purchases_total_bs
     gross_profit_usd = month_sales_total_usd - month_purchases_total_usd
-    # ⭐ CORREGIDO: Convertir gastos a Bs antes de restar
-    net_profit_bs = gross_profit_bs - month_expenses_total_bs  # Método aproximado
+    net_profit_bs = gross_profit_bs - month_expenses_total_bs  # Método aproximado (informativo)
 
     # Ordenar por ganancia y tomar top 10
     top_products_by_profit = sorted(
@@ -356,20 +372,35 @@ def profits_report(request):
 
     # Convertir ganancia real a Bs usando tasa promedio del período
     current_rate = ExchangeRate.get_latest_rate()
-    real_profit_bs = real_profit_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
-
-    # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
-    total_expenses_bs = total_expenses_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+    if not current_rate:
+        messages.warning(
+            request,
+            '⚠️ No hay tasa de cambio configurada. Los montos en Bs no están disponibles. '
+            'Configure una tasa en Utils > Tasas de Cambio.'
+        )
+        real_profit_bs = Decimal('0.00')
+        total_expenses_bs = Decimal('0.00')
+    else:
+        real_profit_bs = real_profit_usd * current_rate.bs_to_usd
+        # ⭐ CORREGIDO: Convertir gastos USD a Bs antes de restar
+        total_expenses_bs = total_expenses_usd * current_rate.bs_to_usd
 
     # Ganancia neta real = ganancia por productos - gastos (ambos en Bs)
     net_profit_real_bs = real_profit_bs - total_expenses_bs
     net_profit_real_usd = real_profit_usd - total_expenses_usd  # ⭐ NUEVO: También en USD
 
-    # Mantener cálculo anterior para comparación
+    # ⚠️ MÉTODO APROXIMADO - Solo para referencia informativa
+    # Este cálculo (ventas - compras) NO representa la ganancia real porque:
+    # 1. Las ventas del período pueden incluir productos de compras anteriores
+    # 2. Las compras del período pueden no haberse vendido todavía
+    # 3. No refleja el margen real de ganancia de cada producto
+    #
+    # ✅ IMPORTANTE: Use 'net_profit_real_usd' y 'net_profit_real_bs' para
+    # análisis financiero y toma de decisiones, ya que calculan la ganancia
+    # exacta basada en el margen de cada producto vendido.
     gross_profit_bs = total_sales_bs - total_purchases_bs
     gross_profit_usd = total_sales_usd - total_purchases_usd
-    # ⭐ CORREGIDO: Convertir gastos a Bs antes de restar
-    net_profit_bs = gross_profit_bs - total_expenses_bs
+    net_profit_bs = gross_profit_bs - total_expenses_bs  # Método aproximado (solo informativo)
     
     # Ganancias por día (para gráfico)
     daily_profits = []
@@ -391,16 +422,21 @@ def profits_report(request):
         )['total'] or Decimal('0.00')
 
         # ⭐ CORREGIDO: Convertir gastos USD a Bs para el gráfico
-        day_expenses_bs = day_expenses_usd * (current_rate.bs_to_usd if current_rate else Decimal('1.00'))
+        if current_rate:
+            day_expenses_bs = day_expenses_usd * current_rate.bs_to_usd
+        else:
+            day_expenses_bs = Decimal('0.00')
 
         day_profit = day_sales - day_purchases - day_expenses_bs  # ⭐ CORREGIDO: Restar Bs
         
+        # ⭐ CRÍTICO: Mantener Decimal hasta el final, convertir solo a string para JavaScript
+        # Esto previene pérdida de precisión en cálculos financieros
         daily_profits.append({
             'date': current_date.strftime('%d/%m'),
-            'sales': float(day_sales),
-            'purchases': float(day_purchases),
-            'expenses': float(day_expenses_bs),  # ⭐ CORREGIDO: Usar Bs
-            'profit': float(day_profit),
+            'sales': str(day_sales),
+            'purchases': str(day_purchases),
+            'expenses': str(day_expenses_bs),
+            'profit': str(day_profit),
         })
         
         current_date += timedelta(days=1)

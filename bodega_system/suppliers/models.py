@@ -179,7 +179,12 @@ class SupplierOrderItem(models.Model):
             if latest_rate:
                 self.price_bs = self.price_usd * latest_rate.bs_to_usd
             else:
-                self.price_bs = self.price_usd * 7.0  # Fallback rate
+                # ⛔ NO usar fallback silencioso - esto previene errores financieros críticos
+                raise ValueError(
+                    "No hay tasa de cambio configurada en el sistema. "
+                    "Por favor configure una tasa de cambio antes de crear órdenes de compra. "
+                    "Puede hacerlo desde el panel de administración en Utils > Tasas de Cambio."
+                )
         super().save(*args, **kwargs)
     
     @property

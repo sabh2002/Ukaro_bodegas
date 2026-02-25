@@ -144,7 +144,7 @@ def product_search_api(request):
                 'name': product.name,
                 'barcode': product.barcode,
                 'category': product.category.name,
-                'selling_price_bs': float(product.selling_price_bs),
+                'selling_price_bs': float(product.get_current_price_bs()),  # ✅ FIX: Usar método dinámico
                 'stock': float(product.stock),
                 'min_stock': float(product.min_stock),
                 'unit_display': product.get_unit_type_display(),
@@ -203,11 +203,11 @@ def product_by_barcode_api(request, barcode):
             'min_stock': float(product.min_stock),
             'stock_available': stock_available,
             'image': product.image.url if product.image else None,
-            
+
             # Precios completos para órdenes de compra
-            'purchase_price_bs': float(product.purchase_price_bs),
+            'purchase_price_bs': float(product.purchase_price_bs) if product.purchase_price_bs else 0.0,
             'purchase_price_usd': float(product.purchase_price_usd),
-            'selling_price_bs': float(product.selling_price_bs),
+            'selling_price_bs': float(product.get_current_price_bs()),  # ✅ FIX: Usar método dinámico
             'selling_price_usd': float(product.selling_price_usd),
             
             # Información para precios al mayor

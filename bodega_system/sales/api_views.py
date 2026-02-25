@@ -36,7 +36,34 @@ def create_sale_api(request):
         customer = None
         if data.get('customer_id'):
             customer = get_object_or_404(Customer, pk=data['customer_id'])
-        
+
+        # ⭐ VALIDACIÓN CRÍTICA: Verificar límite de crédito ANTES de iniciar transacción
+        is_credit = data.get('is_credit', False)
+        if is_credit and customer:
+            # Pre-calcular total para validar límite (cálculo rápido sin crear objetos)
+            temp_total_usd = Decimal('0.00')
+            for item_data in data['items']:
+                if item_data.get('is_combo', False):
+                    combo = get_object_or_404(ProductCombo, pk=item_data['combo_id'])
+                    quantity = Decimal(str(item_data.get('combo_quantity', 1)))
+                    # Convertir precio combo de Bs a USD aproximado para validación
+                    temp_total_usd += (combo.combo_price_bs / current_exchange_rate.bs_to_usd) * quantity
+                else:
+                    product = get_object_or_404(Product, pk=item_data['product_id'])
+                    quantity = Decimal(str(item_data['quantity']))
+                    price_usd = product.get_price_usd_for_quantity(quantity)
+                    temp_total_usd += price_usd * quantity
+
+            # Verificar límite de crédito
+            available_credit = customer.available_credit
+            if temp_total_usd > available_credit:
+                return JsonResponse({
+                    'error': f'Cliente excede límite de crédito. '
+                             f'Disponible: ${available_credit:.2f} USD, '
+                             f'Solicitado: ${temp_total_usd:.2f} USD. '
+                             f'Por favor, solicite un pago o realice la venta de contado.'
+                }, status=400)
+
         with transaction.atomic():
             # ⭐ CALCULAR TOTALES EN USD Y BS
             total_usd = Decimal('0.00')
@@ -109,12 +136,13 @@ def create_sale_api(request):
                     notes=f'Crédito por venta #{sale.id}'
                 )
             
+            # ⭐ CRÍTICO: Usar string en lugar de float para mantener precisión en JSON
             return JsonResponse({
                 'id': sale.id,
                 'message': 'Venta creada exitosamente',
-                'total_usd': float(sale.total_usd),
-                'total_bs': float(sale.total_bs),
-                'exchange_rate': float(sale.exchange_rate_used),
+                'total_usd': str(sale.total_usd),
+                'total_bs': str(sale.total_bs),
+                'exchange_rate': str(sale.exchange_rate_used),
                 'user': request.user.get_full_name() or request.user.username
             })
             

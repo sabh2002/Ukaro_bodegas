@@ -276,46 +276,55 @@ def credit_payment(request, pk):
     if request.method == 'POST':
         form = CreditPaymentForm(request.POST, credit=credit)
         if form.is_valid():
-            payment = form.save(commit=False)
-            payment.credit = credit
-            payment.received_by = request.user
+            # ⭐ CRÍTICO: Usar transacción atómica para prevenir estados inconsistentes
+            from django.db import transaction
+            from decimal import Decimal
 
-            # ⭐ CORREGIDO: Calcular USD usando TASA ACTUAL del día del pago
+            # Obtener tasa de cambio antes de la transacción
             from utils.models import ExchangeRate
             current_rate = ExchangeRate.get_latest_rate()
-            if current_rate:
+            if not current_rate:
+                messages.error(
+                    request,
+                    '⚠️ No hay tasa de cambio configurada. '
+                    'No se puede procesar el pago sin una tasa válida. '
+                    'Por favor, configure una tasa en Utils > Tasas de Cambio.'
+                )
+                return redirect('customers:credit_detail', pk=credit.pk)
+
+            with transaction.atomic():
+                payment = form.save(commit=False)
+                payment.credit = credit
+                payment.received_by = request.user
+
+                # ⭐ CORREGIDO: Calcular USD usando TASA ACTUAL del día del pago
                 payment.exchange_rate_used = current_rate.bs_to_usd
                 payment.amount_usd = payment.amount_bs / current_rate.bs_to_usd
-            else:
-                # Fallback si no hay tasa configurada
-                from decimal import Decimal
-                payment.exchange_rate_used = Decimal('36.00')
-                payment.amount_usd = payment.amount_bs / Decimal('36.00')
 
-            payment.save()
+                payment.save()
 
-            # ⭐ CORREGIDO: Calcular si el crédito está pagado - La fuente de verdad es USD
-            total_paid_usd = credit.payments.aggregate(
-                total=Sum('amount_usd')
-            )['total'] or Decimal('0.00')
+                # ⭐ CORREGIDO: Calcular si el crédito está pagado - La fuente de verdad es USD
+                total_paid_usd = credit.payments.aggregate(
+                    total=Sum('amount_usd')
+                )['total'] or Decimal('0.00')
 
-            # Redondear ambos valores a 2 decimales para comparación precisa
-            total_paid_rounded = round(total_paid_usd, 2)
-            credit_amount_rounded = round(credit.amount_usd, 2)
+                # Redondear ambos valores a 2 decimales para comparación precisa
+                total_paid_rounded = round(total_paid_usd, 2)
+                credit_amount_rounded = round(credit.amount_usd, 2)
 
-            if total_paid_rounded >= credit_amount_rounded:
-                credit.is_paid = True
-                credit.date_paid = timezone.now()
-                credit.save()
-                messages.success(request, 'Crédito pagado completamente.')
-            else:
-                # ⭐ CORREGIDO: Mostrar saldo pendiente en USD y en Bs CON TASA ACTUAL
-                remaining_usd = credit_amount_rounded - total_paid_rounded
-                remaining_bs_current = remaining_usd * current_rate.bs_to_usd if current_rate else remaining_usd * Decimal('36.00')
-                messages.success(
-                    request,
-                    f'Pago registrado exitosamente. Saldo pendiente: ${remaining_usd:.2f} USD (Bs {remaining_bs_current:.2f} a tasa actual)'
-                )
+                if total_paid_rounded >= credit_amount_rounded:
+                    credit.is_paid = True
+                    credit.date_paid = timezone.now()
+                    credit.save()
+                    messages.success(request, 'Crédito pagado completamente.')
+                else:
+                    # ⭐ CORREGIDO: Mostrar saldo pendiente en USD y en Bs CON TASA ACTUAL
+                    remaining_usd = credit_amount_rounded - total_paid_rounded
+                    remaining_bs_current = remaining_usd * current_rate.bs_to_usd
+                    messages.success(
+                        request,
+                        f'Pago registrado exitosamente. Saldo pendiente: ${remaining_usd:.2f} USD (Bs {remaining_bs_current:.2f} a tasa actual)'
+                    )
 
             return redirect('customers:customer_detail', pk=credit.customer.pk)
     else:

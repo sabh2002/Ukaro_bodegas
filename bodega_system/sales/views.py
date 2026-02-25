@@ -117,11 +117,19 @@ def sale_create(request):
     """Vista para crear una nueva venta - Empleados y Administradores"""
     
     # Obtener tasa de cambio de forma segura
-    try:
-        latest_rate = ExchangeRate.get_latest_rate()
-        exchange_rate = float(latest_rate.bs_to_usd) if latest_rate else 1.0
-    except (AttributeError, ValueError, TypeError):
-        exchange_rate = 1.0
+    latest_rate = ExchangeRate.get_latest_rate()
+    if not latest_rate:
+        messages.error(
+            request,
+            '⚠️ No hay tasa de cambio configurada en el sistema. '
+            'No se pueden procesar ventas sin una tasa de cambio válida. '
+            'Por favor, configure una tasa en Utils > Tasas de Cambio.'
+        )
+        return redirect('finances:dashboard')
+
+    # ⭐ CRÍTICO: Mantener como Decimal, no convertir a float
+    # Solo convertir a string para JavaScript
+    exchange_rate = str(latest_rate.bs_to_usd)
     
     # Preparar datos JSON seguros para JavaScript
     data_for_js = {
