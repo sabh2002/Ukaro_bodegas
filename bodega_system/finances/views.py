@@ -171,6 +171,27 @@ def finance_dashboard(request):
         count=Count('id')
     ).order_by('-total_usd')
 
+    # Nombres de meses en español
+    MONTHS_ES = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    }
+    current_month_label = f"{MONTHS_ES[this_month_start.month]} {this_month_start.year}"
+
+    # Enriquecer gastos por categoría con etiquetas en español
+    from finances.models import Expense as ExpenseModel
+    category_labels = dict(ExpenseModel.EXPENSE_CATEGORIES)
+    expenses_by_category_enriched = [
+        {
+            'category': e['category'],
+            'label': category_labels.get(e['category'], e['category'].capitalize()),
+            'total_usd': e['total_usd'],
+            'count': e['count'],
+        }
+        for e in expenses_by_category
+    ]
+
     context = {
         'today_sales_count': today_sales_count,
         'today_sales_total_bs': today_sales_total_bs,
@@ -215,9 +236,9 @@ def finance_dashboard(request):
 
         # ⭐ MODIFICADO: Ahora son productos más rentables (no más vendidos)
         'top_products_by_profit': top_products_by_profit,
-        'expenses_by_category': expenses_by_category,
+        'expenses_by_category': expenses_by_category_enriched,
         'current_rate': current_rate,
-        'current_month': this_month_start.strftime('%B %Y'),
+        'current_month': current_month_label,
     }
 
     return render(request, 'finances/dashboard.html', context)
@@ -337,7 +358,7 @@ def profits_report(request):
     # Ganancia = (precio_venta - precio_compra) × cantidad
     sale_items = SaleItem.objects.filter(
         sale__date__date__gte=start_date,
-        sale__date__lte=end_date,
+        sale__date__date__lte=end_date,
         product__isnull=False  # Solo productos, no combos
     ).select_related('product', 'sale')
 

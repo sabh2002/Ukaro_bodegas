@@ -311,7 +311,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 content-start">
                 {% for expense in expenses_by_category %}
                 <div class="p-3 bg-red-50 rounded-lg">
-                    <p class="text-sm font-medium text-red-800">{{ expense.category|capfirst }}</p>
+                    <p class="text-sm font-medium text-red-800">{{ expense.label }}</p>
                     <p class="text-base font-bold text-red-900">${{ expense.total_usd|floatformat:2 }}</p>
                     <p class="text-xs text-red-600">{{ expense.count }} gasto{{ expense.count|pluralize }}</p>
                 </div>
@@ -322,7 +322,7 @@
         (function() {
             var ctx = document.getElementById('expensesDoughnutChart');
             if (!ctx) return;
-            var labels = [{% for e in expenses_by_category %}'{{ e.category|capfirst|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+            var labels = [{% for e in expenses_by_category %}'{{ e.label|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
             var values = [{% for e in expenses_by_category %}{{ e.total_usd|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
             var palette = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#14b8a6'];
             new Chart(ctx, {

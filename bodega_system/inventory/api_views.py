@@ -32,8 +32,8 @@ def product_detail_api(request, pk):
             'category_id': product.category_id,
             'category_name': product.category.name,
             'description': product.description,
-            'purchase_price_bs': float(product.purchase_price_bs),
-            'selling_price_bs': float(product.selling_price_bs),
+            'purchase_price_bs': float(product.get_current_purchase_price_bs()),
+            'selling_price_bs': float(product.get_current_price_bs()),
             'stock': float(product.stock),
             'min_stock': float(product.min_stock),
             'is_active': product.is_active,
@@ -144,7 +144,8 @@ def product_search_api(request):
                 'name': product.name,
                 'barcode': product.barcode,
                 'category': product.category.name,
-                'selling_price_bs': float(product.selling_price_bs),
+                'selling_price_bs': float(product.get_current_price_bs()),
+                'selling_price_usd': float(product.selling_price_usd),
                 'stock': float(product.stock),
                 'min_stock': float(product.min_stock),
                 'unit_display': product.get_unit_type_display(),
@@ -205,9 +206,9 @@ def product_by_barcode_api(request, barcode):
             'image': product.image.url if product.image else None,
             
             # Precios completos para órdenes de compra
-            'purchase_price_bs': float(product.purchase_price_bs),
+            'purchase_price_bs': float(product.get_current_purchase_price_bs()),
             'purchase_price_usd': float(product.purchase_price_usd),
-            'selling_price_bs': float(product.selling_price_bs),
+            'selling_price_bs': float(product.get_current_price_bs()),
             'selling_price_usd': float(product.selling_price_usd),
             
             # Información para precios al mayor
@@ -444,7 +445,7 @@ def product_suggestions_api(request):
                 'barcode': product.barcode,
                 'category': product.category.name,
                 'stock': float(product.stock),
-                'price': float(product.selling_price_bs),
+                'price': float(product.get_current_price_bs()),
                 'reason': suggestion_type
             })
         
