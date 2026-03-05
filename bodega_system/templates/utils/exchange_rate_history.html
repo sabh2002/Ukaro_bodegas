@@ -120,29 +120,11 @@
                             {{ rate.updated_by.get_full_name|default:rate.updated_by.username }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            {% with previous_rate=page_obj|slice:":"|last %}
-                            {% if not forloop.last %}
-                                {% with next_rate=page_obj.object_list|slice:forloop.counter0|first %}
-                                {% if next_rate %}
-                                    {% with diff=rate.bs_to_usd|floatformat:2|add:0|sub:next_rate.bs_to_usd|floatformat:2|add:0 %}
-                                    {% if diff > 0 %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            ↗️ +{{ diff|floatformat:2 }}
-                                        </span>
-                                    {% elif diff < 0 %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                            ↘️ {{ diff|floatformat:2 }}
-                                        </span>
-                                    {% else %}
-                                        <span class="text-gray-400">Sin cambio</span>
-                                    {% endif %}
-                                    {% endwith %}
-                                {% endif %}
-                                {% endwith %}
-                            {% else %}
+                            {% if forloop.last %}
                                 <span class="text-gray-400">Primer registro</span>
+                            {% else %}
+                                <span class="text-gray-400">—</span>
                             {% endif %}
-                            {% endwith %}
                         </td>
                     </tr>
                     {% endfor %}

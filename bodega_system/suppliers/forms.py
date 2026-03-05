@@ -1,10 +1,13 @@
 # suppliers/forms.py
 
+import logging
 from decimal import Decimal, InvalidOperation
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Supplier, SupplierOrder, SupplierOrderItem
+from .models import Supplier, SupplierOrder, SupplierOrderItem, SupplierPayment
 from inventory.models import Product
+
+logger = logging.getLogger(__name__)
 
 class SupplierForm(forms.ModelForm):
     """Formulario para proveedores"""
@@ -137,47 +140,62 @@ class SupplierOrderItemForm(forms.ModelForm):
     def clean_quantity(self):
         """Validar cantidad como decimal"""
         quantity = self.cleaned_data.get('quantity')
-        
+
         if quantity is None:
             raise forms.ValidationError("La cantidad es requerida.")
-        
-        # ✅ MEJORAR: Validación robusta para decimales
+
         try:
             if isinstance(quantity, str):
                 quantity = quantity.replace(',', '.')
-            
+
             quantity_decimal = Decimal(str(quantity))
-            
+
+            # Validar que sea positivo
             if quantity_decimal <= 0:
                 raise forms.ValidationError("La cantidad debe ser mayor a cero.")
-            
+
+            # Validar cantidad máxima
+            if quantity_decimal > Decimal('100000'):
+                raise forms.ValidationError(
+                    "La cantidad no puede exceder 100,000 unidades. "
+                    "Para cantidades mayores, cree múltiples órdenes."
+                )
+
             # Validar máximo 2 decimales
             if quantity_decimal.as_tuple().exponent < -2:
                 raise forms.ValidationError("La cantidad no puede tener más de 2 decimales.")
-            
+
             return quantity_decimal
-            
+
         except (InvalidOperation, ValueError):
             raise forms.ValidationError("La cantidad debe ser un número válido.")
     
     def clean_price_usd(self):
         """Validar precio en USD"""
         price = self.cleaned_data.get('price_usd')
-        
+
         if price is None:
             raise forms.ValidationError("El precio es requerido.")
-        
+
         try:
             if isinstance(price, str):
                 price = price.replace(',', '.')
-            
+
             price_decimal = Decimal(str(price))
-            
+
+            # Validar que sea positivo
             if price_decimal <= 0:
                 raise forms.ValidationError("El precio debe ser mayor a cero.")
-            
+
+            # Validar precio máximo
+            if price_decimal > Decimal('1000000'):
+                raise forms.ValidationError(
+                    "El precio no puede exceder $1,000,000 USD. "
+                    "Verifique el precio ingresado."
+                )
+
             return price_decimal
-            
+
         except (InvalidOperation, ValueError):
             raise forms.ValidationError("El precio debe ser un número válido.")
         
@@ -186,48 +204,41 @@ class SupplierOrderItemForm(forms.ModelForm):
         cleaned_data = super().clean()
         is_new_product = cleaned_data.get('is_new_product')
         product = cleaned_data.get('product')
-        
-        # Debug: mostrar todos los datos que llegan
-        print(f"🔍 FORM VALIDATION DEBUG:")
-        print(f"  is_new_product: {is_new_product}")
-        print(f"  product: {product}")
-        print(f"  All cleaned_data keys: {list(cleaned_data.keys())}")
-        for key, value in cleaned_data.items():
-            if 'new_product' in key:
-                print(f"    {key}: {value}")
-        
+
+        logger.debug("Validating order item form", extra={
+            'is_new_product': is_new_product,
+            'has_product': product is not None,
+        })
+
         if is_new_product:
-            print("✅ Processing as NEW PRODUCT")
             # Validar campos requeridos para productos nuevos
             required_fields = ['new_product_name', 'new_product_barcode', 'new_product_category', 'new_product_selling_price_usd']
             missing_fields = []
-            
+
             for field in required_fields:
                 if not cleaned_data.get(field):
                     missing_fields.append(field)
-                    print(f"❌ Missing required field: {field}")
-            
+
             if missing_fields:
                 field_labels = [self.fields[field].label for field in missing_fields]
+                logger.warning("New product validation failed: missing fields", extra={
+                    'missing_fields': missing_fields,
+                })
                 raise forms.ValidationError(f'Campos requeridos para productos nuevos: {", ".join(field_labels)}.')
-            
+
             # Validar que el código de barras no exista
             barcode = cleaned_data.get('new_product_barcode')
             if barcode and Product.objects.filter(barcode=barcode).exists():
-                print(f"❌ Barcode {barcode} already exists")
+                logger.warning("Duplicate barcode detected", extra={'barcode': barcode})
                 raise forms.ValidationError(f'Ya existe un producto con el código de barras {barcode}.')
-            
+
             # Limpiar el campo product si es nuevo producto
             cleaned_data['product'] = None
-            print("✅ New product validation passed")
-            
+
         elif not product:
-            print("❌ No product selected and not marked as new")
             # Si no es producto nuevo, debe seleccionar uno existente
             raise forms.ValidationError('Debe seleccionar un producto existente o marcar como producto nuevo.')
-        else:
-            print("✅ Processing as EXISTING PRODUCT")
-        
+
         return cleaned_data
 
 # Formset para ítems de órdenes de compra
@@ -251,3 +262,70 @@ class ReceiveOrderForm(forms.Form):
         initial=True,
         label="Actualizar precios de compra de los productos"
     )
+
+
+class SupplierPaymentForm(forms.ModelForm):
+    """Formulario para registrar pagos a proveedores"""
+
+    class Meta:
+        model = SupplierPayment
+        fields = ['amount_usd', 'payment_date', 'payment_method', 'reference', 'notes']
+        widgets = {
+            'amount_usd': forms.NumberInput(attrs={
+                'class': 'form-input',
+                'step': '0.01',
+                'min': '0.01'
+            }),
+            'payment_date': forms.DateTimeInput(attrs={
+                'class': 'form-input',
+                'type': 'datetime-local'
+            }),
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
+            'reference': forms.TextInput(attrs={'class': 'form-input'}),
+            'notes': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.order = kwargs.pop('order', None)
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Configurar fecha inicial como ahora
+        if not self.instance.pk:
+            from django.utils import timezone
+            self.fields['payment_date'].initial = timezone.now()
+
+    def clean_amount_usd(self):
+        """Validar que el monto sea positivo y no exceda el saldo pendiente"""
+        amount = self.cleaned_data.get('amount_usd')
+
+        if amount is None:
+            raise forms.ValidationError("El monto es requerido.")
+
+        if amount <= 0:
+            raise forms.ValidationError("El monto debe ser mayor a cero.")
+
+        # Validar que no exceda el saldo pendiente
+        if self.order:
+            outstanding = self.order.outstanding_balance_usd
+            if amount > outstanding:
+                raise forms.ValidationError(
+                    f"El monto (${amount}) excede el saldo pendiente (${outstanding}). "
+                    "Verifique el monto ingresado."
+                )
+
+        return amount
+
+    def save(self, commit=True):
+        payment = super().save(commit=False)
+
+        if self.order:
+            payment.order = self.order
+
+        if self.user:
+            payment.created_by = self.user
+
+        if commit:
+            payment.save()
+
+        return payment

@@ -129,6 +129,11 @@ class Product(models.Model):
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['category', 'is_active'], name='product_cat_active_idx'),
+            models.Index(fields=['is_active', '-created_at'], name='product_active_recent_idx'),
+            models.Index(fields=['barcode'], name='product_barcode_idx'),  # Ya hay unique=True pero index mejora búsquedas
+        ]
 
     def __str__(self):
         return self.name

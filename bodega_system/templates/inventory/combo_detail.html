@@ -1,0 +1,122 @@
+{% extends 'base/base.html' %}
+{% block title %}{{ combo.name }} - Combo{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-md p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">Combo</span>
+                    {% if combo.is_active %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Activo</span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Inactivo</span>
+                    {% endif %}
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">{{ combo.name }}</h1>
+                {% if combo.description %}
+                <p class="text-sm text-gray-500 mt-1">{{ combo.description }}</p>
+                {% endif %}
+            </div>
+            <div class="flex flex-shrink-0 flex-wrap gap-2">
+                <a href="{% url 'inventory:combo_update' combo.pk %}"
+                   class="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Editar
+                </a>
+                <a href="{% url 'inventory:combo_delete' combo.pk %}"
+                   class="inline-flex items-center bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Eliminar
+                </a>
+                <a href="{% url 'inventory:combo_list' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    ← Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats del combo -->
+    <div class="grid grid-cols-3 gap-3 sm:gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-green-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio Combo</p>
+            <p class="text-xl font-bold text-green-700 mt-1">Bs. {{ combo.combo_price_bs }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 {% if combo.is_active %}border-green-500{% else %}border-red-500{% endif %}">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</p>
+            <p class="text-xl font-bold mt-1 {% if combo.is_active %}text-green-700{% else %}text-red-700{% endif %}">
+                {% if combo.is_active %}Activo{% else %}Inactivo{% endif %}
+            </p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Items</p>
+            <p class="text-xl font-bold text-blue-700 mt-1">{{ items.count }}</p>
+        </div>
+    </div>
+
+    <!-- Alertas de stock insuficiente -->
+    {% for item in items %}
+    {% if item.product.stock < item.quantity %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <div class="flex items-start">
+            <svg class="h-5 w-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+                <p class="text-sm font-semibold text-yellow-800">Stock insuficiente en combo</p>
+                <p class="text-xs text-yellow-700 mt-0.5">
+                    <strong>{{ item.product.name }}</strong>: necesita {{ item.quantity }}, disponible {{ item.product.stock }}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Tabla de productos -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-700">Productos incluidos</h2>
+        </div>
+        {% if items %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Producto</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Cantidad</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Stock actual</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Disponibilidad</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for item in items %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-3.5 text-sm font-medium text-gray-900">{{ item.product.name }}</td>
+                        <td class="px-5 py-3.5 text-sm text-right font-semibold text-gray-700">{{ item.quantity }}</td>
+                        <td class="px-5 py-3.5 text-sm text-right {% if item.product.stock < item.quantity %}text-red-600 font-semibold{% else %}text-gray-600{% endif %}">
+                            {{ item.product.stock }}
+                        </td>
+                        <td class="px-5 py-3.5 text-center">
+                            {% if item.product.stock >= item.quantity %}
+                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Suficiente</span>
+                            {% else %}
+                            <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Insuficiente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+            <p class="text-gray-500 text-sm">No hay productos en este combo.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

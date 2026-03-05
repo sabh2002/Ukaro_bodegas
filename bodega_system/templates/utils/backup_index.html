@@ -61,8 +61,8 @@
                                file:mr-4 file:py-2.5 file:px-4 
                                file:rounded-md file:border-0 
                                file:text-sm file:font-semibold 
-                               file:bg-indigo-50 file:text-indigo-700 
-                               hover:file:bg-indigo-100
+                               file:bg-blue-50 file:text-blue-700 
+                               hover:file:bg-blue-100
                                min-h-[44px]">
                 </div>
                 <button 
@@ -81,7 +81,7 @@
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                 </svg>
                 Respaldos Disponibles ({{ backups|length }})
@@ -131,7 +131,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <a href="{% url 'utils:backup_download' backup.filename %}" 
-                               class="text-indigo-600 hover:text-indigo-900 mr-4 inline-flex items-center"
+                               class="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center"
                                title="Descargar">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -180,7 +180,7 @@
                 </div>
                 <div class="ml-7 mt-3 flex gap-2">
                     <a href="{% url 'utils:backup_download' backup.filename %}" 
-                       class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-center py-2 px-3 rounded-md text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center">
+                       class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-3 rounded-md text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>

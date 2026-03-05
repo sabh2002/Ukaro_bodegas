@@ -3,6 +3,7 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count, Q, F
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from datetime import timedelta
 
@@ -59,7 +60,26 @@ def dashboard(request):
             'total_products': total_products,
             'low_stock_products': low_stock_products,
         })
-        
+
+        # Datos de ventas de los últimos 7 días para el gráfico
+        DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+        last_7_days = today - timedelta(days=6)
+        daily_sales_qs = (
+            Sale.objects.filter(date__date__gte=last_7_days)
+            .annotate(day=TruncDate('date'))
+            .values('day')
+            .annotate(total=Sum('total_bs'))
+            .order_by('day')
+        )
+        daily_dict = {item['day']: float(item['total'] or 0) for item in daily_sales_qs}
+        chart_labels, chart_values = [], []
+        for i in range(7):
+            day = last_7_days + timedelta(days=i)
+            chart_labels.append(f"{DAYS_ES[day.weekday()]} {day.day}")
+            chart_values.append(daily_dict.get(day, 0))
+        context_data['chart_labels'] = chart_labels
+        context_data['chart_values'] = chart_values
+
     else:
         # Para empleados, calcular clientes únicos atendidos hoy
         customers_served_today = sales_today.filter(

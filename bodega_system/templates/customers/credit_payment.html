@@ -17,7 +17,7 @@
         --error-color: #dc2626;
         --success-color: #059669;
         --warning-color: #f59e0b;
-        --primary-color: #6366f1;
+        --primary-color: #3b82f6;
     }
 
     /* INPUTS CON MÁXIMA VISIBILIDAD */
@@ -250,7 +250,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 sm:p-6 lg:p-8">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4 sm:p-6 lg:p-8">
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="bg-white rounded-xl shadow-lg p-6 mb-8 fade-in">
@@ -273,7 +273,7 @@
             <!-- Información del Crédito -->
             <div class="lg:col-span-2">
                 <!-- Detalles del Cliente y Crédito -->
-                <div class="bg-indigo-600 text-white rounded-xl shadow-lg p-6 mb-8 fade-in">
+                <div class="bg-blue-600 text-white rounded-xl shadow-lg p-6 mb-8 fade-in">
                     <div class="flex items-center mb-6">
                         <div class="bg-white bg-opacity-20 rounded-lg p-3 mr-4">
                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,7 +282,7 @@
                         </div>
                         <div>
                             <h2 class="text-xl font-bold text-white">Información del Crédito</h2>
-                            <p class="text-indigo-100">Detalles del cliente y la deuda</p>
+                            <p class="text-blue-100">Detalles del cliente y la deuda</p>
                         </div>
                     </div>
 
@@ -291,10 +291,10 @@
                             <h3 class="text-white font-semibold mb-2">📋 Cliente</h3>
                             <p class="text-white text-lg font-bold">{{ credit.customer.name }}</p>
                             {% if credit.customer.phone %}
-                            <p class="text-indigo-100">📞 {{ credit.customer.phone }}</p>
+                            <p class="text-blue-100">📞 {{ credit.customer.phone }}</p>
                             {% endif %}
                             {% if credit.customer.email %}
-                            <p class="text-indigo-100">📧 {{ credit.customer.email }}</p>
+                            <p class="text-blue-100">📧 {{ credit.customer.email }}</p>
                             {% endif %}
                         </div>
                         

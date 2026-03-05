@@ -29,11 +29,46 @@ class ExchangeRate(models.Model):
     
     @classmethod
     def get_latest_rate(cls):
-        """Obtiene la tasa de cambio más reciente"""
+        """
+        Obtiene la tasa de cambio más reciente
+
+        ✅ OPTIMIZADO: Con caché de 1 hora para reducir queries
+        """
+        from django.core.cache import cache
+
+        cache_key = 'exchange_rate_latest'
+        cached_rate = cache.get(cache_key)
+
+        if cached_rate is not None:
+            return cached_rate
+
         try:
-            return cls.objects.latest()
+            rate = cls.objects.latest()
+            # Cachear por 1 hora (3600 segundos)
+            cache.set(cache_key, rate, 3600)
+            return rate
         except cls.DoesNotExist:
+            # También cachear None para evitar queries repetidas cuando no hay tasa
+            cache.set(cache_key, None, 300)  # 5 minutos para None
             return None
+
+    def save(self, *args, **kwargs):
+        """Invalidar caché al guardar nueva tasa"""
+        from django.core.cache import cache
+
+        super().save(*args, **kwargs)
+
+        # Invalidar caché de latest_rate
+        cache.delete('exchange_rate_latest')
+
+    def delete(self, *args, **kwargs):
+        """Invalidar caché al eliminar tasa"""
+        from django.core.cache import cache
+
+        super().delete(*args, **kwargs)
+
+        # Invalidar caché de latest_rate
+        cache.delete('exchange_rate_latest')
 
 
 class Backup(models.Model):

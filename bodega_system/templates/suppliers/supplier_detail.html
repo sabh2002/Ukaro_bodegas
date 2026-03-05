@@ -1,245 +1,188 @@
-<!-- templates/suppliers/supplier_detail.html -->
 {% extends 'base/base.html' %}
 
-{% block title %}{{ supplier.name }} - Sistema de Bodega{% endblock %}
+{% block title %}{{ supplier.name }} - Proveedor{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Detalle de Proveedor</h1>
-        <div class="flex space-x-2">
-            <a href="{% url 'suppliers:supplier_update' supplier.id %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Editar
-            </a>
-            <a href="{% url 'suppliers:order_create' %}?supplier={{ supplier.id }}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Nueva Orden
-            </a>
-            <a href="{% url 'suppliers:supplier_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                </svg>
-                Volver
-            </a>
+<div class="space-y-5">
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Proveedor</span>
+                    {% if supplier.is_active %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Activo</span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Inactivo</span>
+                    {% endif %}
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800">{{ supplier.name }}</h1>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'suppliers:supplier_update' supplier.id %}"
+                   class="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Editar
+                </a>
+                <a href="{% url 'suppliers:order_create' %}?supplier={{ supplier.id }}"
+                   class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    + Nueva Orden
+                </a>
+                <a href="{% url 'suppliers:supplier_list' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    ← Volver
+                </a>
+            </div>
         </div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+    <!-- Info + Órdenes recientes -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
         <!-- Información del proveedor -->
-        <div class="bg-gray-50 p-4 rounded-md">
-            <h2 class="text-lg font-medium text-gray-800 mb-4">Información del Proveedor</h2>
-            
+        <div class="bg-white rounded-xl shadow-sm p-4">
+            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Información</h2>
             <dl class="space-y-2">
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Nombre:</dt>
-                    <dd class="text-sm text-gray-900">{{ supplier.name }}</dd>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Nombre:</dt>
+                    <dd class="text-sm font-medium text-gray-900">{{ supplier.name }}</dd>
                 </div>
                 {% if supplier.contact_person %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Persona de Contacto:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Contacto:</dt>
                     <dd class="text-sm text-gray-900">{{ supplier.contact_person }}</dd>
                 </div>
                 {% endif %}
                 {% if supplier.phone %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Teléfono:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Teléfono:</dt>
                     <dd class="text-sm text-gray-900">{{ supplier.phone }}</dd>
                 </div>
                 {% endif %}
                 {% if supplier.email %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Email:</dt>
-                    <dd class="text-sm text-gray-900">{{ supplier.email }}</dd>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Email:</dt>
+                    <dd class="text-sm text-gray-900 truncate max-w-xs">{{ supplier.email }}</dd>
                 </div>
                 {% endif %}
                 {% if supplier.address %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Dirección:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Dirección:</dt>
                     <dd class="text-sm text-gray-900">{{ supplier.address }}</dd>
                 </div>
                 {% endif %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Estado:</dt>
-                    <dd class="text-sm text-gray-900">
-                        {% if supplier.is_active %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                Activo
-                            </span>
-                        {% else %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                Inactivo
-                            </span>
-                        {% endif %}
-                    </dd>
-                </div>
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Fecha de Registro:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Registro:</dt>
                     <dd class="text-sm text-gray-900">{{ supplier.created_at|date:"d/m/Y" }}</dd>
                 </div>
             </dl>
-            
             {% if supplier.notes %}
-            <div class="mt-4">
-                <h3 class="text-sm font-medium text-gray-700">Notas:</h3>
-                <p class="mt-1 text-sm text-gray-600">{{ supplier.notes }}</p>
+            <div class="mt-3 pt-3 border-t border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notas</p>
+                <p class="text-sm text-gray-600">{{ supplier.notes }}</p>
             </div>
             {% endif %}
         </div>
-        
-        <!-- Órdenes de compra recientes -->
-        <div class="bg-gray-50 p-4 rounded-md">
-            <h2 class="text-lg font-medium text-gray-800 mb-4">Órdenes de Compra Recientes</h2>
-            
+
+        <!-- Órdenes recientes -->
+        <div class="bg-white rounded-xl shadow-sm p-4">
+            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Órdenes Recientes</h2>
             {% if orders %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Orden #
-                            </th>
-                            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Fecha
-                            </th>
-                            <th scope="col" class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Total
-                            </th>
-                            <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Estado
-                            </th>
-                            <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Acciones
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for order in orders %}
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                #{{ order.id }}
-                            </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                                {{ order.order_date|date:"d/m/Y" }}
-                            </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
-                                Bs {{ order.total_bs|floatformat:2 }}
-                            </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-center">
-                                {% if order.status == 'pending' %}
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        Pendiente
-                                    </span>
-                                {% elif order.status == 'received' %}
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        Recibido
-                                    </span>
-                                {% else %}
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                        Cancelado
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-sm text-center">
-                                <a href="{% url 'suppliers:order_detail' order.id %}" class="text-indigo-600 hover:text-indigo-900" title="Ver detalles">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="space-y-2">
+                {% for order in orders %}
+                <div class="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">#{{ order.id }}</p>
+                        <p class="text-xs text-gray-400">{{ order.order_date|date:"d/m/Y" }}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% if order.status == 'pending' %}
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendiente</span>
+                        {% elif order.status == 'received' %}
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Recibido</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Cancelado</span>
+                        {% endif %}
+                        <span class="text-xs font-medium text-gray-700">Bs {{ order.total_bs|floatformat:2 }}</span>
+                        <a href="{% url 'suppliers:order_detail' order.id %}" class="text-blue-500 hover:text-blue-700">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            
-            <div class="mt-2">
-                <a href="{% url 'suppliers:order_list' %}?supplier={{ supplier.id }}" class="text-sm text-indigo-600 hover:text-indigo-900">
-                    Ver todas las órdenes
-                </a>
+            <div class="mt-3">
+                <a href="{% url 'suppliers:order_list' %}?supplier={{ supplier.id }}"
+                   class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver todas las órdenes →</a>
             </div>
             {% else %}
-            <p class="text-sm text-gray-500">No hay órdenes de compra registradas para este proveedor.</p>
-            
-            <div class="mt-4">
-                <a href="{% url 'suppliers:order_create' %}?supplier={{ supplier.id }}" class="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Crear primera orden
+            <div class="flex flex-col items-center justify-center py-8 text-center">
+                <p class="text-sm text-gray-400 mb-3">No hay órdenes registradas.</p>
+                <a href="{% url 'suppliers:order_create' %}?supplier={{ supplier.id }}"
+                   class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    + Crear primera orden
                 </a>
             </div>
             {% endif %}
         </div>
     </div>
-    
+
     <!-- Productos suministrados -->
-    <div class="bg-gray-50 p-4 rounded-md">
-        <h2 class="text-lg font-medium text-gray-800 mb-4">Productos Suministrados</h2>
-        
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-700">Productos Suministrados</h2>
+        </div>
+
         {% if product_data %}
-        <div class="overflow-x-auto">
+
+        <!-- Tabla desktop -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-100">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Producto
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Categoría
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Último Precio
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cantidad Total
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Stock Actual
-                        </th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Producto</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoría</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Último Precio</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Cant. Total</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Stock Actual</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-100">
                     {% for item in product_data %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-3.5">
                             <div class="flex items-center">
-                                {% if item.product.image %}
-                                    <img class="h-8 w-8 rounded-full object-cover mr-3" src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
-                                {% else %}
-                                    <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                {% endif %}
+                                <div class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center mr-3 flex-shrink-0">
+                                    {% if item.product.image %}
+                                    <img class="h-8 w-8 rounded-full object-cover" src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+                                    {% else %}
+                                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    {% endif %}
+                                </div>
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">{{ item.product.name }}</div>
-                                    <div class="text-xs text-gray-500">{{ item.product.barcode }}</div>
+                                    <div class="text-xs text-gray-400">{{ item.product.barcode }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ item.product.category.name }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                            Bs {{ item.last_price|floatformat:2 }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                            {{ item.total_ordered }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.product.category.name }}</td>
+                        <td class="px-5 py-3.5 text-sm text-gray-900 text-right">Bs {{ item.last_price|floatformat:2 }}</td>
+                        <td class="px-5 py-3.5 text-sm font-medium text-gray-900 text-right">{{ item.total_ordered }}</td>
+                        <td class="px-5 py-3.5 text-center">
                             {% if item.product.stock <= 0 %}
-                                <span class="font-medium text-red-600">{{ item.product.stock }}</span>
+                            <span class="text-sm font-bold text-red-600">{{ item.product.stock }}</span>
                             {% elif item.product.stock <= item.product.min_stock %}
-                                <span class="font-medium text-yellow-600">{{ item.product.stock }}</span>
+                            <span class="text-sm font-bold text-yellow-600">{{ item.product.stock }}</span>
                             {% else %}
-                                <span class="font-medium text-green-600">{{ item.product.stock }}</span>
+                            <span class="text-sm font-bold text-green-600">{{ item.product.stock }}</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -247,9 +190,41 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Cards móvil -->
+        <div class="md:hidden divide-y divide-gray-100">
+            {% for item in product_data %}
+            <div class="p-3">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">{{ item.product.name }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ item.product.category.name }} · Cód: {{ item.product.barcode }}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-2">
+                        <p class="text-sm font-medium text-gray-700">Bs {{ item.last_price|floatformat:2 }}</p>
+                        <p class="text-xs text-gray-400">Total ordenado: {{ item.total_ordered }}</p>
+                    </div>
+                </div>
+                <div class="mt-1.5">
+                    <span class="text-xs text-gray-500">Stock: </span>
+                    {% if item.product.stock <= 0 %}
+                    <span class="text-xs font-bold text-red-600">{{ item.product.stock }}</span>
+                    {% elif item.product.stock <= item.product.min_stock %}
+                    <span class="text-xs font-bold text-yellow-600">{{ item.product.stock }}</span>
+                    {% else %}
+                    <span class="text-xs font-bold text-green-600">{{ item.product.stock }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
         {% else %}
-        <p class="text-sm text-gray-500">No hay información de productos para este proveedor.</p>
+        <div class="p-10 text-center">
+            <p class="text-sm text-gray-400">No hay información de productos para este proveedor.</p>
+        </div>
         {% endif %}
+
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,160 @@
+{% extends 'base/base.html' %}
+{% block title %}{{ category.name }} - Categoría{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-md p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Categoría</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">{{ category.name }}</h1>
+                {% if category.description %}
+                <p class="text-sm text-gray-500 mt-1">{{ category.description }}</p>
+                {% endif %}
+            </div>
+            <div class="flex flex-shrink-0 space-x-2">
+                {% if is_admin %}
+                <a href="{% url 'inventory:category_update' category.pk %}"
+                   class="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Editar
+                </a>
+                {% endif %}
+                <a href="{% url 'inventory:category_list' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                    </svg>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini stats -->
+    <div class="grid grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total productos</p>
+            <p class="text-3xl font-bold text-blue-700 mt-1">{{ products.count }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 border-red-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Con stock bajo</p>
+            <p class="text-3xl font-bold text-red-700 mt-1">
+                {% with cnt=0 %}
+                {% for p in products %}{% if p.stock <= p.min_stock %}{% with cnt=cnt|add:1 %}{% endwith %}{% endif %}{% endfor %}
+                {{ products|length }}
+                {% endwith %}
+            </p>
+            <p class="text-xs text-gray-400 mt-1">productos totales</p>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-700">
+                Productos en esta categoría
+                <span class="text-sm font-normal text-gray-400">({{ products.count }})</span>
+            </h2>
+            {% if is_admin %}
+            <a href="{% url 'inventory:product_create' %}"
+               class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition-colors">
+                <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Nuevo Producto
+            </a>
+            {% endif %}
+        </div>
+
+        {% if products %}
+        <!-- Tabla desktop -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Producto</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Barcode</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Stock</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio USD</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for product in products %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-3.5 text-sm font-medium text-gray-900">{{ product.name }}</td>
+                        <td class="px-5 py-3.5 text-xs text-gray-500 font-mono">{{ product.barcode }}</td>
+                        <td class="px-5 py-3.5 text-sm text-right">
+                            {% if product.stock <= product.min_stock %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                {{ product.stock }} ↓
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                {{ product.stock }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3.5 text-sm text-right font-semibold text-gray-700">${{ product.selling_price_usd }}</td>
+                        <td class="px-5 py-3.5 text-center">
+                            <a href="{% url 'inventory:product_detail' product.pk %}"
+                               class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ver →</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Cards móvil -->
+        <div class="md:hidden divide-y divide-gray-100">
+            {% for product in products %}
+            <div class="p-4 hover:bg-gray-50">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-900">{{ product.name }}</p>
+                        <p class="text-xs text-gray-400 font-mono mt-0.5">{{ product.barcode }}</p>
+                    </div>
+                    {% if product.stock <= product.min_stock %}
+                    <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">{{ product.stock }} ↓</span>
+                    {% else %}
+                    <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">{{ product.stock }}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                    <span class="text-sm font-semibold text-gray-700">${{ product.selling_price_usd }}</span>
+                    <a href="{% url 'inventory:product_detail' product.pk %}" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Ver →</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <!-- Estado vacío -->
+        <div class="flex flex-col items-center justify-center py-14 text-center px-4">
+            <div class="bg-gray-100 rounded-full p-5 mb-4">
+                <svg class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+            </div>
+            <h3 class="text-base font-semibold text-gray-700 mb-1">Sin productos en esta categoría</h3>
+            <p class="text-sm text-gray-500 mb-4">Agrega productos para comenzar.</p>
+            {% if is_admin %}
+            <a href="{% url 'inventory:product_create' %}"
+               class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors">
+                Agregar producto
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

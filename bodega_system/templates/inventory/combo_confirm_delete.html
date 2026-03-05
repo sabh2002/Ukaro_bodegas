@@ -1,0 +1,23 @@
+{% extends 'base/base.html' %}
+{% block title %}Eliminar Combo - {{ combo.name }}{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-lg shadow-md p-8 mt-8">
+    <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 mb-2">¿Eliminar combo?</h2>
+        <p class="text-gray-600">Estás a punto de eliminar el combo <strong>{{ combo.name }}</strong>.</p>
+        <p class="text-sm text-red-600 mt-2">Esta acción no se puede deshacer.</p>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="flex space-x-3 justify-center">
+            <a href="{% url 'inventory:combo_detail' combo.pk %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded-md">Cancelar</a>
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md">Sí, eliminar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

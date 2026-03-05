@@ -100,7 +100,7 @@
                 <div class="bg-white p-3 rounded border border-gray-200">
                     <div class="flex justify-between mb-1">
                         <span class="text-sm text-gray-500">Venta #:</span>
-                        <a href="{% url 'sales:sale_detail' credit.sale.id %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900">
+                        <a href="{% url 'sales:sale_detail' credit.sale.id %}" class="text-sm font-medium text-blue-600 hover:text-blue-900">
                             {{ credit.sale.id }}
                         </a>
                     </div>
@@ -124,29 +124,29 @@
         <div class="bg-gray-50 p-4 rounded-md">
             <h2 class="text-lg font-medium text-gray-800 mb-4">Estado de Cuenta</h2>
             
-            <div class="bg-indigo-50 p-4 rounded-md mb-4">
+            <div class="bg-blue-50 p-4 rounded-md mb-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <p class="text-sm text-indigo-800">Monto Total:</p>
-                        <p class="text-xl font-bold text-indigo-900">${{ credit.amount_usd|floatformat:2 }} USD</p>
-                        <p class="text-xs text-indigo-600">Bs {{ credit.amount_bs|floatformat:2 }}</p>
+                        <p class="text-sm text-blue-800">Monto Total:</p>
+                        <p class="text-xl font-bold text-blue-900">${{ credit.amount_usd|floatformat:2 }} USD</p>
+                        <p class="text-xs text-blue-600">Bs {{ credit.amount_bs|floatformat:2 }}</p>
                     </div>
                     <div>
-                        <p class="text-sm text-indigo-800">Total Pagado:</p>
-                        <p class="text-xl font-bold {% if total_paid_usd >= credit.amount_usd %}text-green-600{% else %}text-indigo-900{% endif %}">
+                        <p class="text-sm text-blue-800">Total Pagado:</p>
+                        <p class="text-xl font-bold {% if total_paid_usd >= credit.amount_usd %}text-green-600{% else %}text-blue-900{% endif %}">
                             ${{ total_paid_usd|floatformat:2 }} USD
                         </p>
-                        <p class="text-xs text-indigo-600">Bs {{ total_paid_bs|floatformat:2 }}</p>
+                        <p class="text-xs text-blue-600">Bs {{ total_paid_bs|floatformat:2 }}</p>
                     </div>
                 </div>
-                <div class="mt-4 pt-2 border-t border-indigo-200">
+                <div class="mt-4 pt-2 border-t border-blue-200">
                     <div class="flex justify-between items-center">
-                        <p class="text-sm font-medium text-indigo-800">Saldo Pendiente:</p>
+                        <p class="text-sm font-medium text-blue-800">Saldo Pendiente:</p>
                         <div class="text-right">
                             <p class="text-lg font-bold {% if pending_amount_usd > 0 %}text-red-600{% else %}text-green-600{% endif %}">
                                 ${{ pending_amount_usd|floatformat:2 }} USD
                             </p>
-                            <p class="text-xs text-indigo-600">Bs {{ pending_amount_bs|floatformat:2 }}</p>
+                            <p class="text-xs text-blue-600">Bs {{ pending_amount_bs|floatformat:2 }}</p>
                         </div>
                     </div>
                 </div>

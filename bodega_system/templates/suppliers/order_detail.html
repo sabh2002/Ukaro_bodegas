@@ -1,254 +1,339 @@
-<!-- templates/suppliers/order_detail.html -->
 {% extends 'base/base.html' %}
 
-{% block title %}Orden de Compra #{{ order.id }} - Sistema de Bodega{% endblock %}
+{% block title %}Orden de Compra #{{ order.id }}{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Orden de Compra #{{ order.id }}</h1>
-        <div class="flex space-x-2">
-            {% if order.status == 'pending' %}
-            <a href="{% url 'suppliers:order_update' order.id %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Editar
-            </a>
-            <a href="{% url 'suppliers:order_receive' order.id %}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                Recibir Orden
-            </a>
-            <a href="{% url 'suppliers:order_cancel' order.id %}" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Cancelar
-            </a>
-            {% endif %}
-            <a href="{% url 'suppliers:order_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                </svg>
-                Volver
-            </a>
+<div class="space-y-5">
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Orden de Compra</span>
+                    {% if order.status == 'pending' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pendiente</span>
+                    {% elif order.status == 'received' %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Recibido</span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Cancelado</span>
+                    {% endif %}
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Orden #{{ order.id }}</h1>
+                <p class="text-sm text-gray-500 mt-1">{{ order.supplier.name }} · {{ order.order_date|date:"d/m/Y H:i" }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% if order.status == 'pending' %}
+                <a href="{% url 'suppliers:order_update' order.id %}"
+                   class="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Editar
+                </a>
+                <a href="{% url 'suppliers:order_receive' order.id %}"
+                   class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Recibir
+                </a>
+                <a href="{% url 'suppliers:order_cancel' order.id %}"
+                   class="inline-flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Cancelar
+                </a>
+                {% endif %}
+                <a href="{% url 'suppliers:order_list' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    ← Volver
+                </a>
+            </div>
         </div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <!-- Información de la orden -->
-        <div class="bg-gray-50 p-4 rounded-md">
-            <h2 class="text-lg font-medium text-gray-800 mb-4">Información de la Orden</h2>
-            
+
+    <!-- Info general + resumen -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Info orden -->
+        <div class="bg-white rounded-xl shadow-sm p-4">
+            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Información de la Orden</h2>
             <dl class="space-y-2">
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Proveedor:</dt>
-                    <dd class="text-sm text-gray-900">
-                        <a href="{% url 'suppliers:supplier_detail' order.supplier.id %}" class="text-indigo-600 hover:text-indigo-900">
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Proveedor:</dt>
+                    <dd class="text-sm font-medium">
+                        <a href="{% url 'suppliers:supplier_detail' order.supplier.id %}" class="text-blue-600 hover:text-blue-800">
                             {{ order.supplier.name }}
                         </a>
                     </dd>
                 </div>
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Fecha de Orden:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Fecha:</dt>
                     <dd class="text-sm text-gray-900">{{ order.order_date|date:"d/m/Y H:i" }}</dd>
                 </div>
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Estado:</dt>
-                    <dd class="text-sm text-gray-900">
-                        {% if order.status == 'pending' %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                Pendiente
-                            </span>
-                        {% elif order.status == 'received' %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                Recibido
-                            </span>
-                        {% else %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                Cancelado
-                            </span>
-                        {% endif %}
-                    </dd>
-                </div>
                 {% if order.status == 'received' and order.received_date %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Fecha de Recepción:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Recepción:</dt>
                     <dd class="text-sm text-gray-900">{{ order.received_date|date:"d/m/Y H:i" }}</dd>
                 </div>
                 {% endif %}
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Pago:</dt>
-                    <dd class="text-sm text-gray-900">
-                        {% if order.paid %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                Pagado
-                            </span>
-                        {% else %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                Pendiente
-                            </span>
-                        {% endif %}
-                    </dd>
-                </div>
-                <div class="flex justify-between py-1 border-b border-gray-200">
-                    <dt class="text-sm font-medium text-gray-500">Creado por:</dt>
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <dt class="text-sm text-gray-500">Creado por:</dt>
                     <dd class="text-sm text-gray-900">{{ order.created_by.get_full_name|default:order.created_by.username }}</dd>
                 </div>
             </dl>
-            
             {% if order.notes %}
-            <div class="mt-4">
-                <h3 class="text-sm font-medium text-gray-700">Notas:</h3>
-                <p class="mt-1 text-sm text-gray-600">{{ order.notes }}</p>
+            <div class="mt-3 pt-3 border-t border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notas</p>
+                <p class="text-sm text-gray-600">{{ order.notes }}</p>
             </div>
             {% endif %}
         </div>
-        
-        <!-- Resumen de la orden -->
-        <div class="bg-gray-50 p-4 rounded-md">
-            <h2 class="text-lg font-medium text-gray-800 mb-4">Resumen</h2>
-            
-            <div class="bg-indigo-50 p-4 rounded-md mb-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-sm text-indigo-800">Productos:</p>
-                        <p class="text-xl font-bold text-indigo-900">{{ items|length }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-green-800">Total USD:</p>
-                        <p class="text-xl font-bold text-green-900">${{ total_usd|floatformat:2 }}</p>
-                    </div>
+
+        <!-- Resumen financiero -->
+        <div class="bg-white rounded-xl shadow-sm p-4">
+            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Resumen</h2>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="bg-blue-50 rounded-lg p-3">
+                    <p class="text-xs text-blue-600 font-semibold">Productos</p>
+                    <p class="text-2xl font-bold text-blue-900">{{ items|length }}</p>
                 </div>
-                
-                <div class="mt-4 pt-2 border-t border-indigo-200">
-                    <div class="flex justify-between items-center">
-                        <p class="text-sm font-medium text-indigo-800">Total Bs:</p>
-                        <p class="text-lg font-bold text-indigo-900">Bs {{ total_bs|floatformat:2 }}</p>
-                    </div>
-                    {% if order.exchange_rate_used %}
-                    <div class="flex justify-between items-center mt-1">
-                        <p class="text-xs text-gray-600">Tasa utilizada:</p>
-                        <p class="text-xs text-gray-600">{{ order.exchange_rate_used }} Bs/USD</p>
-                    </div>
-                    {% endif %}
+                <div class="bg-green-50 rounded-lg p-3">
+                    <p class="text-xs text-green-600 font-semibold">Total USD</p>
+                    <p class="text-2xl font-bold text-green-900">${{ total_usd|floatformat:2 }}</p>
                 </div>
             </div>
-            
-            {% if order.supplier.contact_person or order.supplier.phone %}
-            <div class="bg-white p-3 rounded border border-gray-200">
-                <h3 class="text-sm font-medium text-gray-700 mb-2">Información de Contacto</h3>
-                {% if order.supplier.contact_person %}
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm text-gray-500">Contacto:</span>
-                    <span class="text-sm text-gray-900">{{ order.supplier.contact_person }}</span>
+            <div class="bg-gray-50 rounded-lg p-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-gray-700">Total Bs:</span>
+                    <span class="text-lg font-bold text-gray-900">Bs {{ total_bs|floatformat:2 }}</span>
                 </div>
+                {% if order.exchange_rate_used %}
+                <p class="text-xs text-gray-400 text-right mt-0.5">Tasa: {{ order.exchange_rate_used }} Bs/USD</p>
+                {% endif %}
+            </div>
+            {% if order.supplier.contact_person or order.supplier.phone %}
+            <div class="mt-3 pt-3 border-t border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contacto Proveedor</p>
+                {% if order.supplier.contact_person %}
+                <p class="text-sm text-gray-700">{{ order.supplier.contact_person }}</p>
                 {% endif %}
                 {% if order.supplier.phone %}
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm text-gray-500">Teléfono:</span>
-                    <span class="text-sm text-gray-900">{{ order.supplier.phone }}</span>
-                </div>
-                {% endif %}
-                {% if order.supplier.email %}
-                <div class="flex justify-between">
-                    <span class="text-sm text-gray-500">Email:</span>
-                    <span class="text-sm text-gray-900">{{ order.supplier.email }}</span>
-                </div>
+                <p class="text-xs text-gray-500">{{ order.supplier.phone }}</p>
                 {% endif %}
             </div>
             {% endif %}
         </div>
     </div>
-    
+
+    <!-- Estado de pagos -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden border-l-4
+        {% if order.payment_status == 'paid' %}border-green-500{% elif order.payment_status == 'partial' %}border-yellow-500{% else %}border-red-500{% endif %}">
+        <div class="p-4 sm:p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h2 class="text-base font-semibold text-gray-800">Estado de Pagos</h2>
+                {% if order.payment_status != 'paid' %}
+                <a href="{% url 'suppliers:payment_create' order.id %}"
+                   class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    <svg class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Registrar Pago
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="text-xs text-gray-500 font-semibold">Total Orden</p>
+                    <p class="text-lg font-bold text-gray-900 mt-0.5">${{ order.total_usd|floatformat:2 }}</p>
+                    <p class="text-xs text-gray-400">Bs {{ order.total_bs|floatformat:2 }}</p>
+                </div>
+                <div class="{% if order.payment_status == 'paid' %}bg-green-50{% elif order.payment_status == 'partial' %}bg-yellow-50{% else %}bg-red-50{% endif %} p-3 rounded-lg">
+                    <p class="text-xs font-semibold {% if order.payment_status == 'paid' %}text-green-700{% elif order.payment_status == 'partial' %}text-yellow-700{% else %}text-red-700{% endif %}">Pagado</p>
+                    <p class="text-lg font-bold {% if order.payment_status == 'paid' %}text-green-900{% elif order.payment_status == 'partial' %}text-yellow-900{% else %}text-red-900{% endif %} mt-0.5">${{ order.paid_amount_usd|floatformat:2 }}</p>
+                    <p class="text-xs {% if order.payment_status == 'paid' %}text-green-600{% elif order.payment_status == 'partial' %}text-yellow-600{% else %}text-red-600{% endif %}">Bs {{ order.paid_amount_bs|floatformat:2 }}</p>
+                </div>
+                <div class="{% if order.payment_status == 'paid' %}bg-green-50{% else %}bg-red-50{% endif %} p-3 rounded-lg">
+                    <p class="text-xs font-semibold {% if order.payment_status == 'paid' %}text-green-700{% else %}text-red-700{% endif %}">Pendiente</p>
+                    <p class="text-lg font-bold {% if order.payment_status == 'paid' %}text-green-900{% else %}text-red-900{% endif %} mt-0.5">${{ order.outstanding_balance_usd|floatformat:2 }}</p>
+                    <p class="text-xs {% if order.payment_status == 'paid' %}text-green-600{% else %}text-red-600{% endif %}">
+                        {% if order.payment_status == 'paid' %}✓ Pagado{% elif order.payment_status == 'partial' %}Pago parcial{% else %}Sin pagos{% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Historial de pagos -->
+            {% if order.payments.exists %}
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">Historial de Pagos</h3>
+
+            <!-- Tabla desktop -->
+            <div class="hidden md:block overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Método</th>
+                            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Monto USD</th>
+                            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Monto Bs</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Referencia</th>
+                            <th class="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        {% for payment in order.payments.all %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{{ payment.payment_date|date:"d/m/Y H:i" }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ payment.get_payment_method_display }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-green-700 text-right">${{ payment.amount_usd|floatformat:2 }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500 text-right">Bs {{ payment.amount_bs|floatformat:2 }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">{{ payment.reference|default:"—" }}</td>
+                            <td class="px-4 py-3 text-center">
+                                {% if user.is_admin %}
+                                <a href="{% url 'suppliers:payment_delete' payment.id %}" class="text-red-500 hover:text-red-700 text-xs font-medium">Eliminar</a>
+                                {% else %}
+                                <span class="text-gray-300 text-xs">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-gray-50">
+                        <tr>
+                            <td colspan="2" class="px-4 py-3 text-sm font-bold text-gray-700 text-right">Total Pagado:</td>
+                            <td class="px-4 py-3 text-sm font-bold text-green-700 text-right">${{ order.paid_amount_usd|floatformat:2 }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-600 text-right">Bs {{ order.paid_amount_bs|floatformat:2 }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Cards pagos móvil -->
+            <div class="md:hidden space-y-2">
+                {% for payment in order.payments.all %}
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-green-700">${{ payment.amount_usd|floatformat:2 }}</p>
+                            <p class="text-xs text-gray-400">Bs {{ payment.amount_bs|floatformat:2 }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-600">{{ payment.get_payment_method_display }}</p>
+                            <p class="text-xs text-gray-400">{{ payment.payment_date|date:"d/m/Y" }}</p>
+                        </div>
+                    </div>
+                    {% if payment.reference %}
+                    <p class="text-xs text-gray-400 mt-1">Ref: {{ payment.reference }}</p>
+                    {% endif %}
+                    {% if user.is_admin %}
+                    <a href="{% url 'suppliers:payment_delete' payment.id %}" class="text-xs text-red-500 font-medium mt-1 inline-block">Eliminar</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="text-center py-6 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-500 font-medium">No hay pagos registrados</p>
+                <p class="text-xs text-gray-400 mt-1">Haz clic en "Registrar Pago" para agregar el primer pago</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Productos ordenados -->
-    <div class="bg-gray-50 p-4 rounded-md">
-        <h2 class="text-lg font-medium text-gray-800 mb-4">Productos Ordenados</h2>
-        
-        <div class="overflow-x-auto">
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-700">Productos Ordenados</h2>
+        </div>
+
+        <!-- Tabla desktop -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-100">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Producto
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Categoría
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Precio USD
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Precio Bs
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cantidad
-                        </th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Subtotal
-                        </th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Producto</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoría</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">P. USD</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">P. Bs</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Cant.</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Subtotal</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-100">
                     {% for item in items %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-3.5">
                             <div class="flex items-center">
-                                {% if item.product.image %}
-                                    <img class="h-8 w-8 rounded-full object-cover mr-3" src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
-                                {% else %}
-                                    <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                {% endif %}
+                                <div class="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center mr-2 flex-shrink-0">
+                                    {% if item.product.image %}
+                                    <img class="h-7 w-7 rounded-full object-cover" src="{{ item.product.image.url }}" alt="">
+                                    {% else %}
+                                    <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    {% endif %}
+                                </div>
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">{{ item.product.name }}</div>
-                                    <div class="text-xs text-gray-500">{{ item.product.barcode }}</div>
+                                    <div class="text-xs text-gray-400">{{ item.product.barcode }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ item.product.category.name }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">
-                            ${{ item.price_usd|floatformat:2 }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                            Bs {{ item.price_bs|floatformat:2 }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                            {{ item.quantity }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <div class="text-sm font-medium text-green-600">${{ item.subtotal_usd|floatformat:2 }}</div>
-                            <div class="text-xs text-gray-500">Bs {{ item.subtotal_bs|floatformat:2 }}</div>
+                        <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.product.category.name }}</td>
+                        <td class="px-5 py-3.5 text-sm font-medium text-green-700 text-right">${{ item.price_usd|floatformat:2 }}</td>
+                        <td class="px-5 py-3.5 text-sm text-gray-500 text-right">Bs {{ item.price_bs|floatformat:2 }}</td>
+                        <td class="px-5 py-3.5 text-sm font-medium text-gray-900 text-right">{{ item.quantity }}</td>
+                        <td class="px-5 py-3.5 text-right">
+                            <div class="text-sm font-semibold text-green-700">${{ item.subtotal_usd|floatformat:2 }}</div>
+                            <div class="text-xs text-gray-400">Bs {{ item.subtotal_bs|floatformat:2 }}</div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
-                            No hay productos en esta orden.
-                        </td>
+                        <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-400">No hay productos en esta orden.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot class="bg-gray-50">
                     <tr>
-                        <td colspan="5" class="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                            Total:
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right">
-                            <div class="text-sm font-bold text-green-600">${{ total_usd|floatformat:2 }}</div>
+                        <td colspan="5" class="px-5 py-3 text-sm font-semibold text-gray-700 text-right">Total:</td>
+                        <td class="px-5 py-3 text-right">
+                            <div class="text-sm font-bold text-green-700">${{ total_usd|floatformat:2 }}</div>
                             <div class="text-xs text-gray-500">Bs {{ total_bs|floatformat:2 }}</div>
                         </td>
                     </tr>
                 </tfoot>
             </table>
         </div>
+
+        <!-- Cards móvil -->
+        <div class="md:hidden divide-y divide-gray-100">
+            {% for item in items %}
+            <div class="p-3">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0 mr-2">
+                        <p class="text-sm font-semibold text-gray-900">{{ item.product.name }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ item.product.category.name }}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-sm font-bold text-green-700">${{ item.subtotal_usd|floatformat:2 }}</p>
+                        <p class="text-xs text-gray-400">Bs {{ item.subtotal_bs|floatformat:2 }}</p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">{{ item.quantity }} u × ${{ item.price_usd|floatformat:2 }}</p>
+            </div>
+            {% empty %}
+            <div class="p-8 text-center">
+                <p class="text-sm text-gray-400">No hay productos en esta orden.</p>
+            </div>
+            {% endfor %}
+            <!-- Total móvil -->
+            <div class="p-3 bg-gray-50">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-semibold text-gray-700">Total:</span>
+                    <div class="text-right">
+                        <p class="text-base font-bold text-green-700">${{ total_usd|floatformat:2 }}</p>
+                        <p class="text-xs text-gray-500">Bs {{ total_bs|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 {% endblock %}

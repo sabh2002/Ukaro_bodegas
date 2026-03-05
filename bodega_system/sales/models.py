@@ -80,6 +80,12 @@ class Sale(models.Model):
         verbose_name = "Venta"
         verbose_name_plural = "Ventas"
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['customer', '-date'], name='sale_customer_date_idx'),
+            models.Index(fields=['user', '-date'], name='sale_user_date_idx'),
+            models.Index(fields=['is_credit', '-date'], name='sale_credit_date_idx'),
+            models.Index(fields=['-date'], name='sale_date_idx'),
+        ]
     
     def __str__(self):
         return f"Venta #{self.id} - {self.date.strftime('%d/%m/%Y %H:%M')}"

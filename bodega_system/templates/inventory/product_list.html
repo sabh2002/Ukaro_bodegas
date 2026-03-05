@@ -12,7 +12,7 @@
             <p class="text-sm text-gray-600 mt-1 hidden sm:block">Gestión completa del inventario</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <a href="{% url 'inventory:product_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full sm:w-auto">
+            <a href="{% url 'inventory:product_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full sm:w-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -41,7 +41,7 @@
                     id="q" 
                     name="q" 
                     value="{{ search_query|default:'' }}" 
-                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2"
+                    class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2"
                     placeholder="Nombre, código, descripción...">
             </div>
             <div class="space-y-1">
@@ -49,7 +49,7 @@
                 <select 
                     id="category" 
                     name="category" 
-                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2">
+                    class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2">
                     <option value="">Todas las categorías</option>
                     {% for category in categories %}
                         <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
@@ -63,14 +63,14 @@
                 <select 
                     id="stock" 
                     name="stock" 
-                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2">
+                    class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full text-base sm:text-sm border-gray-300 rounded-md min-h-[44px] sm:min-h-[38px] px-3 py-2">
                     <option value="">Todos los niveles</option>
                     <option value="low" {% if stock_filter == 'low' %}selected{% endif %}>Stock bajo</option>
                     <option value="out" {% if stock_filter == 'out' %}selected{% endif %}>Sin stock</option>
                 </select>
             </div>
             <div class="flex items-end">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md inline-flex items-center justify-center min-h-[44px] transition-colors text-sm w-full">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -164,7 +164,7 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                     <div class="flex justify-center space-x-2">
-                        <a href="{% url 'inventory:product_detail' product.id %}" class="text-indigo-600 hover:text-indigo-900 p-1 rounded transition-colors" title="Ver detalles">
+                        <a href="{% url 'inventory:product_detail' product.id %}" class="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors" title="Ver detalles">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -259,7 +259,7 @@
         
         <!-- Botones de acción -->
         <div class="flex justify-end space-x-2 pt-3 border-t border-gray-200">
-            <a href="{% url 'inventory:product_detail' product.id %}" class="text-indigo-600 hover:text-indigo-900 p-2 rounded transition-colors" title="Ver">
+            <a href="{% url 'inventory:product_detail' product.id %}" class="text-blue-600 hover:text-blue-900 p-2 rounded transition-colors" title="Ver">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -284,7 +284,7 @@
         </svg>
         <h3 class="text-sm font-medium text-gray-900 mb-1">No hay productos</h3>
         <p class="text-sm text-gray-500 mb-4">No se encontraron productos que coincidan con los filtros.</p>
-        <a href="{% url 'inventory:product_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center text-sm">
+        <a href="{% url 'inventory:product_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center text-sm">
             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -343,7 +343,7 @@
                 
                 {% for i in page_obj.paginator.page_range %}
                     {% if page_obj.number == i %}
-                        <span class="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600">
+                        <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
                             {{ i }}
                         </span>
                     {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}

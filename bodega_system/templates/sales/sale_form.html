@@ -4,362 +4,372 @@
 
 {% block extra_head %}
 <style>
-    .product-row:hover {
-        background-color: #f3f4f6;
-    }
+    .product-row:hover { background-color: #f3f4f6; }
     .unit-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.125rem 0.625rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        background-color: #dbeafe;
-        color: #1d4ed8;
+        display: inline-flex; align-items: center;
+        padding: 0.125rem 0.5rem; border-radius: 9999px;
+        font-size: 0.7rem; font-weight: 500;
+        background-color: #dbeafe; color: #1d4ed8;
     }
-    .weight-badge {
-        background-color: #fef3c7;
-        color: #d97706;
-    }
+    .weight-badge { background-color: #fef3c7; color: #d97706; }
     .quantity-input {
-        width: 100px;
-        text-align: center;
-        border: 1px solid #d1d5db;
-        border-radius: 0.375rem;
-        padding: 0.25rem 0.5rem;
+        width: 70px; text-align: center;
+        border: 1px solid #d1d5db; border-radius: 0.375rem;
+        padding: 0.25rem 0.5rem; font-size: 1rem; /* ≥16px evita zoom iOS */
         transition: border-color 0.15s ease-in-out;
     }
-    .quantity-input:focus {
-        outline: none;
-        border-color: #4f46e5;
-        box-shadow: 0 0 0 1px #4f46e5;
-    }
-    .quantity-input:invalid {
-        border-color: #ef4444;
-    }
-    .debug-info {
-        background-color: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        padding: 0.5rem;
-        margin-top: 0.5rem;
-        font-size: 0.75rem;
-        color: #374151;
-    }
+    .quantity-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+    .quantity-input:invalid { border-color: #ef4444; }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- CSRF Token para Alpine.js -->
 {% csrf_token %}
-
-<!-- DATOS JSON PARA JAVASCRIPT -->
 {{ data_for_js|json_script:"data-for-js" }}
 
-<div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h1 class="text-2xl font-bold text-gray-800 mb-4">Nueva Venta</h1>
-    
-    <div x-data="salesApp" x-init="init()">
-        <!-- Debug Panel (solo en modo desarrollo) -->
-        <div x-show="showDebug" class="debug-info mb-4">
-            <h4 class="font-medium mb-2">Debug Info:</h4>
-            <div>Último producto escaneado: <span x-text="lastScannedProduct"></span></div>
-            <div>Items actuales: <span x-text="items.length"></span></div>
-            <div>Total calculado: <span x-text="total"></span></div>
-            <div>Código actual: <span x-text="barcode"></span></div>
-            <div>Notas actuales: <span x-text="notes"></span></div>
-            <div>Exchange rate: <span x-text="exchangeRate"></span></div>
-        </div>
+<div class="bg-white rounded-xl shadow-md p-3 sm:p-6 mb-6">
+    <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Nueva Venta</h1>
 
-        <!-- Panel de búsqueda de productos -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="md:col-span-2">
+    <div x-data="salesApp" x-init="init()">
+
+        <!-- ── Sección de búsqueda ─────────────────────────────────────── -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+
+            <!-- 1. Código de barras -->
+            <div>
                 <label for="barcode" class="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
                 <div class="relative rounded-md shadow-sm">
-                    <input 
-                        type="text" 
-                        id="barcode" 
+                    <input
+                        type="text" id="barcode"
                         x-model="barcode"
                         @keydown.enter.prevent="scanBarcode"
-                        @input="lastScannedProduct = $event.target.value"
-                        class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 rounded-md"
-                        placeholder="Escanee o ingrese el código de barras"
-                        autocomplete="off"
-                        autofocus>
+                        class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 rounded-md"
+                        placeholder="Escanee o ingrese el código"
+                        autocomplete="off" autofocus>
                     <div class="absolute inset-y-0 right-0 flex items-center">
-                        <button 
-                            @click="scanBarcode"
-                            type="button"
-                            class="h-full py-0 px-3 border-transparent bg-transparent text-gray-500 sm:text-sm rounded-r-md hover:text-indigo-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        <button @click="scanBarcode" type="button"
+                            class="h-full px-3 text-gray-400 hover:text-blue-600 rounded-r-md">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
                             </svg>
                         </button>
                     </div>
                 </div>
-                <button 
-                    @click="showDebug = !showDebug"
-                    type="button"
-                    class="mt-1 text-xs text-gray-500 hover:text-gray-700">
-                    Toggle Debug
-                </button>
             </div>
-            
-            <div>
+
+            <!-- 2. Búsqueda por nombre -->
+            <div class="relative">
+                <label for="name_search" class="block text-sm font-medium text-gray-700 mb-1">Buscar por Nombre</label>
+                <div class="relative rounded-md shadow-sm">
+                    <input
+                        type="text" id="name_search"
+                        x-model="nameSearch"
+                        @input="searchByName"
+                        @keydown.enter.prevent="selectFirstNameResult"
+                        @keydown.down.prevent="navigateName(1)"
+                        @keydown.up.prevent="navigateName(-1)"
+                        @keydown.escape="clearNameSearch"
+                        class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 rounded-md"
+                        placeholder="Escriba 2+ letras..."
+                        autocomplete="off">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <!-- Dropdown resultados por nombre -->
+                <div x-show="nameResults.length > 0"
+                     @click.outside="clearNameSearch"
+                     class="absolute z-30 left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-64 overflow-y-auto">
+                    <template x-for="(product, index) in nameResults" :key="product.id">
+                        <div
+                            @click="selectProductByName(product)"
+                            :class="{'bg-blue-50': index === nameSelectedIndex}"
+                            class="px-3 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-sm text-gray-900 truncate mr-2" x-text="product.name"></span>
+                                <span class="text-xs font-semibold flex-shrink-0"
+                                    :class="product.stock > 0 ? 'text-green-700' : 'text-red-600'"
+                                    x-text="'Stock: ' + product.stock"></span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-0.5">
+                                <span x-text="'Bs ' + parseFloat(product.selling_price_bs).toFixed(2)"></span>
+                                <span class="mx-1">·</span>
+                                <span x-text="product.unit_display"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- 3. Cliente -->
+            <div class="relative">
                 <label for="customer_search" class="block text-sm font-medium text-gray-700 mb-1">Cliente (opcional)</label>
                 <div class="relative rounded-md shadow-sm">
-                    <input 
-                        type="text" 
-                        id="customer_search" 
+                    <input
+                        type="text" id="customer_search"
                         x-model="customerSearch"
                         @input="searchCustomers"
                         @keydown.enter.prevent="selectFirstCustomer"
                         @keydown.down.prevent="navigateCustomer(1)"
                         @keydown.up.prevent="navigateCustomer(-1)"
                         @keydown.escape="clearCustomerSearch"
-                        class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 rounded-md"
+                        class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 rounded-md"
                         placeholder="Buscar cliente..."
                         autocomplete="off">
-                    <div class="absolute inset-y-0 right-0 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
                         </svg>
                     </div>
                 </div>
-                
-                <!-- Lista de clientes encontrados -->
-                <div x-show="customerResults.length > 0" class="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                <!-- Dropdown clientes -->
+                <div x-show="customerResults.length > 0"
+                     @click.outside="clearCustomerSearch"
+                     class="absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
                     <template x-for="(customer, index) in customerResults" :key="customer.id">
-                        <div 
+                        <div
                             @click="selectCustomer(customer)"
-                            :class="{'bg-indigo-50': index === customerSelectedIndex}"
+                            :class="{'bg-blue-50': index === customerSelectedIndex}"
                             class="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
-                            <div class="font-medium text-sm" x-text="customer.name"></div>
+                            <div class="font-medium text-sm text-gray-900" x-text="customer.name"></div>
                             <div class="text-xs text-gray-500" x-text="customer.phone || 'Sin teléfono'"></div>
                         </div>
                     </template>
                 </div>
-                
                 <!-- Cliente seleccionado -->
-                <div x-show="selectedCustomer" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded-md">
+                <div x-show="selectedCustomer" class="mt-2 flex items-center justify-between bg-green-50 border border-green-200 p-2 rounded-md">
                     <div>
                         <div class="text-sm font-medium text-green-800" x-text="selectedCustomer?.name"></div>
-                        <div class="text-xs text-green-600" x-text="selectedCustomer?.phone"></div>
+                        <div class="text-xs text-green-600" x-text="selectedCustomer?.phone || ''"></div>
                     </div>
-                    <button @click="clearSelectedCustomer" type="button" class="text-green-600 hover:text-green-800">
+                    <button @click="clearSelectedCustomer" type="button" class="text-green-600 hover:text-green-800 p-1">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Lista de productos en la venta -->
-        <div class="bg-white border border-gray-200 rounded-md overflow-hidden mb-6">
+        <!-- ── Lista de productos: TABLA desktop ──────────────────────── -->
+        <div class="hidden md:block border border-gray-200 rounded-lg overflow-hidden mb-5">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRODUCTO</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PRECIO</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">CANTIDAD</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">SUBTOTAL</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Producto</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Cantidad</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Subtotal</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Acción</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white divide-y divide-gray-100">
                     <template x-for="(item, index) in items" :key="item.id + '_' + index">
                         <tr class="product-row">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900" x-text="item.name"></div>
-                                        <div class="text-xs text-gray-500" x-text="'Código: ' + item.barcode"></div>
-                                        <span :class="item.is_weight_based ? 'weight-badge' : 'unit-badge'" x-text="item.unit_display"></span>
-                                    </div>
-                                </div>
+                            <td class="px-5 py-3.5">
+                                <div class="text-sm font-medium text-gray-900" x-text="item.name"></div>
+                                <div class="text-xs text-gray-400 mt-0.5" x-text="'Cód: ' + item.barcode"></div>
+                                <span :class="item.is_weight_based ? 'weight-badge' : 'unit-badge'" x-text="item.unit_display"></span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <div class="text-sm text-gray-900">Bs <span x-text="parseFloat(item.price).toFixed(2)"></span></div>
+                            <td class="px-5 py-3.5 text-center">
+                                <span class="text-sm text-gray-700">Bs <span x-text="parseFloat(item.price).toFixed(2)"></span></span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <input 
-                                    type="number" 
+                            <td class="px-5 py-3.5 text-center">
+                                <input
+                                    type="number"
                                     x-model.number="item.quantity"
                                     @input="updateItemSubtotal(index)"
                                     :min="item.is_weight_based ? '0.01' : '1'"
                                     :step="item.is_weight_based ? '0.01' : '1'"
                                     class="quantity-input">
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <div class="text-sm font-medium text-gray-900">Bs <span x-text="parseFloat(item.subtotal).toFixed(2)"></span></div>
+                            <td class="px-5 py-3.5 text-right">
+                                <span class="text-sm font-semibold text-gray-900">Bs <span x-text="parseFloat(item.subtotal).toFixed(2)"></span></span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button 
-                                    @click="removeItem(index)"
-                                    type="button"
-                                    class="text-red-600 hover:text-red-900">
+                            <td class="px-5 py-3.5 text-center">
+                                <button @click="removeItem(index)" type="button" class="text-red-500 hover:text-red-700 p-1 rounded">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                     </svg>
                                 </button>
                             </td>
                         </tr>
                     </template>
-                    
-                    <!-- Fila cuando no hay items -->
                     <tr x-show="items.length === 0">
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                            Escanee un código de barras para agregar productos.
+                        <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-400">
+                            Escanee un código o busque un producto por nombre para agregar.
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        
-        <!-- Resumen y totales -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-2 bg-white rounded-md border border-gray-200 p-4">
-                <!-- Método de Pago (oculto si es venta a crédito) -->
+
+        <!-- ── Lista de productos: CARDS móvil ───────────────────────── -->
+        <div class="md:hidden border border-gray-200 rounded-lg overflow-hidden mb-5 divide-y divide-gray-100">
+            <template x-for="(item, index) in items" :key="item.id + '_' + index">
+                <div class="p-3 bg-white">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1 min-w-0 mr-2">
+                            <p class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></p>
+                            <p class="text-xs text-gray-400 mt-0.5" x-text="'Cód: ' + item.barcode"></p>
+                            <span :class="item.is_weight_based ? 'weight-badge' : 'unit-badge'" x-text="item.unit_display"></span>
+                        </div>
+                        <button @click="removeItem(index)" type="button" class="flex-shrink-0 text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between mt-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Cant:</span>
+                            <input
+                                type="number"
+                                x-model.number="item.quantity"
+                                @input="updateItemSubtotal(index)"
+                                :min="item.is_weight_based ? '0.01' : '1'"
+                                :step="item.is_weight_based ? '0.01' : '1'"
+                                class="quantity-input">
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-400">Bs <span x-text="parseFloat(item.price).toFixed(2)"></span> c/u</div>
+                            <div class="text-sm font-bold text-gray-900">Bs <span x-text="parseFloat(item.subtotal).toFixed(2)"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <div x-show="items.length === 0" class="p-8 text-center text-sm text-gray-400">
+                Escanee un código o busque un producto por nombre para agregar.
+            </div>
+        </div>
+
+        <!-- ── Resumen y opciones ──────────────────────────────────────── -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <!-- Opciones de pago -->
+            <div class="md:col-span-2 border border-gray-200 rounded-lg p-4">
+
+                <!-- Método de pago -->
                 <div class="mb-4" x-show="!isCredit">
-                    <label for="payment_method" class="block text-sm font-medium text-gray-700 mb-1">
-                        Método de Pago *
-                    </label>
-                    <select
-                        id="payment_method"
-                        x-model="paymentMethod"
-                        :required="!isCredit"
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                    <label for="payment_method" class="block text-sm font-medium text-gray-700 mb-1">Método de Pago *</label>
+                    <select id="payment_method" x-model="paymentMethod" :required="!isCredit"
+                        class="block w-full text-base border-gray-300 rounded-md py-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         <option value="card">💳 Punto de Venta</option>
                         <option value="cash">💵 Efectivo</option>
                         <option value="mobile">📱 Pago Móvil</option>
                     </select>
                 </div>
 
-                <!-- Referencia de Pago Móvil (condicional) -->
+                <!-- Referencia pago móvil -->
                 <div class="mb-4" x-show="paymentMethod === 'mobile' && !isCredit" x-cloak>
-                    <label for="mobile_reference" class="block text-sm font-medium text-gray-700 mb-1">
-                        Número de Referencia *
-                    </label>
-                    <input
-                        type="text"
-                        id="mobile_reference"
+                    <label for="mobile_reference" class="block text-sm font-medium text-gray-700 mb-1">Número de Referencia *</label>
+                    <input type="text" id="mobile_reference"
                         x-model="mobileReference"
                         :required="paymentMethod === 'mobile' && !isCredit"
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        placeholder="Ej: 123456789"
-                        maxlength="20">
-                    <p class="mt-1 text-xs text-gray-500">Ingrese el número de referencia del pago móvil</p>
+                        class="block w-full text-base border-gray-300 rounded-md py-2.5 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Ej: 123456789" maxlength="20">
+                    <p class="mt-1 text-xs text-gray-400">Número de referencia del pago móvil</p>
                 </div>
 
+                <!-- Notas -->
                 <div class="mb-4">
                     <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
-                    <textarea
-                        id="notes"
-                        x-model="notes"
-                        rows="2"
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        placeholder="Agregar notas a la venta..."></textarea>
+                    <textarea id="notes" x-model="notes" rows="2"
+                        class="block w-full text-base border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Agregar notas..."></textarea>
                 </div>
 
-                <div class="flex flex-col md:flex-row items-center md:justify-between space-y-2 md:space-y-0">
+                <!-- Crédito + Reiniciar -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div class="flex items-center">
-                        <input
-                            type="checkbox"
-                            id="is_credit"
-                            x-model="isCredit"
-                            :disabled="!selectedCustomer"
-                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                        <label for="is_credit" class="ml-2 block text-sm text-gray-900">
-                            Venta a crédito
-                        </label>
-                        <span x-show="!selectedCustomer" class="ml-2 text-xs text-gray-500">(Requiere cliente)</span>
+                        <input type="checkbox" id="is_credit" x-model="isCredit" :disabled="!selectedCustomer"
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="is_credit" class="ml-2 text-sm text-gray-900">Venta a crédito</label>
+                        <span x-show="!selectedCustomer" class="ml-2 text-xs text-gray-400">(Requiere cliente)</span>
                     </div>
-                    <div>
-                        <button 
-                            @click="resetSale"
-                            type="button"
-                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
-                            Reiniciar
-                        </button>
-                    </div>
+                    <button @click="resetSale" type="button"
+                        class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Reiniciar
+                    </button>
                 </div>
             </div>
-            
-            <!-- Panel de resumen -->
-            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-white">
-                <h3 class="text-lg font-medium mb-4">Resumen</h3>
-                <div class="space-y-2 mb-6">
-                    <div class="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>Bs <span x-text="parseFloat(subtotal).toFixed(2)"></span></span>
-                    </div>
-                    <div class="flex justify-between text-lg font-bold border-t border-white/20 pt-2">
-                        <span>Total:</span>
-                        <span>Bs <span x-text="parseFloat(total).toFixed(2)"></span></span>
-                    </div>
-                    <div class="text-sm opacity-90" x-show="exchangeRate > 0">
-                        USD $<span x-text="parseFloat(total / exchangeRate).toFixed(2)"></span>
+
+            <!-- Panel de totales -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-5 text-white flex flex-col justify-between">
+                <div>
+                    <h3 class="text-base font-semibold mb-3 opacity-90">Resumen</h3>
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between text-sm opacity-90">
+                            <span>Productos:</span>
+                            <span x-text="items.length"></span>
+                        </div>
+                        <div class="flex justify-between text-sm opacity-90">
+                            <span>Subtotal:</span>
+                            <span>Bs <span x-text="parseFloat(subtotal).toFixed(2)"></span></span>
+                        </div>
+                        <div class="flex justify-between text-xl font-bold border-t border-white/25 pt-3">
+                            <span>Total:</span>
+                            <span>Bs <span x-text="parseFloat(total).toFixed(2)"></span></span>
+                        </div>
+                        <div class="text-xs opacity-75 text-right" x-show="exchangeRate > 0">
+                            ≈ USD $<span x-text="parseFloat(total / exchangeRate).toFixed(2)"></span>
+                        </div>
                     </div>
                 </div>
-                
-                <button 
+                <button
                     @click="completeSale"
                     :disabled="items.length === 0"
-                    :class="{'opacity-50 cursor-not-allowed': items.length === 0}"
-                    class="w-full bg-white text-indigo-600 border border-transparent rounded-md shadow-sm py-3 px-4 text-base font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="w-full bg-white text-blue-700 font-semibold py-3 px-4 rounded-lg text-base hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     <div class="flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
-                        <span>Completar Venta</span>
+                        Completar Venta
                     </div>
                 </button>
             </div>
         </div>
 
-        <!-- Modal para cantidad (productos que requieren peso) -->
-        <div x-show="showQuantityModal" 
-             x-cloak
-             class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                <div class="mt-3 text-center">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Especificar Cantidad</h3>
-                    <div x-show="pendingProduct">
-                        <p class="text-sm text-gray-600 mb-4">
-                            Producto: <span x-text="pendingProduct?.name"></span>
-                        </p>
-                        <p class="text-sm text-gray-600 mb-4" x-show="pendingProduct?.is_weight_based">
-                            Este producto se vende por peso (kg)
-                        </p>
-                        <input 
-                            type="number" 
-                            x-model="quantityInput"
-                            :step="pendingProduct?.is_weight_based ? '0.01' : '1'"
-                            :min="pendingProduct?.is_weight_based ? '0.01' : '1'"
-                            placeholder="Ingrese la cantidad"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                            @keydown.enter="confirmQuantity"
-                            x-ref="quantityModalInput">
-                    </div>
-                    <div class="flex justify-center space-x-3 mt-6">
-                        <button 
-                            @click="confirmQuantity"
-                            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                            Confirmar
-                        </button>
-                        <button 
-                            @click="closeQuantityModal"
-                            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">
-                            Cancelar
-                        </button>
-                    </div>
+        <!-- ── Modal cantidad (para productos por peso) ───────────────── -->
+        <div x-show="showQuantityModal" x-cloak
+             class="fixed inset-0 bg-gray-700 bg-opacity-60 z-50 flex items-center justify-center p-4">
+            <div class="w-full max-w-sm bg-white rounded-xl shadow-2xl p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">Especificar Cantidad</h3>
+                <div x-show="pendingProduct">
+                    <p class="text-sm text-gray-600 mb-1 text-center">
+                        Producto: <strong x-text="pendingProduct?.name"></strong>
+                    </p>
+                    <p class="text-xs text-gray-400 mb-4 text-center" x-show="pendingProduct?.is_weight_based">
+                        Se vende por peso (kg)
+                    </p>
+                    <input
+                        type="number"
+                        x-model="quantityInput"
+                        :step="pendingProduct?.is_weight_based ? '0.01' : '1'"
+                        :min="pendingProduct?.is_weight_based ? '0.01' : '1'"
+                        placeholder="Ingrese la cantidad"
+                        class="w-full px-3 py-3 text-base border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-center mb-5"
+                        @keydown.enter="confirmQuantity"
+                        x-ref="quantityModalInput">
+                </div>
+                <div class="flex gap-3">
+                    <button @click="confirmQuantity"
+                        class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors">
+                        Confirmar
+                    </button>
+                    <button @click="closeQuantityModal"
+                        class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg hover:bg-gray-200 font-medium text-sm transition-colors">
+                        Cancelar
+                    </button>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 {% endblock %}
@@ -369,136 +379,145 @@
     function getCsrfToken() {
         return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
-    
-    // OBTENER DATOS DESDE DJANGO DE FORMA SEGURA
+
     function getSafeData() {
         try {
-            const dataElement = document.getElementById('data-for-js');
-            return dataElement ? JSON.parse(dataElement.textContent) : {};
+            const el = document.getElementById('data-for-js');
+            return el ? JSON.parse(el.textContent) : {};
         } catch (e) {
             console.warn('Error parsing data from Django:', e);
             return {};
         }
     }
-    
+
     document.addEventListener('alpine:init', () => {
         Alpine.data('salesApp', () => ({
-            // Estados principales - INICIALIZAR SIEMPRE COMO STRINGS VACÍOS
+            // Estado de items
             items: [],
             barcode: '',
+
+            // Búsqueda por nombre (nuevo)
+            nameSearch: '',
+            nameResults: [],
+            nameSelectedIndex: -1,
+
+            // Búsqueda de clientes
             customerSearch: '',
             customerResults: [],
             customerSelectedIndex: -1,
             selectedCustomer: null,
+
+            // Opciones de venta
             isCredit: false,
             notes: '',
-            paymentMethod: 'card', // Método de pago por defecto: Punto de Venta
-            mobileReference: '', // Referencia de pago móvil
-            exchangeRate: 1, // VALOR POR DEFECTO SEGURO
-            
-            // Variables para el modal de cantidad
+            paymentMethod: 'card',
+            mobileReference: '',
+            exchangeRate: 1,
+
+            // Modal de cantidad
             showQuantityModal: false,
             pendingProduct: null,
             quantityInput: '',
-            
-            // Debug
-            showDebug: false,
-            lastScannedProduct: '',
-            
-            // Computed properties
+
+            // Computed
             get subtotal() {
                 return this.items.reduce((sum, item) => sum + parseFloat(item.subtotal || 0), 0);
             },
-            
-            get total() {
-                return this.subtotal;
-            },
-            
-            // Métodos principales
+            get total() { return this.subtotal; },
+
+            // ── Barcode ──────────────────────────────────────────────────
             async scanBarcode() {
                 const code = this.barcode ? this.barcode.trim() : '';
-                if (!code) {
-                    this.focusBarcodeInput();
-                    return;
-                }
-                
-                console.log('Escaneando código:', code);
-                this.lastScannedProduct = code;
-                
+                if (!code) { this.focusBarcodeInput(); return; }
+
                 try {
                     const response = await fetch(`/api/products/barcode/${encodeURIComponent(code)}/`);
-                    
                     if (!response.ok) {
-                        if (response.status === 404) {
-                            alert('Producto no encontrado');
-                        } else {
-                            const errorData = await response.json();
-                            alert(errorData.error || 'Error al buscar el producto');
-                        }
-                        this.barcode = '';
-                        this.focusBarcodeInput();
-                        return;
+                        if (response.status === 404) alert('Producto no encontrado');
+                        else { const err = await response.json(); alert(err.error || 'Error al buscar'); }
+                        this.barcode = ''; this.focusBarcodeInput(); return;
                     }
-                    
                     const product = await response.json();
-                    console.log('Producto encontrado:', product);
-                    
-                    // Verificar stock
                     if (product.stock <= 0) {
-                        alert(`El producto "${product.name}" no tiene stock disponible`);
-                        this.barcode = '';
-                        this.focusBarcodeInput();
-                        return;
+                        alert(`"${product.name}" sin stock disponible`);
+                        this.barcode = ''; this.focusBarcodeInput(); return;
                     }
-                    
-                    // Verificar si ya está en la lista
-                    const existingIndex = this.items.findIndex(item => item.id === product.id);
-                    
-                    if (existingIndex !== -1) {
-                        // Producto ya existe, incrementar cantidad
-                        const currentQuantity = this.items[existingIndex].quantity;
-                        const newQuantity = product.is_weight_based ? currentQuantity + 1 : currentQuantity + 1;
-                        
-                        if (newQuantity > product.stock) {
-                            alert(`Stock insuficiente. Disponible: ${product.stock}`);
-                            this.barcode = '';
-                            this.focusBarcodeInput();
-                            return;
-                        }
-                        
-                        this.items[existingIndex].quantity = newQuantity;
-                        this.updateItemSubtotal(existingIndex);
-                    } else {
-                        // Producto nuevo
-                        if (product.is_weight_based) {
-                            // Mostrar modal para productos por peso
-                            this.pendingProduct = product;
-                            this.quantityInput = '1';
-                            this.showQuantityModal = true;
-                            setTimeout(() => {
-                                this.$refs.quantityModalInput?.focus();
-                            }, 100);
-                        } else {
-                            // Agregar directamente productos por unidad
-                            this.addProductToSale(product, 1);
-                        }
-                    }
-                    
+                    this.addOrIncrementProduct(product);
                     this.barcode = '';
-                    if (!this.showQuantityModal) {
-                        this.focusBarcodeInput();
-                    }
-                    
+                    if (!this.showQuantityModal) this.focusBarcodeInput();
                 } catch (error) {
-                    console.error('Error al escanear código:', error);
                     alert('Error de conexión. Intente nuevamente.');
-                    this.barcode = '';
-                    this.focusBarcodeInput();
+                    this.barcode = ''; this.focusBarcodeInput();
                 }
             },
-            
+
+            // ── Búsqueda por nombre ───────────────────────────────────
+            async searchByName() {
+                const query = this.nameSearch ? this.nameSearch.trim() : '';
+                if (query.length < 2) { this.nameResults = []; return; }
+                try {
+                    const response = await fetch(`/inventory/api/products/search/?q=${encodeURIComponent(query)}&limit=8`);
+                    const data = await response.json();
+                    this.nameResults = data.products || [];
+                    this.nameSelectedIndex = -1;
+                } catch (error) {
+                    this.nameResults = [];
+                }
+            },
+
+            navigateName(direction) {
+                if (!this.nameResults.length) return;
+                this.nameSelectedIndex += direction;
+                if (this.nameSelectedIndex < 0) this.nameSelectedIndex = this.nameResults.length - 1;
+                else if (this.nameSelectedIndex >= this.nameResults.length) this.nameSelectedIndex = 0;
+            },
+
+            selectFirstNameResult() {
+                if (!this.nameResults.length) return;
+                const idx = this.nameSelectedIndex >= 0 ? this.nameSelectedIndex : 0;
+                this.selectProductByName(this.nameResults[idx]);
+            },
+
+            selectProductByName(product) {
+                this.nameSearch = '';
+                this.nameResults = [];
+                this.nameSelectedIndex = -1;
+                if (product.stock <= 0) { alert(`"${product.name}" sin stock disponible`); return; }
+                this.addOrIncrementProduct(product);
+                if (!this.showQuantityModal) this.focusBarcodeInput();
+            },
+
+            clearNameSearch() {
+                this.nameSearch = '';
+                this.nameResults = [];
+                this.nameSelectedIndex = -1;
+            },
+
+            // ── Lógica común de productos ─────────────────────────────
+            addOrIncrementProduct(product) {
+                const existingIndex = this.items.findIndex(item => item.id === product.id);
+                if (existingIndex !== -1) {
+                    const newQty = this.items[existingIndex].quantity + 1;
+                    if (newQty > product.stock) {
+                        alert(`Stock insuficiente. Disponible: ${product.stock}`);
+                        return;
+                    }
+                    this.items[existingIndex].quantity = newQty;
+                    this.updateItemSubtotal(existingIndex);
+                } else {
+                    if (product.is_weight_based) {
+                        this.pendingProduct = product;
+                        this.quantityInput = '1';
+                        this.showQuantityModal = true;
+                        setTimeout(() => { this.$refs.quantityModalInput?.focus(); }, 100);
+                    } else {
+                        this.addProductToSale(product, 1);
+                    }
+                }
+            },
+
             addProductToSale(product, quantity) {
-                const item = {
+                this.items.push({
                     id: product.id,
                     name: product.name,
                     barcode: product.barcode,
@@ -508,118 +527,80 @@
                     stock: product.stock,
                     unit_display: product.unit_display,
                     is_weight_based: product.is_weight_based
-                };
-                
-                this.items.push(item);
-                console.log('Producto agregado:', item);
+                });
             },
-            
+
             updateItemSubtotal(index) {
                 if (this.items[index]) {
                     const item = this.items[index];
                     item.subtotal = parseFloat(item.price) * parseFloat(item.quantity);
                 }
             },
-            
-            removeItem(index) {
-                this.items.splice(index, 1);
-            },
-            
-            // Modal de cantidad
+
+            removeItem(index) { this.items.splice(index, 1); },
+
+            // ── Modal cantidad ────────────────────────────────────────
             confirmQuantity() {
                 const quantity = parseFloat(this.quantityInput);
-                
-                if (!quantity || quantity <= 0) {
-                    alert('Ingrese una cantidad válida');
-                    return;
-                }
-                
+                if (!quantity || quantity <= 0) { alert('Ingrese una cantidad válida'); return; }
                 if (quantity > this.pendingProduct.stock) {
                     alert(`Stock insuficiente. Disponible: ${this.pendingProduct.stock}`);
                     return;
                 }
-                
                 this.addProductToSale(this.pendingProduct, quantity);
                 this.closeQuantityModal();
             },
-            
+
             closeQuantityModal() {
                 this.showQuantityModal = false;
                 this.pendingProduct = null;
                 this.quantityInput = '';
                 this.focusBarcodeInput();
             },
-            
-            // Gestión de clientes
+
+            // ── Clientes ──────────────────────────────────────────────
             async searchCustomers() {
                 const query = this.customerSearch ? this.customerSearch.trim() : '';
-                if (query.length < 2) {
-                    this.customerResults = [];
-                    return;
-                }
-                
+                if (query.length < 2) { this.customerResults = []; return; }
                 try {
                     const response = await fetch(`/api/customers/search/?q=${encodeURIComponent(query)}`);
                     const data = await response.json();
                     this.customerResults = data.customers || [];
                     this.customerSelectedIndex = -1;
-                } catch (error) {
-                    console.error('Error al buscar clientes:', error);
-                    this.customerResults = [];
-                }
+                } catch (error) { this.customerResults = []; }
             },
-            
+
             navigateCustomer(direction) {
-                if (this.customerResults.length === 0) return;
-                
+                if (!this.customerResults.length) return;
                 this.customerSelectedIndex += direction;
-                
-                if (this.customerSelectedIndex < 0) {
-                    this.customerSelectedIndex = this.customerResults.length - 1;
-                } else if (this.customerSelectedIndex >= this.customerResults.length) {
-                    this.customerSelectedIndex = 0;
-                }
+                if (this.customerSelectedIndex < 0) this.customerSelectedIndex = this.customerResults.length - 1;
+                else if (this.customerSelectedIndex >= this.customerResults.length) this.customerSelectedIndex = 0;
             },
-            
+
             selectFirstCustomer() {
-                if (this.customerResults.length > 0) {
-                    this.selectCustomer(this.customerResults[0]);
-                }
+                if (this.customerResults.length > 0) this.selectCustomer(this.customerResults[0]);
             },
-            
+
             selectCustomer(customer) {
                 this.selectedCustomer = customer;
                 this.customerSearch = '';
                 this.customerResults = [];
                 this.customerSelectedIndex = -1;
             },
-            
-            clearSelectedCustomer() {
-                this.selectedCustomer = null;
-                this.isCredit = false;
-            },
-            
+
+            clearSelectedCustomer() { this.selectedCustomer = null; this.isCredit = false; },
             clearCustomerSearch() {
                 this.customerSearch = '';
                 this.customerResults = [];
                 this.customerSelectedIndex = -1;
             },
-            
-            // Completar venta
+
+            // ── Completar venta ───────────────────────────────────────
             async completeSale() {
-                if (this.items.length === 0) {
-                    alert('Agregue al menos un producto a la venta');
-                    return;
-                }
-
-                if (this.isCredit && !this.selectedCustomer) {
-                    alert('Para venta a crédito debe seleccionar un cliente');
-                    return;
-                }
-
-                // Validar referencia de pago móvil
+                if (this.items.length === 0) { alert('Agregue al menos un producto'); return; }
+                if (this.isCredit && !this.selectedCustomer) { alert('Para venta a crédito seleccione un cliente'); return; }
                 if (this.paymentMethod === 'mobile' && !this.mobileReference.trim()) {
-                    alert('Debe ingresar el número de referencia del pago móvil');
+                    alert('Ingrese el número de referencia del pago móvil');
                     return;
                 }
 
@@ -636,44 +617,28 @@
                     payment_method: this.paymentMethod,
                     mobile_reference: this.paymentMethod === 'mobile' ? this.mobileReference.trim() : null
                 };
-                
-                console.log('=== DATOS DE VENTA COMPLETOS ===');
-                console.log(JSON.stringify(saleData, null, 2));
-                console.log('=== FIN DATOS DE VENTA ===');
-                
+
                 try {
                     const response = await fetch('{% url "sales:create_sale_api" %}', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCsrfToken()
-                        },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
                         body: JSON.stringify(saleData)
                     });
-                    
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        console.error('Error del servidor:', errorData);
-                        throw new Error(errorData.error || 'Error al procesar la venta');
+                        const err = await response.json();
+                        throw new Error(err.error || 'Error al procesar la venta');
                     }
-                    
                     const result = await response.json();
-                    console.log('Respuesta del servidor:', result);
-                    
-                    // Abrir recibo en nueva ventana
                     if (result.id) {
                         window.open(`/sales/${result.id}/receipt/`, '_blank');
                         this.resetSale();
-                        
-                        // Enfocar el input para seguir escaneando
                         this.focusBarcodeInput();
                     }
                 } catch (error) {
-                    console.error('Error completo:', error);
                     alert(error.message || 'Error al procesar la venta');
                 }
             },
-            
+
             resetSale() {
                 this.items = [];
                 this.barcode = '';
@@ -682,36 +647,25 @@
                 this.notes = '';
                 this.paymentMethod = 'card';
                 this.mobileReference = '';
+                this.nameSearch = '';
+                this.nameResults = [];
                 this.closeQuantityModal();
                 this.clearCustomerSearch();
             },
-            
+
             focusBarcodeInput() {
                 setTimeout(() => {
                     const input = document.getElementById('barcode');
-                    if (input) {
-                        input.focus();
-                    }
+                    if (input) input.focus();
                 }, 100);
             },
-            
+
             init() {
-                // OBTENER DATOS DE DJANGO DE FORMA SEGURA
                 const safeData = getSafeData();
-                
-                // Configurar exchange rate de forma segura
                 if (safeData.exchangeRate && typeof safeData.exchangeRate === 'number' && safeData.exchangeRate > 0) {
                     this.exchangeRate = safeData.exchangeRate;
-                } else {
-                    this.exchangeRate = 1; // Valor por defecto
-                    console.warn('Exchange rate no disponible, usando valor por defecto');
                 }
-                
-                // Enfocar el input al cargar la página
                 this.focusBarcodeInput();
-                
-                console.log('SalesApp inicializado correctamente');
-                console.log('Exchange rate:', this.exchangeRate);
             }
         }));
     });

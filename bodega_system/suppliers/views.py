@@ -1,28 +1,36 @@
 # suppliers/views.py
 
+# Python standard library
+import logging
 from decimal import Decimal
+
+# Django core
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Sum, Q
-from django.db import transaction
-from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Supplier, SupplierOrder, SupplierOrderItem
-from .forms import SupplierForm, SupplierOrderForm, SupplierOrderItemFormset, ReceiveOrderForm
-from inventory.models import Product, InventoryAdjustment
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+# Django DB
+from django.db import transaction
+from django.db.models import Sum, Q
 from django.core.paginator import Paginator
-from django.db.models import Q
 
-from .models import Supplier
-from .forms import SupplierForm
-from utils.decorators import admin_required
+# Local imports
+from .models import Supplier, SupplierOrder, SupplierOrderItem
+from .forms import (
+    SupplierForm,
+    SupplierOrderForm,
+    SupplierOrderItemFormset,
+    ReceiveOrderForm
+)
+from inventory.models import Product, InventoryAdjustment, Category
+from utils.decorators import admin_required, require_exchange_rate
+from utils.models import ExchangeRate
+
+# Logger
+logger = logging.getLogger(__name__)
 
 @login_required
 def supplier_list(request):
@@ -164,17 +172,17 @@ def order_list(request):
     # Filtros
     supplier_id = request.GET.get('supplier')
     status = request.GET.get('status')
-    
-    # Consulta base
-    orders = SupplierOrder.objects.all()
-    
+
+    # Consulta base - ✅ OPTIMIZADO: Pre-cargar supplier y created_by
+    orders = SupplierOrder.objects.select_related('supplier', 'created_by')
+
     # Aplicar filtros
     if supplier_id:
         orders = orders.filter(supplier_id=supplier_id)
-    
+
     if status:
         orders = orders.filter(status=status)
-    
+
     # Ordenar
     orders = orders.order_by('-order_date')
     
@@ -198,15 +206,20 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     """Vista para ver detalles de una orden"""
-    order = get_object_or_404(SupplierOrder, pk=pk)
-    
-    # Obtener ítems de la orden
-    items = order.items.all().select_related('product')
-    
-    # Calcular totales
-    total_usd = sum(item.quantity * item.price_usd for item in items)
-    total_bs = sum(item.quantity * item.price_bs for item in items)
-    
+    # ✅ OPTIMIZADO: Pre-cargar supplier, created_by, items con products, y payments
+    order = get_object_or_404(
+        SupplierOrder.objects.select_related('supplier', 'created_by')
+                             .prefetch_related('items__product', 'payments__created_by'),
+        pk=pk
+    )
+
+    # Los items ya están pre-cargados
+    items = order.items.all()
+
+    # Calcular totales (usar métodos del modelo si es posible)
+    total_usd = order.calculate_total_usd()
+    total_bs = order.calculate_total_bs()
+
     return render(request, 'suppliers/order_detail.html', {
         'order': order,
         'items': items,
@@ -215,143 +228,105 @@ def order_detail(request, pk):
     })
 
 @login_required
-def order_create(request):
+@require_exchange_rate(redirect_url='suppliers:order_list')
+def order_create(request, exchange_rate=None):
     """Vista para crear una nueva orden de compra"""
     if request.method == 'POST':
-        print("===== ORDER CREATE POST REQUEST =====")
-        print("POST data:", dict(request.POST))
-        print("=====================================")
-        
         form = SupplierOrderForm(request.POST, user=request.user)
         formset = SupplierOrderItemFormset(request.POST)
-        
-        print("Form valid:", form.is_valid())
-        print("Form errors:", form.errors)
-        
-        # Debug supplier field specifically
-        supplier_value = request.POST.get('supplier')
-        print(f"Supplier field value: {supplier_value}")
 
-        # Check if suppliers exist (Supplier ya está importado al inicio del archivo)
-        supplier_count = Supplier.objects.filter(is_active=True).count()
-        print(f"Active suppliers in database: {supplier_count}")
-        print("Formset valid:", formset.is_valid())
-        print("Formset errors:", formset.errors)
-        print("Formset non_form_errors:", formset.non_form_errors())
-        
-        # Debug específico para productos nuevos
-        new_product_fields = [key for key in request.POST.keys() if 'new_product' in key]
-        if new_product_fields:
-            print("🆕 NEW PRODUCT FIELDS DETECTED:")
-            for field in new_product_fields:
-                print(f"  {field}: {request.POST.get(field)}")
-        
-        # Verificar si hay problemas con el formset management form
-        total_forms = request.POST.get('items-TOTAL_FORMS', 'NOT_FOUND')
-        initial_forms = request.POST.get('items-INITIAL_FORMS', 'NOT_FOUND') 
-        print(f"📋 FORMSET MANAGEMENT: TOTAL_FORMS={total_forms}, INITIAL_FORMS={initial_forms}")
-        
-        # Debug each form in the formset
-        print(f"🔍 Processing {len(formset.forms)} forms in formset...")
-        for i, form_instance in enumerate(formset.forms):
-            try:
-                is_bound = form_instance.is_bound
-                has_changed = form_instance.has_changed() if is_bound else False
-                is_valid = form_instance.is_valid() if is_bound else False
-                
-                print(f"Form {i} - Bound: {is_bound}, Changed: {has_changed}, Valid: {is_valid}")
-                
-                if form_instance.errors:
-                    print(f"Form {i} - Errors: {form_instance.errors}")
-                    
-                if is_bound and is_valid:
-                    # Safe access to cleaned_data
-                    cleaned = form_instance.cleaned_data
-                    is_new = cleaned.get('is_new_product', False)
-                    print(f"Form {i} - Is New Product: {is_new}")
-                    safe_cleaned = {k: str(v) if v is not None else None for k, v in cleaned.items()}
-                    print(f"Form {i} - Cleaned data: {safe_cleaned}")
-                elif is_bound:
-                    print(f"Form {i} - Raw data: {form_instance.data}")
-                    
-            except Exception as e:
-                print(f"Form {i} - Debug error: {str(e)}")
-        
-        # Check if we have a valid form and at least try to process
+        logger.debug("Processing order creation", extra={
+            'user_id': request.user.id,
+            'form_valid': form.is_valid(),
+            'formset_valid': formset.is_valid(),
+        })
+
+        if not form.is_valid():
+            logger.warning("Order form validation failed", extra={
+                'errors': str(form.errors),
+                'user_id': request.user.id,
+            })
+
+        if not formset.is_valid():
+            logger.warning("Order formset validation failed", extra={
+                'errors': str(formset.errors),
+                'non_form_errors': str(formset.non_form_errors()),
+                'user_id': request.user.id,
+            })
+
         if form.is_valid():
-            print("✅ MAIN FORM IS VALID")
-            
             if formset.is_valid():
-                print("✅ FORMSET IS VALID")
-                
-                # Obtener tasa de cambio actual
-                from utils.models import ExchangeRate
-                exchange_rate = ExchangeRate.get_latest_rate()
-                
-                if not exchange_rate:
-                    messages.error(request, 'No se ha configurado una tasa de cambio. Configure la tasa antes de crear órdenes.')
-                    return redirect('suppliers:order_create')
-                
+                # exchange_rate ya está disponible por el decorator
                 try:
                     with transaction.atomic():
                         # Guardar orden
-                        print("💾 Saving main order...")
                         order = form.save()
-                        print(f"✅ Order saved with ID: {order.id}")
-                        
+
+                        logger.info("Order created", extra={
+                            'order_id': order.id,
+                            'supplier_id': order.supplier_id,
+                            'user_id': request.user.id,
+                        })
+
                         # Procesar y guardar ítems de la orden
                         formset.instance = order
-                        
+
                         # Crear productos nuevos antes de guardar el formset
                         for form_item in formset.forms:
                             if form_item.cleaned_data and not form_item.cleaned_data.get('DELETE', False):
                                 if form_item.cleaned_data.get('is_new_product'):
-                                    print("🆕 Creating new product...")
-                                    # Crear el producto nuevo
-                                    new_product = _create_product_from_form(form_item, exchange_rate)
+                                    new_product = _create_product_from_form(form_item, exchange_rate, request.user)
                                     form_item.instance.product = new_product
-                                    print(f"✅ New product created: {new_product.name}")
-                        
-                        print("💾 Saving formset...")
+
+                                    logger.info("New product created from order", extra={
+                                        'product_id': new_product.id,
+                                        'product_name': new_product.name,
+                                        'order_id': order.id,
+                                    })
+
                         formset.save()
-                        print("✅ Formset saved")
-                        
-                        # Calcular totales
-                        total_usd = 0
-                        for form_item in formset.forms:
-                            if form_item.cleaned_data and not form_item.cleaned_data.get('DELETE', False):
-                                quantity = form_item.cleaned_data.get('quantity', 0)
-                                price_usd = form_item.cleaned_data.get('price_usd', 0)
-                                total_usd += quantity * price_usd
-                        
-                        # Actualizar totales y tasa
-                        order.total_usd = total_usd
-                        order.total_bs = total_usd * exchange_rate.bs_to_usd
-                        order.exchange_rate_used = exchange_rate.bs_to_usd
-                        order.save()
-                        
-                        print(f"✅ Order completed: ${total_usd} USD")
-                        
-                        # ✅ AGREGAR: Si la orden se marca como "received", actualizar inventario automáticamente
+
+                        # Calcular totales usando el método del modelo
+                        order.update_totals()
+
+                        logger.info("Order totals updated", extra={
+                            'order_id': order.id,
+                            'total_usd': float(order.total_usd),
+                            'total_bs': float(order.total_bs),
+                        })
+
+                        # Si la orden se marca como "received", actualizar inventario automáticamente
                         if order.status == 'received':
-                            print("🔄 Order marked as received - updating inventory...")
-                            _process_received_order(order, request.user)
-                            messages.success(request, f'Orden de compra #{order.id} creada y recibida exitosamente por ${total_usd} USD. Inventario actualizado.')
+                            result = _process_received_order(
+                                order=order,
+                                user=request.user,
+                                update_prices=True,
+                                notes='Orden creada directamente como recibida'
+                            )
+                            messages.success(
+                                request,
+                                f'Orden de compra #{order.id} creada y recibida exitosamente. '
+                                f'${order.total_usd} USD. '
+                                f'{result["products_count"]} productos actualizados en inventario.'
+                            )
                         else:
-                            messages.success(request, f'Orden de compra #{order.id} creada exitosamente por ${total_usd} USD.')
-                        
+                            messages.success(
+                                request,
+                                f'Orden de compra #{order.id} creada exitosamente por ${order.total_usd} USD.'
+                            )
+
                         return redirect('suppliers:order_detail', pk=order.pk)
-                        
+
                 except Exception as e:
-                    print(f"❌ Error during transaction: {str(e)}")
+                    logger.error("Error creating order", exc_info=True, extra={
+                        'user_id': request.user.id,
+                        'supplier_id': form.cleaned_data.get('supplier').id if form.cleaned_data.get('supplier') else None,
+                    })
                     messages.error(request, f'Error al crear la orden: {str(e)}')
-                    
+
             else:
-                print("❌ FORMSET IS INVALID")
                 messages.error(request, 'Error en los productos. Revise los datos de los productos.')
         else:
-            print("❌ MAIN FORM IS INVALID")
-            print("Main form errors:", form.errors)
             messages.error(request, 'Error en los datos de la orden. Revise el proveedor y otros campos.')
     else:
         # Pre-seleccionar proveedor si se pasa por URL
@@ -367,194 +342,128 @@ def order_create(request):
         form = SupplierOrderForm(initial=initial, user=request.user)
         formset = SupplierOrderItemFormset()
     
-    # Obtener tasa de cambio para mostrar en el template
-    from utils.models import ExchangeRate
-    from inventory.models import Category, Product
-    current_rate = ExchangeRate.get_latest_rate()
-    
     # Obtener categorías y opciones de unidad
+    from inventory.models import Category, Product
     categories = Category.objects.all().order_by('name')
     unit_choices = Product.UNIT_TYPES
-    
+
     return render(request, 'suppliers/order_form.html', {
         'form': form,
         'formset': formset,
         'title': 'Nueva Orden de Compra',
-        'current_exchange_rate': current_rate,
+        'current_exchange_rate': exchange_rate,  # Inyectado por decorator
         'categories': categories,
         'unit_choices': unit_choices,
     })
 
 @login_required
-def order_update(request, pk):
+@require_exchange_rate(redirect_url='suppliers:order_list')
+def order_update(request, pk, exchange_rate=None):
     """Vista para actualizar una orden de compra"""
     order = get_object_or_404(SupplierOrder, pk=pk)
-    
+
     # No permitir editar órdenes recibidas
     if order.status == 'received':
         messages.error(request, 'No se puede editar una orden que ya ha sido recibida.')
         return redirect('suppliers:order_detail', pk=order.pk)
-    
+
     if request.method == 'POST':
         form = SupplierOrderForm(request.POST, instance=order, user=request.user)
         formset = SupplierOrderItemFormset(request.POST, instance=order)
-        
+
         if form.is_valid() and formset.is_valid():
-            # Obtener tasa de cambio actual
-            from utils.models import ExchangeRate
-            exchange_rate = ExchangeRate.get_latest_rate()
-            
-            if not exchange_rate:
-                messages.error(request, 'No se ha configurado una tasa de cambio. Configure la tasa antes de actualizar órdenes.')
-                return redirect('suppliers:order_detail', pk=order.pk)
-            
+            # exchange_rate ya está disponible por el decorator
+
             with transaction.atomic():
                 # Guardar orden
                 order = form.save()
-                
+
                 # Procesar y guardar ítems de la orden
                 # Crear productos nuevos antes de guardar el formset
-                for form in formset.forms:
-                    if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                        if form.cleaned_data.get('is_new_product'):
+                for form_item in formset.forms:
+                    if form_item.cleaned_data and not form_item.cleaned_data.get('DELETE', False):
+                        if form_item.cleaned_data.get('is_new_product'):
                             # Crear el producto nuevo
-                            new_product = _create_product_from_form(form, exchange_rate)
-                            form.instance.product = new_product
-                
+                            new_product = _create_product_from_form(form_item, exchange_rate, request.user)
+                            form_item.instance.product = new_product
+
                 # Guardar ítems de la orden
                 formset.save()
-                
-                # Calcular totales
-                total_usd = 0
-                for form in formset.forms:
-                    if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                        quantity = form.cleaned_data.get('quantity', 0)
-                        price_usd = form.cleaned_data.get('price_usd', 0)
-                        total_usd += quantity * price_usd
-                
-                # Actualizar totales y tasa
-                order.total_usd = total_usd
-                order.total_bs = total_usd * exchange_rate.bs_to_usd
-                order.exchange_rate_used = exchange_rate.bs_to_usd
-                order.save()
-                
+
+                # Actualizar totales usando el método del modelo
+                order.update_totals()
+
                 messages.success(request, 'Orden de compra actualizada exitosamente.')
                 return redirect('suppliers:order_detail', pk=order.pk)
     else:
         form = SupplierOrderForm(instance=order, user=request.user)
         formset = SupplierOrderItemFormset(instance=order)
-    
-    # Obtener tasa de cambio para mostrar en el template
-    from utils.models import ExchangeRate
-    from inventory.models import Category, Product
-    current_rate = ExchangeRate.get_latest_rate()
-    
+
     # Obtener categorías y opciones de unidad
+    from inventory.models import Category, Product
     categories = Category.objects.all().order_by('name')
     unit_choices = Product.UNIT_TYPES
-    
+
     return render(request, 'suppliers/order_form.html', {
         'form': form,
         'formset': formset,
         'order': order,
         'title': 'Editar Orden de Compra',
-        'current_exchange_rate': current_rate,
+        'current_exchange_rate': exchange_rate,  # Inyectado por decorator
         'categories': categories,
         'unit_choices': unit_choices,
     })
 
 @login_required
 def order_receive(request, pk):
-    """Vista para recibir una orden de compra - CORREGIDA"""
+    """Vista para recibir una orden de compra"""
     order = get_object_or_404(SupplierOrder, pk=pk)
-    
+
     if order.status == 'received':
         messages.error(request, 'Esta orden ya ha sido recibida.')
         return redirect('suppliers:order_detail', pk=order.pk)
-    
+
     if request.method == 'POST':
         form = ReceiveOrderForm(request.POST)
-        
+
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Actualizar estado de la orden
-                    order.status = 'received'
-                    order.received_date = timezone.now()
-                    order.save()
-                    
                     # Obtener datos del formulario
-                    update_prices = form.cleaned_data.get('update_prices', False)
+                    update_prices = form.cleaned_data.get('update_prices', True)
                     notes = form.cleaned_data.get('notes', '').strip()
-                    
-                    # Contadores para el mensaje de confirmación
-                    updated_products = []
-                    total_items_received = Decimal('0')
-                    
-                    # Procesar cada ítem de la orden
-                    for item in order.items.all():
-                        product = item.product
-                        previous_stock = product.stock
-                        
-                        # ✅ CORRECCIÓN CRÍTICA: Asegurar que quantity sea Decimal
-                        quantity_to_add = Decimal(str(item.quantity))
-                        total_items_received += quantity_to_add
-                        
-                        # Actualizar stock (ambos son Decimal ahora)
-                        product.stock = previous_stock + quantity_to_add
-                        
-                        # Actualizar precios si se solicitó
-                        if update_prices:
-                            # Verificar si el producto tiene campos USD
-                            if hasattr(product, 'purchase_price_usd'):
-                                product.purchase_price_usd = item.price_usd
-                            
-                            # Actualizar precio en Bs
-                            product.purchase_price_bs = item.price_bs
-                        
-                        product.save()
-                        updated_products.append({
-                            'name': product.name,
-                            'quantity': quantity_to_add,
-                            'previous_stock': previous_stock,
-                            'new_stock': product.stock
-                        })
-                        
-                        # ✅ REGISTRAR AJUSTE DE INVENTARIO
-                        InventoryAdjustment.objects.create(
-                            product=product,
-                            adjustment_type='add',
-                            quantity=quantity_to_add,
-                            previous_stock=previous_stock,
-                            new_stock=product.stock,
-                            reason=f'Recepción orden #{order.id}' + (f' - {notes}' if notes else ''),
-                            adjusted_by=request.user
-                        )
-                    
-                    # ✅ MENSAJE DE ÉXITO DETALLADO
-                    product_names = [p['name'] for p in updated_products[:3]]
+
+                    # Procesar la recepción (función unificada)
+                    result = _process_received_order(
+                        order=order,
+                        user=request.user,
+                        update_prices=update_prices,
+                        notes=notes
+                    )
+
+                    # Mensaje de éxito detallado
+                    product_names = [p['name'] for p in result['updated_products'][:3]]
                     products_summary = ', '.join(product_names)
-                    if len(updated_products) > 3:
-                        products_summary += f' y {len(updated_products) - 3} más'
-                    
+                    if result['products_count'] > 3:
+                        products_summary += f' y {result["products_count"] - 3} más'
+
                     messages.success(
                         request,
                         f'Orden #{order.id} recibida exitosamente. '
                         f'Productos actualizados: {products_summary}. '
-                        f'Total ítems: {total_items_received}. '
+                        f'Total ítems: {result["total_items_received"]}. '
                         f'Valor: ${order.total_usd} (Bs {order.total_bs})'
                     )
-                    
+
                     return redirect('suppliers:order_detail', pk=order.pk)
-                    
+
             except Exception as e:
-                # Log del error para debugging
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error en order_receive orden #{order.id}: {str(e)}")
-                
+                logger.error("Error receiving order", exc_info=True, extra={
+                    'order_id': order.id,
+                    'user_id': request.user.id,
+                })
                 messages.error(request, f'Error al recibir la orden: {str(e)}')
-                
+
     else:
         form = ReceiveOrderForm()
     
@@ -596,95 +505,115 @@ def order_cancel(request, pk):
         'order': order
     })
 
-def _process_received_order(order, user):
-    """Helper para procesar una orden recibida y actualizar inventario"""
+def _process_received_order(order, user, update_prices=True, notes=''):
+    """
+    Procesa una orden recibida y actualiza el inventario
+
+    Args:
+        order (SupplierOrder): La orden a procesar
+        user (User): Usuario que procesa la recepción
+        update_prices (bool): Si True, actualiza precios de compra de productos
+        notes (str): Notas adicionales para los ajustes de inventario
+
+    Returns:
+        dict: Resumen de la recepción con productos actualizados y totales
+    """
     from decimal import Decimal
     from django.utils import timezone
-    
+
     # Marcar como recibida si no lo está
     if order.status != 'received':
         order.status = 'received'
         order.received_date = timezone.now()
         order.save()
-    
+
+    # Contadores para el resumen
+    updated_products = []
+    total_items_received = Decimal('0')
+
     # Procesar cada ítem de la orden
     for item in order.items.all():
         product = item.product
         previous_stock = product.stock
-        
+
         # Asegurar que quantity sea Decimal
         quantity_to_add = Decimal(str(item.quantity))
-        
-        # Actualizar stock
+
+        # Validación defensiva: cantidad debe ser positiva
+        if quantity_to_add <= 0:
+            raise ValueError(
+                f"Cantidad inválida para producto {product.name}: {quantity_to_add}. "
+                "Las cantidades deben ser mayores a cero."
+            )
+
+        total_items_received += quantity_to_add
+
+        # Actualizar stock (ambos son Decimal)
         product.stock = previous_stock + quantity_to_add
-        
-        # Actualizar precio de compra
-        product.purchase_price_usd = item.price_usd
-        product.purchase_price_bs = item.price_bs
-        
+
+        # Actualizar precios solo si se solicitó
+        if update_prices:
+            # Verificar si el producto tiene campos USD
+            if hasattr(product, 'purchase_price_usd'):
+                product.purchase_price_usd = item.price_usd
+
+            # Actualizar precio en Bs
+            product.purchase_price_bs = item.price_bs
+
         product.save()
-        
+
+        # Registrar producto actualizado
+        updated_products.append({
+            'name': product.name,
+            'quantity': quantity_to_add,
+            'previous_stock': previous_stock,
+            'new_stock': product.stock
+        })
+
         # Registrar ajuste de inventario
+        reason = f'Recepción orden #{order.id}'
+        if notes:
+            reason += f' - {notes}'
+
         InventoryAdjustment.objects.create(
             product=product,
             adjustment_type='add',
             quantity=quantity_to_add,
             previous_stock=previous_stock,
             new_stock=product.stock,
-            reason=f'Recepción orden #{order.id} (auto)',
+            reason=reason,
             adjusted_by=user
         )
-        
-        print(f"✅ Updated product {product.name}: stock {previous_stock} -> {product.stock}")
 
-def _create_product_from_form(form, exchange_rate):
-    """Helper para crear un producto nuevo desde el formulario"""
-    from inventory.models import Product, Category
-    
-    try:
-        # Debug: mostrar datos recibidos
-        print("📦 Creating new product from form data:")
-        print("Cleaned data keys:", list(form.cleaned_data.keys()))
-        for key, value in form.cleaned_data.items():
-            if key.startswith('new_product'):
-                print(f"  {key}: {value}")
-        
-        selling_price_usd = form.cleaned_data['new_product_selling_price_usd']
-        purchase_price_usd = form.cleaned_data['price_usd']
-        
-        # Obtener categoría (Django ya la convirtió a objeto)
-        category = form.cleaned_data['new_product_category']
-        if not category:
-            print(f"❌ No category provided")
-            raise ValueError("Categoría es requerida")
-        
-        print(f"✅ Using category: {category} (ID: {category.id})")
-        
-        # Obtener descripción si existe
-        description = form.cleaned_data.get('new_product_description', '')
-        
-        product = Product.objects.create(
-            name=form.cleaned_data['new_product_name'],
-            barcode=form.cleaned_data['new_product_barcode'],
-            category=category,
-            unit_type=form.cleaned_data.get('new_product_unit_type', 'unit'),
-            description=description,
-            purchase_price_usd=purchase_price_usd,
-            purchase_price_bs=purchase_price_usd * exchange_rate.bs_to_usd,
-            selling_price_usd=selling_price_usd,
-            selling_price_bs=selling_price_usd * exchange_rate.bs_to_usd,
-            stock=0,  # Inicialmente en 0, se actualizará al recibir la orden
-            min_stock=form.cleaned_data.get('new_product_min_stock', 5),
-            is_active=True
-        )
-        
-        print(f"✅ Product created successfully: {product.name} (ID: {product.id})")
-        return product
-        
-    except Exception as e:
-        print(f"❌ Error creating product: {str(e)}")
-        print(f"Form cleaned_data: {form.cleaned_data}")
-        raise
+        logger.info("Product updated from order reception", extra={
+            'order_id': order.id,
+            'product_id': product.id,
+            'quantity_added': float(quantity_to_add),
+            'previous_stock': float(previous_stock),
+            'new_stock': float(product.stock),
+            'prices_updated': update_prices,
+        })
+
+    return {
+        'updated_products': updated_products,
+        'total_items_received': total_items_received,
+        'products_count': len(updated_products)
+    }
+
+def _create_product_from_form(form, exchange_rate, created_by=None):
+    """
+    Helper para crear un producto nuevo desde el formulario
+
+    DEPRECATED: Esta función ahora delega al ProductService.
+    Se mantiene por compatibilidad pero usa el service layer internamente.
+    """
+    from inventory.services import ProductService
+
+    return ProductService.create_product_from_order_form(
+        form=form,
+        exchange_rate=exchange_rate,
+        created_by=created_by
+    )
 
 
 @login_required
@@ -712,3 +641,134 @@ def product_lookup_api(request, barcode):
             'exists': False,
             'product': None
         })
+
+
+# ============================================================================
+# VISTAS DE PAGOS A PROVEEDORES
+# ============================================================================
+
+@login_required
+@admin_required
+def payment_create(request, order_id):
+    """Vista para registrar un nuevo pago a proveedor"""
+    from .models import SupplierPayment
+    from .forms import SupplierPaymentForm
+
+    order = get_object_or_404(SupplierOrder, pk=order_id)
+
+    # Verificar que la orden tenga saldo pendiente
+    if order.payment_status == 'paid':
+        messages.warning(request, 'Esta orden ya está completamente pagada.')
+        return redirect('suppliers:order_detail', pk=order.pk)
+
+    if request.method == 'POST':
+        form = SupplierPaymentForm(request.POST, order=order, user=request.user)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    payment = form.save()
+
+                    logger.info("Payment registered", extra={
+                        'payment_id': payment.id,
+                        'order_id': order.id,
+                        'amount_usd': float(payment.amount_usd),
+                        'amount_bs': float(payment.amount_bs),
+                        'user_id': request.user.id,
+                    })
+
+                    messages.success(
+                        request,
+                        f'Pago registrado exitosamente: ${payment.amount_usd} USD. '
+                        f'Saldo pendiente: ${order.outstanding_balance_usd} USD.'
+                    )
+
+                    return redirect('suppliers:order_detail', pk=order.pk)
+
+            except Exception as e:
+                logger.error("Error creating payment", exc_info=True, extra={
+                    'order_id': order.id,
+                    'user_id': request.user.id,
+                })
+                messages.error(request, f'Error al registrar el pago: {str(e)}')
+
+    else:
+        # Pre-cargar el monto con el saldo pendiente
+        initial_data = {
+            'amount_usd': order.outstanding_balance_usd
+        }
+        form = SupplierPaymentForm(initial=initial_data, order=order, user=request.user)
+
+    context = {
+        'form': form,
+        'order': order,
+        'title': f'Registrar Pago - Orden #{order.id}',
+        'outstanding_balance': order.outstanding_balance_usd,
+    }
+
+    return render(request, 'suppliers/payment_form.html', context)
+
+
+@login_required
+def payment_list(request, order_id):
+    """Vista para listar los pagos de una orden"""
+    from .models import SupplierPayment
+
+    order = get_object_or_404(SupplierOrder, pk=order_id)
+    payments = order.payments.all().order_by('-payment_date')
+
+    context = {
+        'order': order,
+        'payments': payments,
+        'title': f'Pagos - Orden #{order.id}',
+    }
+
+    return render(request, 'suppliers/payment_list.html', context)
+
+
+@login_required
+@admin_required
+def payment_delete(request, pk):
+    """Vista para eliminar un pago"""
+    from .models import SupplierPayment
+
+    payment = get_object_or_404(SupplierPayment, pk=pk)
+    order = payment.order
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                amount = payment.amount_usd
+                payment_id = payment.id
+
+                payment.delete()
+
+                logger.info("Payment deleted", extra={
+                    'payment_id': payment_id,
+                    'order_id': order.id,
+                    'amount_usd': float(amount),
+                    'user_id': request.user.id,
+                })
+
+                messages.success(
+                    request,
+                    f'Pago de ${amount} USD eliminado exitosamente. '
+                    f'Saldo pendiente actualizado: ${order.outstanding_balance_usd} USD.'
+                )
+
+        except Exception as e:
+            logger.error("Error deleting payment", exc_info=True, extra={
+                'payment_id': pk,
+                'user_id': request.user.id,
+            })
+            messages.error(request, f'Error al eliminar el pago: {str(e)}')
+
+        return redirect('suppliers:order_detail', pk=order.pk)
+
+    context = {
+        'payment': payment,
+        'order': order,
+        'title': 'Eliminar Pago',
+    }
+
+    return render(request, 'suppliers/payment_confirm_delete.html', context)

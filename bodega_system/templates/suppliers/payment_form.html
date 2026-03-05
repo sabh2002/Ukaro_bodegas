@@ -1,0 +1,110 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="max-w-2xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">{{ title }}</h1>
+            <a href="{% url 'suppliers:order_detail' order.id %}"
+               class="text-blue-600 hover:text-blue-800">
+                ← Volver a la orden
+            </a>
+        </div>
+
+        <!-- Información de la Orden -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">
+                        Orden #{{ order.id }} - {{ order.supplier.name }}
+                    </h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p><strong>Total Orden:</strong> ${{ order.total_usd }} USD (Bs {{ order.total_bs }})</p>
+                        <p><strong>Pagado:</strong> ${{ order.paid_amount_usd }} USD</p>
+                        <p class="font-bold text-lg mt-1">
+                            <strong>Saldo Pendiente:</strong> ${{ outstanding_balance }} USD
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario de Pago -->
+        <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+
+                <div>
+                    <label for="id_amount_usd" class="block text-gray-700 text-sm font-bold mb-2">
+                        Monto a Pagar (USD) *
+                    </label>
+                    {{ form.amount_usd }}
+                    {% if form.amount_usd.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.amount_usd.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-gray-600 text-xs mt-1">Máximo: ${{ outstanding_balance }} USD</p>
+                </div>
+
+                <div>
+                    <label for="id_payment_date" class="block text-gray-700 text-sm font-bold mb-2">
+                        Fecha y Hora del Pago *
+                    </label>
+                    {{ form.payment_date }}
+                    {% if form.payment_date.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.payment_date.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="id_payment_method" class="block text-gray-700 text-sm font-bold mb-2">
+                        Método de Pago *
+                    </label>
+                    {{ form.payment_method }}
+                    {% if form.payment_method.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.payment_method.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="id_reference" class="block text-gray-700 text-sm font-bold mb-2">
+                        Referencia
+                    </label>
+                    {{ form.reference }}
+                    {% if form.reference.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.reference.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-gray-600 text-xs mt-1">Número de cheque, referencia de transferencia, etc.</p>
+                </div>
+
+                <div>
+                    <label for="id_notes" class="block text-gray-700 text-sm font-bold mb-2">
+                        Notas
+                    </label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <p class="text-red-500 text-xs italic mt-1">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center justify-between pt-4">
+                    <button type="submit"
+                            class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Registrar Pago
+                    </button>
+                    <a href="{% url 'suppliers:order_detail' order.id %}"
+                       class="text-gray-600 hover:text-gray-800">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

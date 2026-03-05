@@ -45,10 +45,10 @@ def product_detail_api(request, pk):
             # Información de precios al mayor
             'is_bulk_pricing': product.is_bulk_pricing,
             'bulk_min_quantity': float(product.bulk_min_quantity) if product.bulk_min_quantity else None,
-            'bulk_price_bs': float(product.bulk_price_bs) if product.bulk_price_bs else None,
-            
+            'bulk_price_usd': float(product.bulk_price_usd) if product.bulk_price_usd else None,
+
             # Análisis de stock
-            'stock_status': product.get_stock_status(),
+            'stock_status': product.stock_status,
             'stock_level': 'low' if product.stock <= product.min_stock else 'normal',
             
             # Información de márgenes
@@ -246,7 +246,7 @@ def categories_list_api(request):
                 'name': category.name,
                 'description': category.description,
                 'product_count': product_count,
-                'created_at': category.created_at.isoformat(),
+                'created_at': None,
             })
         
         return JsonResponse({'categories': results})
@@ -360,9 +360,9 @@ def combo_search_api(request):
                 'name': combo.name,
                 'description': combo.description,
                 'combo_price_bs': float(combo.combo_price_bs),
-                'total_individual_price': float(combo.total_individual_price),
-                'savings_amount': float(combo.savings_amount),
-                'savings_percentage': float(combo.savings_percentage),
+                'total_individual_price': None,
+                'savings_amount': None,
+                'savings_percentage': None,
                 'is_active': combo.is_active,
                 'stock_available': items_available,
                 'item_count': combo.items.count(),

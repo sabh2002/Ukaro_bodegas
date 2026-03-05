@@ -30,12 +30,46 @@
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             {{ form.as_p }}
             <div class="flex items-end">
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
                     Aplicar Filtros
                 </button>
             </div>
         </form>
     </div>
+
+    <!-- Gráfico de evolución diaria -->
+    {% if daily_profits %}
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Evolución Diaria del Período</h2>
+        <canvas id="dailyProfitsChart" height="100"></canvas>
+        <script>
+        (function() {
+            var ctx = document.getElementById('dailyProfitsChart');
+            if (!ctx) return;
+            var labels   = [{% for d in daily_profits %}'{{ d.date }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+            var sales    = [{% for d in daily_profits %}{{ d.sales|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            var expenses = [{% for d in daily_profits %}{{ d.expenses|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            var profits  = [{% for d in daily_profits %}{{ d.profit|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Ventas (Bs)', data: sales, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.05)', fill: true, tension: 0.3, pointRadius: 3 },
+                        { label: 'Gastos (Bs)', data: expenses, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.05)', fill: true, tension: 0.3, pointRadius: 3 },
+                        { label: 'Ganancia (Bs)', data: profits, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, tension: 0.3, pointRadius: 3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top', labels: { font: { size: 12 } } } },
+                    scales: { y: { beginAtZero: false, ticks: { font: { size: 11 } } }, x: { ticks: { font: { size: 10 }, maxRotation: 45 } } }
+                }
+            });
+        })();
+        </script>
+    </div>
+    {% endif %}
 
     <!-- Resumen de Ganancias -->
     <div class="bg-white rounded-lg shadow-md p-6">
