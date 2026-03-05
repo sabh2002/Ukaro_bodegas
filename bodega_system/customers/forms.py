@@ -175,3 +175,61 @@ class CreditPaymentForm(forms.ModelForm):
                           'La referencia es requerida para pagos móviles.')
 
         return cleaned_data
+
+
+class CustomerGeneralPaymentForm(forms.Form):
+    amount_bs = forms.DecimalField(
+        max_digits=12, decimal_places=2, label="Monto a pagar (Bs)",
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01'})
+    )
+    payment_method = forms.ChoiceField(
+        choices=CreditPayment.PAYMENT_METHODS, label="Método de Pago",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    mobile_reference = forms.CharField(
+        required=False, label="Referencia de Pago Móvil",
+        widget=forms.TextInput(attrs={'class': 'form-input'})
+    )
+    notes = forms.CharField(
+        required=False, label="Notas",
+        widget=forms.Textarea(attrs={'class': 'form-input', 'rows': 2})
+    )
+
+    def __init__(self, *args, customer=None, **kwargs):
+        self.customer = customer
+        super().__init__(*args, **kwargs)
+        if customer:
+            from utils.models import ExchangeRate
+            from decimal import Decimal
+            rate = ExchangeRate.get_latest_rate()
+            bs_rate = rate.bs_to_usd if rate else Decimal('36.00')
+            total_usd = customer.total_credit_used
+            total_bs = round(total_usd * bs_rate, 2)
+            self.fields['amount_bs'].initial = total_bs
+            self.fields['amount_bs'].widget.attrs['max'] = float(total_bs)
+            self.fields['amount_bs'].help_text = (
+                f'Deuda total: ${total_usd:.2f} USD (Bs {total_bs:.2f}). '
+                f'No puede exceder este monto.'
+            )
+
+    def clean_amount_bs(self):
+        amount = self.cleaned_data.get('amount_bs')
+        if not amount or amount <= 0:
+            raise forms.ValidationError('El monto debe ser mayor a cero.')
+        if self.customer:
+            from utils.models import ExchangeRate
+            from decimal import Decimal
+            rate = ExchangeRate.get_latest_rate()
+            bs_rate = rate.bs_to_usd if rate else Decimal('36.00')
+            amount_usd = round(amount / bs_rate, 2)
+            total_owed = round(Decimal(str(self.customer.total_credit_used)), 2)
+            if amount_usd > total_owed + Decimal('0.01'):
+                raise forms.ValidationError(
+                    f'El monto excede la deuda total (${total_owed:.2f} USD).')
+        return amount
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('payment_method') == 'mobile' and not cleaned_data.get('mobile_reference'):
+            self.add_error('mobile_reference', 'La referencia es requerida para pagos móviles.')
+        return cleaned_data

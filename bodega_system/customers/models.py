@@ -220,7 +220,15 @@ class CreditPayment(models.Model):
         blank=True,
         verbose_name="Notas"
     )
-    
+    general_payment = models.ForeignKey(
+        'CustomerGeneralPayment',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='credit_payments',
+        verbose_name="Pago General Origen",
+        help_text="Generado automáticamente por un pago general"
+    )
+
     class Meta:
         verbose_name = "Pago de Crédito"
         verbose_name_plural = "Pagos de Créditos"
@@ -245,3 +253,37 @@ class CreditPayment(models.Model):
         if self.payment_method == 'mobile' and self.mobile_reference:
             return f"{icon} {display} (Ref: {self.mobile_reference})"
         return f"{icon} {display}"
+
+
+class CustomerGeneralPayment(models.Model):
+    PAYMENT_METHODS = (
+        ('card', 'Punto de Venta'),
+        ('cash', 'Efectivo'),
+        ('mobile', 'Pago Móvil'),
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.PROTECT,
+        related_name='general_payments', verbose_name="Cliente"
+    )
+    amount_bs = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Monto (Bs)")
+    amount_usd = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Monto (USD)")
+    exchange_rate_used = models.DecimalField(max_digits=12, decimal_places=2,
+        verbose_name="Tasa Utilizada")
+    payment_date = models.DateTimeField(auto_now_add=True, verbose_name="Fecha")
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS,
+        default='cash', verbose_name="Método de Pago")
+    mobile_reference = models.CharField(max_length=50, blank=True, null=True,
+        verbose_name="Referencia Pago Móvil")
+    received_by = models.ForeignKey(
+        'accounts.User', on_delete=models.PROTECT,
+        related_name='general_payments_received', verbose_name="Recibido por"
+    )
+    notes = models.TextField(blank=True, verbose_name="Notas")
+
+    class Meta:
+        verbose_name = "Pago General de Cliente"
+        verbose_name_plural = "Pagos Generales de Clientes"
+        ordering = ['-payment_date']
+
+    def __str__(self):
+        return f"Pago general {self.customer.name} - ${self.amount_usd} ({self.payment_date.strftime('%d/%m/%Y')})"

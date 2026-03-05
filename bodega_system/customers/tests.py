@@ -17,7 +17,7 @@ from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 
-from customers.models import Customer, CustomerCredit, CreditPayment
+from customers.models import Customer, CustomerCredit, CreditPayment, CustomerGeneralPayment
 from sales.models import Sale
 from utils.models import ExchangeRate
 
@@ -387,3 +387,145 @@ class CreditViewTest(TestCase):
         url = reverse('customers:credit_payment', args=[self.credit.pk])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+
+# ─────────────────────────────────────────────
+# CUSTOMER GENERAL PAYMENT (FIFO) TESTS
+# ─────────────────────────────────────────────
+
+class CustomerGeneralPaymentTest(TestCase):
+
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        self.admin = make_admin('gp_admin')
+        self.employee = make_employee('gp_emp')
+        self.rate = make_exchange_rate(self.admin, '45.50')
+        self.customer = make_customer(credit_limit=Decimal('500.00'))
+        # Dos créditos pendientes
+        self.sale1 = make_sale(self.admin, customer=self.customer, is_credit=True)
+        self.sale2 = make_sale(self.admin, customer=self.customer, is_credit=True)
+        self.credit1 = make_credit(self.customer, self.sale1, amount_usd='10.00', amount_bs='455.00')
+        self.credit2 = make_credit(self.customer, self.sale2, amount_usd='15.00', amount_bs='682.50')
+
+    def _url(self):
+        return reverse('customers:customer_general_payment', kwargs={'pk': self.customer.pk})
+
+    # ── Acceso ──────────────────────────────
+
+    def test_no_debt_redirects(self):
+        """Cliente sin deuda → redirect a customer_detail con mensaje info"""
+        customer_zero = make_customer(name='Sin Deuda', credit_limit=Decimal('100.00'))
+        self.client.login(username='gp_admin', password='pass123')
+        url = reverse('customers:customer_general_payment', kwargs={'pk': customer_zero.pk})
+        response = self.client.get(url)
+        self.assertRedirects(response, reverse('customers:customer_detail', kwargs={'pk': customer_zero.pk}))
+
+    def test_admin_gets_200(self):
+        """Admin puede ver el formulario"""
+        self.client.login(username='gp_admin', password='pass123')
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('form', response.context)
+        self.assertIn('pending_credits', response.context)
+
+    def test_employee_can_access(self):
+        """Empleado también puede acceder (customer_access_required)"""
+        self.client.login(username='gp_emp', password='pass123')
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+
+    # ── Lógica FIFO ──────────────────────────
+
+    def test_full_payment_fifo_marks_oldest_paid(self):
+        """Pago exacto de credit1 marca credit1 como pagado"""
+        self.client.login(username='gp_admin', password='pass123')
+        # $10.00 USD = 455.00 Bs a tasa 45.50
+        response = self.client.post(self._url(), {
+            'amount_bs': '455.00',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        self.assertRedirects(response, reverse('customers:customer_detail', kwargs={'pk': self.customer.pk}))
+        self.credit1.refresh_from_db()
+        self.credit2.refresh_from_db()
+        self.assertTrue(self.credit1.is_paid)
+        self.assertFalse(self.credit2.is_paid)
+
+    def test_partial_payment_creates_credit_payment(self):
+        """Pago parcial crea CreditPayment en el primer crédito (FIFO)"""
+        self.client.login(username='gp_admin', password='pass123')
+        # $5.00 USD = 227.50 Bs
+        self.client.post(self._url(), {
+            'amount_bs': '227.50',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        # credit1 debe tener un pago parcial
+        self.credit1.refresh_from_db()
+        self.assertFalse(self.credit1.is_paid)
+        self.assertEqual(self.credit1.payments.count(), 1)
+        payment = self.credit1.payments.first()
+        self.assertAlmostEqual(float(payment.amount_usd), 5.00, places=1)
+
+    def test_payment_spanning_two_credits(self):
+        """Pago de $20 cubre credit1 ($10) completo + $10 parcial de credit2 ($15)"""
+        self.client.login(username='gp_admin', password='pass123')
+        # $20.00 USD = 910.00 Bs
+        self.client.post(self._url(), {
+            'amount_bs': '910.00',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        self.credit1.refresh_from_db()
+        self.credit2.refresh_from_db()
+        self.assertTrue(self.credit1.is_paid)
+        self.assertFalse(self.credit2.is_paid)
+        # credit2 debe tener un pago parcial
+        self.assertEqual(self.credit2.payments.count(), 1)
+
+    def test_overpayment_rejected(self):
+        """Monto que supera deuda total es rechazado por el formulario"""
+        self.client.login(username='gp_admin', password='pass123')
+        # Deuda total = $25 USD = 1137.50 Bs; enviamos $100 USD = 4550.00 Bs
+        response = self.client.post(self._url(), {
+            'amount_bs': '4550.00',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        # Debe permanecer en el formulario con error (200, no redirect)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].errors)
+
+    def test_credit_payment_linked_to_general_payment(self):
+        """CreditPayment creado por pago general tiene FK a CustomerGeneralPayment"""
+        self.client.login(username='gp_admin', password='pass123')
+        self.client.post(self._url(), {
+            'amount_bs': '455.00',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        payment = CreditPayment.objects.filter(credit=self.credit1).first()
+        self.assertIsNotNone(payment)
+        self.assertIsNotNone(payment.general_payment)
+        self.assertIsInstance(payment.general_payment, CustomerGeneralPayment)
+
+    def test_general_payment_object_created(self):
+        """Se crea un registro CustomerGeneralPayment en la BD"""
+        self.client.login(username='gp_admin', password='pass123')
+        self.assertEqual(CustomerGeneralPayment.objects.count(), 0)
+        self.client.post(self._url(), {
+            'amount_bs': '455.00',
+            'payment_method': 'card',
+            'mobile_reference': '',
+            'notes': 'test',
+        })
+        self.assertEqual(CustomerGeneralPayment.objects.count(), 1)
+        gp = CustomerGeneralPayment.objects.first()
+        self.assertEqual(gp.customer, self.customer)
+        self.assertEqual(gp.payment_method, 'card')

@@ -352,6 +352,10 @@ class SmokeTest(TestCase):
         """Formulario para registrar pago de crédito."""
         self._get('customers:credit_payment', {'pk': self.credit.pk})
 
+    def test_customers_general_payment_form(self):
+        """Formulario para pago general FIFO. Retorna 200 (cliente tiene deuda) o 302 (sin deuda)."""
+        self._get('customers:customer_general_payment', {'pk': self.customer.pk})
+
     # ──────────────────────────────────────────────────────────────
     # Sales
     # ──────────────────────────────────────────────────────────────

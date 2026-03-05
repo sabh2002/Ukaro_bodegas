@@ -181,6 +181,9 @@
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                                 {{ payment.received_by.get_full_name|default:payment.received_by.username }}
+                                {% if payment.general_payment %}
+                                <span class="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded ml-1">Pago general</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}

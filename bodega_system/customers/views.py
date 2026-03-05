@@ -6,11 +6,14 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Sum, F, Q
 from django.core.paginator import Paginator
+from django.db import transaction
+from decimal import Decimal
 
-from .models import Customer, CustomerCredit, CreditPayment
-from .forms import CustomerForm, CreditForm, CreditPaymentForm
+from .models import Customer, CustomerCredit, CreditPayment, CustomerGeneralPayment
+from .forms import CustomerForm, CreditForm, CreditPaymentForm, CustomerGeneralPaymentForm
 from sales.models import Sale
 from utils.decorators import admin_required, employee_or_admin_required, customer_access_required
+from utils.models import ExchangeRate
 
 @customer_access_required
 def customer_list(request):
@@ -351,4 +354,104 @@ def credit_payment(request, pk):
         'pending_amount_usd': pending_amount_usd,
         'current_rate': current_rate,
         'title': 'Registrar Pago'
+    })
+
+
+# ─────────────────────────────────────────────
+# PAGOS GENERALES FIFO
+# ─────────────────────────────────────────────
+
+def _apply_fifo_payment(general_payment, customer, rate):
+    """Distribuye un pago general FIFO entre créditos pendientes del cliente (oldest first)."""
+    remaining_usd = general_payment.amount_usd
+
+    credits = CustomerCredit.objects.filter(
+        customer=customer, is_paid=False
+    ).order_by('date_created')
+
+    for credit in credits:
+        if remaining_usd < Decimal('0.01'):
+            break
+
+        paid_usd = credit.payments.aggregate(
+            total=Sum('amount_usd')
+        )['total'] or Decimal('0')
+        owed_usd = round(credit.amount_usd - paid_usd, 2)
+
+        if owed_usd <= 0:
+            credit.is_paid = True
+            credit.date_paid = timezone.now()
+            credit.save()
+            continue
+
+        apply_usd = min(remaining_usd, owed_usd)
+        apply_bs = round(apply_usd * rate, 2)
+
+        CreditPayment.objects.create(
+            credit=credit,
+            amount_bs=apply_bs,
+            amount_usd=apply_usd,
+            exchange_rate_used=rate,
+            payment_method=general_payment.payment_method,
+            mobile_reference=general_payment.mobile_reference or '',
+            received_by=general_payment.received_by,
+            notes=general_payment.notes,
+            general_payment=general_payment,
+        )
+
+        remaining_usd = round(remaining_usd - apply_usd, 2)
+
+        if round(paid_usd + apply_usd, 2) >= round(credit.amount_usd, 2):
+            credit.is_paid = True
+            credit.date_paid = timezone.now()
+            credit.save()
+
+
+@customer_access_required
+def customer_general_payment_create(request, pk):
+    """Pago general FIFO contra deuda total de un cliente."""
+    customer = get_object_or_404(Customer, pk=pk)
+    total_owed_usd = customer.total_credit_used
+
+    if total_owed_usd <= 0:
+        messages.info(request, f'{customer.name} no tiene deuda pendiente.')
+        return redirect('customers:customer_detail', pk=customer.pk)
+
+    if request.method == 'POST':
+        form = CustomerGeneralPaymentForm(request.POST, customer=customer)
+        if form.is_valid():
+            current_rate = ExchangeRate.get_latest_rate()
+            rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+            amount_bs = form.cleaned_data['amount_bs']
+            amount_usd = round(amount_bs / rate_value, 2)
+
+            with transaction.atomic():
+                gp = CustomerGeneralPayment.objects.create(
+                    customer=customer,
+                    amount_bs=amount_bs,
+                    amount_usd=amount_usd,
+                    exchange_rate_used=rate_value,
+                    payment_method=form.cleaned_data['payment_method'],
+                    mobile_reference=form.cleaned_data.get('mobile_reference') or '',
+                    received_by=request.user,
+                    notes=form.cleaned_data.get('notes') or '',
+                )
+                _apply_fifo_payment(gp, customer, rate_value)
+
+            messages.success(request, f'Pago de Bs {amount_bs:.2f} registrado y distribuido exitosamente.')
+            return redirect('customers:customer_detail', pk=customer.pk)
+    else:
+        form = CustomerGeneralPaymentForm(customer=customer)
+
+    current_rate = ExchangeRate.get_latest_rate()
+    pending_credits = CustomerCredit.objects.filter(
+        customer=customer, is_paid=False
+    ).order_by('date_created')
+
+    return render(request, 'customers/general_payment_form.html', {
+        'form': form,
+        'customer': customer,
+        'total_owed_usd': total_owed_usd,
+        'pending_credits': pending_credits,
+        'current_rate': current_rate,
     })
