@@ -498,3 +498,10 @@ class SmokeTest(TestCase):
 
     def test_my_stats(self):
         self._get('my_stats')
+
+    # ──────────────────────────────────────────────────────────────
+    # Performance
+    # ──────────────────────────────────────────────────────────────
+
+    def test_performance_dashboard(self):
+        self._get('performance:dashboard')

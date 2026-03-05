@@ -80,6 +80,15 @@ def dashboard(request):
         context_data['chart_labels'] = chart_labels
         context_data['chart_values'] = chart_values
 
+        # Top vendedores hoy (mini-widget)
+        today_sellers = (
+            Sale.objects.filter(date__date=today)
+            .values('user__username')
+            .annotate(count=Count('id'), total_usd=Sum('total_usd'))
+            .order_by('-total_usd')[:5]
+        )
+        context_data['today_sellers'] = today_sellers
+
     else:
         # Para empleados, calcular clientes únicos atendidos hoy
         customers_served_today = sales_today.filter(

@@ -22,6 +22,7 @@ urlpatterns = [
     path('suppliers/', include('suppliers.urls')),
     path('finances/', include('finances.urls')),
     path('utils/', include('utils.urls')),
+    path('performance/', include('performance.urls')),
     
     # ⭐ NUEVA SECCIÓN: APIs consolidadas
     path('api/', include('utils.api_urls')),

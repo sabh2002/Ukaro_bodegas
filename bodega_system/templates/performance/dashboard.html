@@ -1,0 +1,261 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Rendimiento por Usuario{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Rendimiento por Usuario</h1>
+                <p class="text-sm text-gray-500 mt-0.5">Comparativo de ventas y rentabilidad por vendedor</p>
+            </div>
+            <a href="{% url 'dashboard' %}"
+               class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                ← Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Panel HOY -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-blue-600 px-5 py-3 flex items-center justify-between">
+            <h2 class="text-white font-semibold text-sm uppercase tracking-wide">
+                HOY &mdash; {{ today|date:"d/m/Y" }}
+            </h2>
+            {% if current_rate %}
+            <span class="text-blue-200 text-xs">Tasa: Bs {{ current_rate.bs_to_usd }}</span>
+            {% endif %}
+        </div>
+
+        {% if today_stats %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+            {% for stat in today_stats %}
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow {% cycle 'border-l-4 border-l-blue-500' 'border-l-4 border-l-green-500' 'border-l-4 border-l-purple-500' 'border-l-4 border-l-yellow-500' %}">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                            {{ stat.username|first|upper }}
+                        </div>
+                        <span class="font-semibold text-gray-800 text-sm">{{ stat.username }}</span>
+                    </div>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                        {{ stat.sales_count }} vta{{ stat.sales_count|pluralize }}
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Total USD</p>
+                        <p class="text-lg font-bold text-blue-700">${{ stat.total_usd|floatformat:2 }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Total Bs</p>
+                        <p class="text-lg font-bold text-gray-700">Bs {{ stat.total_bs|floatformat:0 }}</p>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-gray-100">
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Ganancia Bruta</p>
+                    <p class="text-base font-semibold {% if stat.gross_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        {% if stat.gross_profit_usd >= 0 %}+{% endif %}${{ stat.gross_profit_usd|floatformat:2 }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <p class="text-sm">Sin ventas registradas hoy.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Panel ESTE MES -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-green-600 px-5 py-3">
+            <h2 class="text-white font-semibold text-sm uppercase tracking-wide">
+                ESTE MES &mdash; {{ current_month }}
+            </h2>
+        </div>
+
+        {% if month_stats %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuario</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ventas</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total USD</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Bs</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ganancia Bruta</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for stat in month_stats %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-3.5">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">
+                                    {{ stat.username|first|upper }}
+                                </div>
+                                <span class="font-medium text-gray-800 text-sm">{{ stat.username }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-3.5 text-right text-sm font-semibold text-gray-700">{{ stat.sales_count }}</td>
+                        <td class="px-5 py-3.5 text-right text-sm font-bold text-blue-700">${{ stat.total_usd|floatformat:2 }}</td>
+                        <td class="px-5 py-3.5 text-right text-sm text-gray-600">Bs {{ stat.total_bs|floatformat:0 }}</td>
+                        <td class="px-5 py-3.5 text-right text-sm font-semibold {% if stat.gross_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if stat.gross_profit_usd >= 0 %}+{% endif %}${{ stat.gross_profit_usd|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-gray-400">
+            <p class="text-sm">Sin ventas registradas este mes.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Análisis por Período -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-purple-600 px-5 py-3">
+            <h2 class="text-white font-semibold text-sm uppercase tracking-wide">Análisis por Período</h2>
+        </div>
+
+        <!-- Filtros -->
+        <div class="p-4 border-b border-gray-100 bg-gray-50">
+            <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                {{ form.as_p }}
+                <div class="flex items-end">
+                    <button type="submit"
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors">
+                        Aplicar
+                    </button>
+                </div>
+            </form>
+            {% if start_date and end_date %}
+            <p class="text-xs text-gray-500 mt-2">
+                Mostrando del {{ start_date|date:"d/m/Y" }} al {{ end_date|date:"d/m/Y" }}
+            </p>
+            {% endif %}
+        </div>
+
+        {% if period_stats %}
+        <!-- Gráfico Chart.js barras agrupadas -->
+        <div class="p-4 border-b border-gray-100">
+            <canvas id="performanceChart" height="100"></canvas>
+        </div>
+
+        <!-- Tabla del período -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuario</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ventas</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total USD</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Bs</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ganancia Bruta</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for stat in period_stats %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-3.5">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm">
+                                    {{ stat.username|first|upper }}
+                                </div>
+                                <span class="font-medium text-gray-800 text-sm">{{ stat.username }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-3.5 text-right text-sm font-semibold text-gray-700">{{ stat.sales_count }}</td>
+                        <td class="px-5 py-3.5 text-right text-sm font-bold text-blue-700">${{ stat.total_usd|floatformat:2 }}</td>
+                        <td class="px-5 py-3.5 text-right text-sm text-gray-600">Bs {{ stat.total_bs|floatformat:0 }}</td>
+                        <td class="px-5 py-3.5 text-right text-sm font-semibold {% if stat.gross_profit_usd >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if stat.gross_profit_usd >= 0 %}+{% endif %}${{ stat.gross_profit_usd|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+        (function () {
+            var labels = {{ chart_labels|safe }};
+            var valuesUsd = {{ chart_values_usd|safe }};
+            var valuesProfit = {{ chart_values_profit|safe }};
+
+            if (!labels.length) return;
+
+            new Chart(document.getElementById('performanceChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Total Vendido (USD)',
+                            data: valuesUsd,
+                            backgroundColor: 'rgba(59, 130, 246, 0.75)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'Ganancia Bruta (USD)',
+                            data: valuesProfit,
+                            backgroundColor: 'rgba(34, 197, 94, 0.75)',
+                            borderColor: '#22c55e',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(val) { return '$' + val.toLocaleString(); }
+                            }
+                        }
+                    }
+                }
+            });
+        })();
+        </script>
+
+        {% else %}
+        <div class="p-8 text-center text-gray-400">
+            <p class="text-sm">Sin ventas en el período seleccionado.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Nota informativa -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+        <strong>Nota:</strong> La <em>Ganancia Bruta</em> = precio de venta &minus; costo de compra por unidad, sin descontar gastos operativos compartidos (alquiler, servicios, etc.). Los gastos son de la tienda en general y no se atribuyen a un vendedor individual.
+    </div>
+
+</div>
+{% endblock %}

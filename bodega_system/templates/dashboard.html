@@ -452,6 +452,25 @@
 </div>
 {% endif %}
 
+<!-- TOP VENDEDORES HOY - SOLO ADMINISTRADORES -->
+{% if user_is_admin and today_sellers %}
+<div class="mt-6 bg-white rounded-xl shadow-md p-5 border-l-4 border-yellow-400">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-gray-800">🏆 Top Vendedores Hoy</h3>
+        <a href="{% url 'performance:dashboard' %}" class="text-xs text-blue-600 hover:underline">Ver completo →</a>
+    </div>
+    {% for seller in today_sellers %}
+    <div class="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+        <span class="text-sm font-medium text-gray-700">{{ seller.user__username }}</span>
+        <div class="text-right">
+            <span class="text-sm font-bold text-blue-700">${{ seller.total_usd|floatformat:2 }}</span>
+            <span class="text-xs text-gray-400 ml-1">({{ seller.count }} vta{{ seller.count|pluralize }})</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- ALERTA DE STOCK BAJO - SOLO ADMINISTRADORES -->
 {% if user.is_admin or user.is_superuser and low_stock_products > 0 %}
 <div class="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
