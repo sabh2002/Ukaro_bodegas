@@ -61,19 +61,22 @@ def customer_list(request):
 def customer_detail(request, pk):
     """Vista para ver detalles de un cliente - Empleados y Administradores"""
     customer = get_object_or_404(Customer, pk=pk)
-    
-    # Obtener créditos
-    credits = customer.credits.all().order_by('-date_created')
+
+    current_rate = ExchangeRate.get_latest_rate()
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+
+    # Obtener créditos y anotar monto Bs a tasa actual
+    credits = list(customer.credits.all().order_by('-date_created'))
+    for c in credits:
+        c.amount_bs_current = round(c.amount_usd * rate_value, 2)
 
     # Obtener historial de ventas
-    # ⭐ CORREGIDO: Filtrar ANTES de hacer slice para evitar error de Django
     sales = Sale.objects.filter(customer=customer).order_by('-date')
 
     # Si es empleado, solo mostrar sus propias ventas
     if not (request.user.is_admin or request.user.is_superuser):
         sales = sales.filter(user=request.user)
 
-    # Ahora sí aplicar el slice de últimas 10 ventas
     sales = sales[:10]
 
     return render(request, 'customers/customer_detail.html', {
@@ -81,6 +84,7 @@ def customer_detail(request, pk):
         'credits': credits,
         'sales': sales,
         'is_admin': request.user.is_admin or request.user.is_superuser,
+        'current_rate': current_rate,
     })
 
 @customer_access_required
@@ -218,23 +222,26 @@ def credit_detail(request, pk):
     from utils.models import ExchangeRate
     current_rate = ExchangeRate.get_latest_rate()
 
-    # ⭐ CORREGIDO: Calcular cuántos Bs debe con la tasa ACTUAL
-    if current_rate:
-        pending_amount_bs_current = round(pending_amount_usd * current_rate.bs_to_usd, 2)
-        total_paid_bs = round(total_paid_usd * current_rate.bs_to_usd, 2)
-    else:
-        pending_amount_bs_current = round(pending_amount_usd * Decimal('36.00'), 2)
-        total_paid_bs = round(total_paid_usd * Decimal('36.00'), 2)
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+    pending_amount_bs_current = round(pending_amount_usd * rate_value, 2)
+    total_paid_bs = round(total_paid_usd * rate_value, 2)
+    credit_amount_bs_current = round(credit.amount_usd * rate_value, 2)
+
+    # Anotar cada pago con su equivalente Bs a tasa actual
+    payments_list = list(payments)
+    for p in payments_list:
+        p.amount_bs_current = round(p.amount_usd * rate_value, 2)
 
     return render(request, 'customers/credit_detail.html', {
         'credit': credit,
-        'payments': payments,
-        'total_paid': total_paid_bs,  # ⭐ CORREGIDO: Bs equivalente con tasa actual
-        'total_paid_bs': total_paid_bs,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre alternativo
+        'payments': payments_list,
+        'credit_amount_bs_current': credit_amount_bs_current,
+        'total_paid': total_paid_bs,
+        'total_paid_bs': total_paid_bs,
         'total_paid_usd': total_paid_usd,
-        'pending_amount': pending_amount_bs_current,  # ⭐ CORREGIDO: Bs que debe pagar HOY con tasa actual
-        'pending_amount_bs': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre alternativo
-        'pending_amount_bs_current': pending_amount_bs_current,  # ⭐ COMPATIBILIDAD: Mismo valor con nombre original
+        'pending_amount': pending_amount_bs_current,
+        'pending_amount_bs': pending_amount_bs_current,
+        'pending_amount_bs_current': pending_amount_bs_current,
         'pending_amount_usd': pending_amount_usd,
         'current_rate': current_rate,
     })
@@ -279,58 +286,53 @@ def credit_payment(request, pk):
     if request.method == 'POST':
         form = CreditPaymentForm(request.POST, credit=credit)
         if form.is_valid():
-            payment = form.save(commit=False)
-            payment.credit = credit
-            payment.received_by = request.user
-
-            # ⭐ CORREGIDO: Calcular USD usando TASA ACTUAL del día del pago
-            from utils.models import ExchangeRate
             current_rate = ExchangeRate.get_latest_rate()
-            if current_rate:
-                payment.exchange_rate_used = current_rate.bs_to_usd
-                payment.amount_usd = payment.amount_bs / current_rate.bs_to_usd
-            else:
-                # Fallback si no hay tasa configurada
-                from decimal import Decimal
-                payment.exchange_rate_used = Decimal('36.00')
-                payment.amount_usd = payment.amount_bs / Decimal('36.00')
+            rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
 
-            payment.save()
+            with transaction.atomic():
+                # Re-leer el crédito con lock para evitar race condition
+                credit = CustomerCredit.objects.select_for_update().get(pk=pk)
 
-            # ⭐ CORREGIDO: Calcular si el crédito está pagado - La fuente de verdad es USD
-            total_paid_usd = credit.payments.aggregate(
-                total=Sum('amount_usd')
-            )['total'] or Decimal('0.00')
+                if credit.is_paid:
+                    messages.error(request, 'Este crédito ya fue pagado por otra transacción.')
+                    return redirect('customers:credit_detail', pk=credit.pk)
 
-            # Redondear ambos valores a 2 decimales para comparación precisa
-            total_paid_rounded = round(total_paid_usd, 2)
-            credit_amount_rounded = round(credit.amount_usd, 2)
+                payment = form.save(commit=False)
+                payment.credit = credit
+                payment.received_by = request.user
+                payment.exchange_rate_used = rate_value
+                payment.amount_usd = round(payment.amount_bs / rate_value, 2)
+                payment.save()
 
-            if total_paid_rounded >= credit_amount_rounded:
-                credit.is_paid = True
-                credit.date_paid = timezone.now()
-                credit.save()
-                messages.success(request, 'Crédito pagado completamente.')
-            else:
-                # ⭐ CORREGIDO: Mostrar saldo pendiente en USD y en Bs CON TASA ACTUAL
-                remaining_usd = credit_amount_rounded - total_paid_rounded
-                remaining_bs_current = remaining_usd * current_rate.bs_to_usd if current_rate else remaining_usd * Decimal('36.00')
-                messages.success(
-                    request,
-                    f'Pago registrado exitosamente. Saldo pendiente: ${remaining_usd:.2f} USD (Bs {remaining_bs_current:.2f} a tasa actual)'
-                )
+                total_paid_usd = credit.payments.aggregate(
+                    total=Sum('amount_usd')
+                )['total'] or Decimal('0.00')
+
+                total_paid_rounded = round(total_paid_usd, 2)
+                credit_amount_rounded = round(credit.amount_usd, 2)
+
+                if total_paid_rounded >= credit_amount_rounded:
+                    credit.is_paid = True
+                    credit.date_paid = timezone.now()
+                    credit.save()
+                    messages.success(request, 'Crédito pagado completamente.')
+                else:
+                    remaining_usd = credit_amount_rounded - total_paid_rounded
+                    remaining_bs_current = remaining_usd * rate_value
+                    messages.success(
+                        request,
+                        f'Pago registrado exitosamente. Saldo pendiente: ${remaining_usd:.2f} USD (Bs {remaining_bs_current:.2f} a tasa actual)'
+                    )
 
             return redirect('customers:customer_detail', pk=credit.customer.pk)
     else:
         form = CreditPaymentForm(credit=credit)
 
-    # ⭐ CORREGIDO: Calcular saldo pendiente SIEMPRE EN USD (fuente de verdad)
-    from decimal import Decimal
+    # Calcular saldo pendiente en USD (fuente de verdad)
     total_paid_usd = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0.00')
     pending_amount_usd = credit.amount_usd - total_paid_usd
 
-    # ⭐ NUEVO: Tasa actual para calcular cuántos Bs debe pagar HOY
-    from utils.models import ExchangeRate
+    # Tasa actual para calcular cuántos Bs debe pagar HOY
     current_rate = ExchangeRate.get_latest_rate()
 
     # ⭐ CORREGIDO: Calcular cuántos Bs debe con la tasa ACTUAL (no la del crédito original)
@@ -365,7 +367,7 @@ def _apply_fifo_payment(general_payment, customer, rate):
     """Distribuye un pago general FIFO entre créditos pendientes del cliente (oldest first)."""
     remaining_usd = general_payment.amount_usd
 
-    credits = CustomerCredit.objects.filter(
+    credits = CustomerCredit.objects.select_for_update().filter(
         customer=customer, is_paid=False
     ).order_by('date_created')
 
@@ -444,14 +446,24 @@ def customer_general_payment_create(request, pk):
         form = CustomerGeneralPaymentForm(customer=customer)
 
     current_rate = ExchangeRate.get_latest_rate()
-    pending_credits = CustomerCredit.objects.filter(
-        customer=customer, is_paid=False
-    ).order_by('date_created')
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+    total_owed_bs = round(Decimal(str(total_owed_usd)) * rate_value, 2)
+
+    pending_credits = list(
+        CustomerCredit.objects.filter(customer=customer, is_paid=False)
+        .order_by('date_created')
+        .prefetch_related('payments')
+    )
+    for credit in pending_credits:
+        paid = credit.payments.aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
+        credit.owed_usd = max(Decimal('0'), round(credit.amount_usd - Decimal(str(paid)), 2))
+        credit.owed_bs = round(credit.owed_usd * rate_value, 2)
 
     return render(request, 'customers/general_payment_form.html', {
         'form': form,
         'customer': customer,
         'total_owed_usd': total_owed_usd,
+        'total_owed_bs': total_owed_bs,
         'pending_credits': pending_credits,
         'current_rate': current_rate,
     })

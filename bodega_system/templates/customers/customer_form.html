@@ -3,6 +3,58 @@
 
 {% block title %}{{ title }} - Sistema de Bodega{% endblock %}
 
+{% block extra_css %}
+<style>
+    :root {
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --input-border-focus: #3b82f6;
+        --input-text: #111827;
+        --input-placeholder: #9ca3af;
+        --label-text: #374151;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="date"],
+    textarea,
+    select {
+        width: 100% !important;
+        padding: 12px 14px !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        color: var(--input-text) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--input-border) !important;
+        border-radius: 8px !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+    }
+    input:focus, textarea:focus, select:focus {
+        outline: none !important;
+        border-color: var(--input-border-focus) !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
+    }
+    input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) {
+        border-color: #9ca3af !important;
+    }
+    label {
+        display: block !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: var(--label-text) !important;
+        margin-bottom: 6px !important;
+    }
+    input[disabled], input[readonly] {
+        background-color: #f3f4f6 !important;
+        color: #6b7280 !important;
+        cursor: not-allowed !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
     <div class="flex justify-between items-center mb-6">

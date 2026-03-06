@@ -68,12 +68,17 @@ def supplier_detail(request, pk):
     """Vista para ver detalles de un proveedor"""
     supplier = get_object_or_404(Supplier, pk=pk)
     
-    # Obtener órdenes de compra
-    orders = supplier.orders.all().order_by('-order_date')[:10]
+    rate = ExchangeRate.get_latest_rate()
+    rate_value = rate.bs_to_usd if rate else Decimal('36.00')
+
+    # Obtener órdenes de compra y anotar con Bs actual
+    orders = list(supplier.orders.all().order_by('-order_date')[:10])
+    for o in orders:
+        o.total_bs_current = round(o.total_usd * rate_value, 2)
     
     # Obtener productos suministrados por este proveedor
     product_data = []
-    if orders.exists():
+    if orders:
         # Obtener los productos más recientes que se han pedido a este proveedor
         products_ordered = SupplierOrderItem.objects.filter(
             order__supplier=supplier
@@ -90,8 +95,13 @@ def supplier_detail(request, pk):
                     product=product
                 ).order_by('-order__order_date').first()
                 
-                last_price = last_order_item.price_bs if last_order_item else 0
-                
+                if last_order_item:
+                    rate = ExchangeRate.get_latest_rate()
+                    rate_value = rate.bs_to_usd if rate else Decimal('36.00')
+                    last_price = round(last_order_item.price_usd * rate_value, 2)
+                else:
+                    last_price = 0
+
                 product_data.append({
                     'product': product,
                     'total_ordered': item['total_ordered'],
@@ -196,35 +206,55 @@ def order_list(request):
         is_active=True
     ).order_by('name')
     
+    current_rate = ExchangeRate.get_latest_rate()
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+    for order in page_obj:
+        order.total_bs_current = round(order.total_usd * rate_value, 2)
+
     return render(request, 'suppliers/order_list.html', {
         'page_obj': page_obj,
         'suppliers': suppliers,
         'selected_supplier': int(supplier_id) if supplier_id else None,
         'status': status,
+        'current_rate': current_rate,
     })
 
 @login_required
 def order_detail(request, pk):
     """Vista para ver detalles de una orden"""
-    # ✅ OPTIMIZADO: Pre-cargar supplier, created_by, items con products, y payments
     order = get_object_or_404(
         SupplierOrder.objects.select_related('supplier', 'created_by')
                              .prefetch_related('items__product', 'payments__created_by'),
         pk=pk
     )
 
-    # Los items ya están pre-cargados
-    items = order.items.all()
+    current_rate = ExchangeRate.get_latest_rate()
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
 
-    # Calcular totales (usar métodos del modelo si es posible)
     total_usd = order.calculate_total_usd()
-    total_bs = order.calculate_total_bs()
+    total_bs = round(total_usd * rate_value, 2)
+
+    paid_amount_bs_current = round(order.paid_amount_usd * rate_value, 2)
+
+    # Anotar items con precios Bs a tasa actual
+    items = list(order.items.all())
+    for item in items:
+        item.price_bs_current = round(item.price_usd * rate_value, 2)
+        item.subtotal_bs_current = round(item.subtotal_usd * rate_value, 2)
+
+    # Anotar pagos con Bs a tasa actual
+    payments = list(order.payments.all().order_by('payment_date'))
+    for p in payments:
+        p.amount_bs_current = round(p.amount_usd * rate_value, 2)
 
     return render(request, 'suppliers/order_detail.html', {
         'order': order,
         'items': items,
+        'payments': payments,
         'total_usd': total_usd,
         'total_bs': total_bs,
+        'paid_amount_bs_current': paid_amount_bs_current,
+        'current_rate': current_rate,
     })
 
 @login_required
@@ -429,6 +459,12 @@ def order_receive(request, pk):
         if form.is_valid():
             try:
                 with transaction.atomic():
+                    # Re-leer con lock para evitar doble recepción por race condition
+                    order = SupplierOrder.objects.select_for_update().get(pk=pk)
+                    if order.status == 'received':
+                        messages.error(request, 'Esta orden ya fue recibida por otra transacción.')
+                        return redirect('suppliers:order_detail', pk=order.pk)
+
                     # Obtener datos del formulario
                     update_prices = form.cleaned_data.get('update_prices', True)
                     notes = form.cleaned_data.get('notes', '').strip()
@@ -712,14 +748,19 @@ def payment_create(request, order_id):
 @login_required
 def payment_list(request, order_id):
     """Vista para listar los pagos de una orden"""
-    from .models import SupplierPayment
-
     order = get_object_or_404(SupplierOrder, pk=order_id)
-    payments = order.payments.all().order_by('-payment_date')
+
+    current_rate = ExchangeRate.get_latest_rate()
+    rate_value = current_rate.bs_to_usd if current_rate else Decimal('36.00')
+
+    payments = list(order.payments.all().order_by('-payment_date'))
+    for p in payments:
+        p.amount_bs_current = round(p.amount_usd * rate_value, 2)
 
     context = {
         'order': order,
         'payments': payments,
+        'current_rate': current_rate,
         'title': f'Pagos - Orden #{order.id}',
     }
 

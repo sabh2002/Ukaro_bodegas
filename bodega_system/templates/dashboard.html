@@ -1,5 +1,6 @@
 <!-- templates/dashboard.html - CON RESTRICCIONES DE ROLES -->
 {% extends 'base/base.html' %}
+{% load formato_bs %}
 
 {% block title %}Dashboard - Sistema de Bodega{% endblock %}
 
@@ -47,7 +48,7 @@
                     </div>
                     <div>
                         <div class="text-xs sm:text-sm font-medium opacity-90">Ventas del Día</div>
-                        <div class="text-lg sm:text-xl lg:text-2xl font-bold">Bs {{ sales_total|default:"0.00"|floatformat:2 }}</div>
+                        <div class="text-lg sm:text-xl lg:text-2xl font-bold">Bs {{ sales_total|default:"0.00"|miles }}</div>
                     </div>
                 </div>
             </div>
@@ -174,7 +175,7 @@
                     <span class="text-gray-600 text-sm">
                         {% if user.is_admin or user.is_superuser %}Total de Hoy:{% else %}Mis Ventas Hoy:{% endif %}
                     </span>
-                    <span class="font-bold text-sm sm:text-base">Bs {{ sales_total|default:"0.00"|floatformat:2 }}</span>
+                    <span class="font-bold text-sm sm:text-base">Bs {{ sales_total|default:"0.00"|miles }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600 text-sm">

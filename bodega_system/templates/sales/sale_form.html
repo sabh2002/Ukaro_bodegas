@@ -434,7 +434,11 @@
                     const response = await fetch(`/api/products/barcode/${encodeURIComponent(code)}/`);
                     if (!response.ok) {
                         if (response.status === 404) alert('Producto no encontrado');
-                        else { const err = await response.json(); alert(err.error || 'Error al buscar'); }
+                        else {
+                            let errMsg = 'Error al buscar producto';
+                            try { const err = await response.json(); errMsg = err.error || errMsg; } catch(e) {}
+                            alert(errMsg);
+                        }
                         this.barcode = ''; this.focusBarcodeInput(); return;
                     }
                     const product = await response.json();
@@ -625,8 +629,16 @@
                         body: JSON.stringify(saleData)
                     });
                     if (!response.ok) {
-                        const err = await response.json();
-                        throw new Error(err.error || 'Error al procesar la venta');
+                        let errorMsg = 'Error al procesar la venta';
+                        try {
+                            const err = await response.json();
+                            errorMsg = err.error || errorMsg;
+                        } catch (e) {
+                            if (response.status === 403) errorMsg = 'Sesión expirada. Recarga la página e intente nuevamente.';
+                            else if (response.status >= 500) errorMsg = 'Error del servidor. Intente nuevamente.';
+                            else errorMsg = `Error ${response.status}. Intente nuevamente.`;
+                        }
+                        throw new Error(errorMsg);
                     }
                     const result = await response.json();
                     if (result.id) {

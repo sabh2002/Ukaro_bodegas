@@ -101,8 +101,8 @@
                     <span class="text-sm font-semibold text-gray-700">Total Bs:</span>
                     <span class="text-lg font-bold text-gray-900">Bs {{ total_bs|floatformat:2 }}</span>
                 </div>
-                {% if order.exchange_rate_used %}
-                <p class="text-xs text-gray-400 text-right mt-0.5">Tasa: {{ order.exchange_rate_used }} Bs/USD</p>
+                {% if current_rate %}
+                <p class="text-xs text-gray-400 text-right mt-0.5">Tasa actual: {{ current_rate.bs_to_usd|floatformat:2 }} Bs/USD</p>
                 {% endif %}
             </div>
             {% if order.supplier.contact_person or order.supplier.phone %}
@@ -140,12 +140,12 @@
                 <div class="bg-gray-50 p-3 rounded-lg">
                     <p class="text-xs text-gray-500 font-semibold">Total Orden</p>
                     <p class="text-lg font-bold text-gray-900 mt-0.5">${{ order.total_usd|floatformat:2 }}</p>
-                    <p class="text-xs text-gray-400">Bs {{ order.total_bs|floatformat:2 }}</p>
+                    <p class="text-xs text-gray-400">Bs {{ total_bs|floatformat:2 }}</p>
                 </div>
                 <div class="{% if order.payment_status == 'paid' %}bg-green-50{% elif order.payment_status == 'partial' %}bg-yellow-50{% else %}bg-red-50{% endif %} p-3 rounded-lg">
                     <p class="text-xs font-semibold {% if order.payment_status == 'paid' %}text-green-700{% elif order.payment_status == 'partial' %}text-yellow-700{% else %}text-red-700{% endif %}">Pagado</p>
                     <p class="text-lg font-bold {% if order.payment_status == 'paid' %}text-green-900{% elif order.payment_status == 'partial' %}text-yellow-900{% else %}text-red-900{% endif %} mt-0.5">${{ order.paid_amount_usd|floatformat:2 }}</p>
-                    <p class="text-xs {% if order.payment_status == 'paid' %}text-green-600{% elif order.payment_status == 'partial' %}text-yellow-600{% else %}text-red-600{% endif %}">Bs {{ order.paid_amount_bs|floatformat:2 }}</p>
+                    <p class="text-xs {% if order.payment_status == 'paid' %}text-green-600{% elif order.payment_status == 'partial' %}text-yellow-600{% else %}text-red-600{% endif %}">Bs {{ paid_amount_bs_current|floatformat:2 }}</p>
                 </div>
                 <div class="{% if order.payment_status == 'paid' %}bg-green-50{% else %}bg-red-50{% endif %} p-3 rounded-lg">
                     <p class="text-xs font-semibold {% if order.payment_status == 'paid' %}text-green-700{% else %}text-red-700{% endif %}">Pendiente</p>
@@ -174,12 +174,12 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
-                        {% for payment in order.payments.all %}
+                        {% for payment in payments %}
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{{ payment.payment_date|date:"d/m/Y H:i" }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ payment.get_payment_method_display }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-green-700 text-right">${{ payment.amount_usd|floatformat:2 }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-500 text-right">Bs {{ payment.amount_bs|floatformat:2 }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500 text-right">Bs {{ payment.amount_bs_current|floatformat:2 }}</td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ payment.reference|default:"—" }}</td>
                             <td class="px-4 py-3 text-center">
                                 {% if user.is_admin %}
@@ -195,7 +195,7 @@
                         <tr>
                             <td colspan="2" class="px-4 py-3 text-sm font-bold text-gray-700 text-right">Total Pagado:</td>
                             <td class="px-4 py-3 text-sm font-bold text-green-700 text-right">${{ order.paid_amount_usd|floatformat:2 }}</td>
-                            <td class="px-4 py-3 text-sm font-bold text-gray-600 text-right">Bs {{ order.paid_amount_bs|floatformat:2 }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-600 text-right">Bs {{ paid_amount_bs_current|floatformat:2 }}</td>
                             <td colspan="2"></td>
                         </tr>
                     </tfoot>
@@ -204,12 +204,12 @@
 
             <!-- Cards pagos móvil -->
             <div class="md:hidden space-y-2">
-                {% for payment in order.payments.all %}
+                {% for payment in payments %}
                 <div class="bg-gray-50 rounded-lg p-3">
                     <div class="flex items-start justify-between">
                         <div>
                             <p class="text-sm font-semibold text-green-700">${{ payment.amount_usd|floatformat:2 }}</p>
-                            <p class="text-xs text-gray-400">Bs {{ payment.amount_bs|floatformat:2 }}</p>
+                            <p class="text-xs text-gray-400">Bs {{ payment.amount_bs_current|floatformat:2 }}</p>
                         </div>
                         <div class="text-right">
                             <p class="text-xs text-gray-600">{{ payment.get_payment_method_display }}</p>
@@ -276,11 +276,11 @@
                         </td>
                         <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.product.category.name }}</td>
                         <td class="px-5 py-3.5 text-sm font-medium text-green-700 text-right">${{ item.price_usd|floatformat:2 }}</td>
-                        <td class="px-5 py-3.5 text-sm text-gray-500 text-right">Bs {{ item.price_bs|floatformat:2 }}</td>
+                        <td class="px-5 py-3.5 text-sm text-gray-500 text-right">Bs {{ item.price_bs_current|floatformat:2 }}</td>
                         <td class="px-5 py-3.5 text-sm font-medium text-gray-900 text-right">{{ item.quantity }}</td>
                         <td class="px-5 py-3.5 text-right">
                             <div class="text-sm font-semibold text-green-700">${{ item.subtotal_usd|floatformat:2 }}</div>
-                            <div class="text-xs text-gray-400">Bs {{ item.subtotal_bs|floatformat:2 }}</div>
+                            <div class="text-xs text-gray-400">Bs {{ item.subtotal_bs_current|floatformat:2 }}</div>
                         </td>
                     </tr>
                     {% empty %}
@@ -294,7 +294,7 @@
                         <td colspan="5" class="px-5 py-3 text-sm font-semibold text-gray-700 text-right">Total:</td>
                         <td class="px-5 py-3 text-right">
                             <div class="text-sm font-bold text-green-700">${{ total_usd|floatformat:2 }}</div>
-                            <div class="text-xs text-gray-500">Bs {{ total_bs|floatformat:2 }}</div>
+                            <div class="text-xs text-gray-500">Bs {{ total_bs|floatformat:2 }}{% if current_rate %} <span class="text-gray-400">(tasa {{ current_rate.bs_to_usd|floatformat:2 }})</span>{% endif %}</div>
                         </td>
                     </tr>
                 </tfoot>
@@ -312,7 +312,7 @@
                     </div>
                     <div class="text-right flex-shrink-0">
                         <p class="text-sm font-bold text-green-700">${{ item.subtotal_usd|floatformat:2 }}</p>
-                        <p class="text-xs text-gray-400">Bs {{ item.subtotal_bs|floatformat:2 }}</p>
+                        <p class="text-xs text-gray-400">Bs {{ item.subtotal_bs_current|floatformat:2 }}</p>
                     </div>
                 </div>
                 <p class="text-xs text-gray-500 mt-1">{{ item.quantity }} u × ${{ item.price_usd|floatformat:2 }}</p>

@@ -123,8 +123,25 @@ class CustomerModelTest(TestCase):
         credit1.save()
         self.assertEqual(customer.total_credit_used, 0)
 
+    def test_total_credit_used_deducts_partial_payments(self):
+        """total_credit_used debe restar pagos parciales ya aplicados"""
+        customer = make_customer(credit_limit=Decimal('1000.00'))
+        sale = make_sale(self.admin, customer=customer, is_credit=True)
+        credit = make_credit(customer, sale, amount_usd='100.00')
+        # Pago parcial de $30
+        CreditPayment.objects.create(
+            credit=credit,
+            amount_bs=Decimal('1365.00'),
+            amount_usd=Decimal('30.00'),
+            exchange_rate_used=Decimal('45.50'),
+            payment_method='cash',
+            received_by=self.admin,
+        )
+        # Debe quedar $70 pendientes, NO $100
+        self.assertEqual(customer.total_credit_used, Decimal('70.00'))
+
     def test_available_credit_calculation(self):
-        """available_credit = credit_limit - total_used"""
+        """available_credit = credit_limit - total_used (neto de pagos)"""
         customer = make_customer(credit_limit=Decimal('500.00'))
         sale = make_sale(self.admin, customer=customer, is_credit=True)
         make_credit(customer, sale, amount_usd='200.00')
@@ -529,3 +546,44 @@ class CustomerGeneralPaymentTest(TestCase):
         gp = CustomerGeneralPayment.objects.first()
         self.assertEqual(gp.customer, self.customer)
         self.assertEqual(gp.payment_method, 'card')
+
+    def test_partial_payment_reduces_total_credit_used(self):
+        """Pago parcial reduce total_credit_used del cliente (bug crítico)"""
+        self.client.login(username='gp_admin', password='pass123')
+        # Deuda inicial: credit1 $10 + credit2 $15 = $25
+        self.assertAlmostEqual(float(self.customer.total_credit_used), 25.00, places=1)
+        # Pagamos $5 (= 227.50 Bs a 45.50)
+        self.client.post(self._url(), {
+            'amount_bs': '227.50',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        # Deuda restante debe ser $20 (no sigue siendo $25)
+        self.customer.refresh_from_db()
+        self.assertAlmostEqual(float(self.customer.total_credit_used), 20.00, places=1)
+
+    def test_second_general_payment_uses_remaining_balance(self):
+        """Segundo pago general respeta lo ya pagado en pagos anteriores"""
+        self.client.login(username='gp_admin', password='pass123')
+        # Primer pago: $10 → liquida credit1
+        self.client.post(self._url(), {
+            'amount_bs': '455.00',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        self.credit1.refresh_from_db()
+        self.assertTrue(self.credit1.is_paid)
+        # Deuda restante: solo credit2 ($15)
+        self.assertAlmostEqual(float(self.customer.total_credit_used), 15.00, places=1)
+        # Segundo pago: $5 parcial en credit2
+        self.client.post(self._url(), {
+            'amount_bs': '227.50',
+            'payment_method': 'cash',
+            'mobile_reference': '',
+            'notes': '',
+        })
+        # Deuda restante: $10
+        self.customer.refresh_from_db()
+        self.assertAlmostEqual(float(self.customer.total_credit_used), 10.00, places=1)

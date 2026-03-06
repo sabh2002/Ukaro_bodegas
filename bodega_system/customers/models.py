@@ -66,17 +66,26 @@ class Customer(models.Model):
     
     @property
     def total_credit_used(self):
-        """Calcula el total de crédito utilizado en USD"""
+        """Calcula el total de crédito utilizado en USD (neto de pagos parciales)"""
         from django.db.models import Sum
-        total = self.credits.filter(is_paid=False).aggregate(Sum('amount_usd'))
-        return total['amount_usd__sum'] or 0
+        from decimal import Decimal
+        # Dos queries separadas para evitar doble conteo por JOIN
+        total_credit = self.credits.filter(is_paid=False).aggregate(
+            total=Sum('amount_usd')
+        )['total'] or Decimal('0')
+        total_paid = CreditPayment.objects.filter(
+            credit__customer=self, credit__is_paid=False
+        ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
+        return max(Decimal('0'), total_credit - total_paid)
 
     @property
     def total_credit_used_bs(self):
-        """Calcula el total de crédito utilizado en Bs (para compatibilidad)"""
-        from django.db.models import Sum
-        total = self.credits.filter(is_paid=False).aggregate(Sum('amount_bs'))
-        return total['amount_bs__sum'] or 0
+        """Calcula el total de crédito utilizado en Bs a tasa actual"""
+        from utils.models import ExchangeRate
+        from decimal import Decimal
+        rate = ExchangeRate.get_latest_rate()
+        bs_rate = rate.bs_to_usd if rate else Decimal('36.00')
+        return round(Decimal(str(self.total_credit_used)) * bs_rate, 2)
 
     @property
     def available_credit(self):

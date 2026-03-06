@@ -4,6 +4,50 @@
 
 {% block title %}Pago General — {{ customer.name }} - Sistema de Bodega{% endblock %}
 
+{% block extra_css %}
+<style>
+    :root {
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --input-border-focus: #3b82f6;
+        --input-text: #111827;
+        --label-text: #374151;
+    }
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+        width: 100% !important;
+        padding: 12px 14px !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
+        color: var(--input-text) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--input-border) !important;
+        border-radius: 8px !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+    }
+    input:focus, textarea:focus, select:focus {
+        outline: none !important;
+        border-color: var(--input-border-focus) !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
+    }
+    input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) {
+        border-color: #9ca3af !important;
+    }
+    label {
+        display: block !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: var(--label-text) !important;
+        margin-bottom: 6px !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 p-4 sm:p-6 lg:p-8">
     <div class="max-w-5xl mx-auto">
@@ -40,8 +84,7 @@
                     <p class="text-3xl font-bold">${{ total_owed_usd|floatformat:2 }} USD</p>
                     {% if current_rate %}
                     <p class="text-blue-200 mt-1">
-                        Bs {{ total_owed_usd|floatformat:2 }} × {{ current_rate.bs_to_usd|floatformat:2 }} =
-                        Bs {% widthratio total_owed_usd 1 current_rate.bs_to_usd %} aprox.
+                        Equivalente: Bs {{ total_owed_bs|floatformat:2 }}
                     </p>
                     <p class="text-blue-200 text-sm">Tasa actual: {{ current_rate.bs_to_usd|floatformat:2 }} Bs/USD</p>
                     {% endif %}
@@ -78,7 +121,7 @@
                                    value="{% if form.amount_bs.value %}{{ form.amount_bs.value }}{% endif %}"
                                    x-model="paymentAmount"
                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base bg-white text-gray-900"
-                                   step="0.01" min="0.01"
+                                   step="0.01" min="0.01" max="{{ total_owed_bs }}"
                                    placeholder="0.00" required>
                             {% if form.amount_bs.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.amount_bs.errors.0 }}</p>
@@ -192,8 +235,8 @@
                                 </span>
                             </div>
                             <div class="text-right">
-                                <p class="text-lg font-bold text-blue-600">${{ credit.amount_usd|floatformat:2 }} USD</p>
-                                <p class="text-xs text-gray-500">Bs {{ credit.amount_bs|floatformat:2 }}</p>
+                                <p class="text-lg font-bold text-blue-600">${{ credit.owed_usd|floatformat:2 }} USD</p>
+                                <p class="text-xs text-gray-500">≈ Bs {{ credit.owed_bs|floatformat:2 }}</p>
                             </div>
                         </div>
                         {% empty %}

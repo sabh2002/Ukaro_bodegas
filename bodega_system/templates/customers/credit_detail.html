@@ -45,8 +45,8 @@
                     <dt class="text-sm font-medium text-gray-500">Monto:</dt>
                     <dd class="text-sm font-bold text-gray-900">
                         <div class="text-blue-600 text-lg">${{ credit.amount_usd|floatformat:2 }} USD</div>
-                        <div class="text-gray-600 text-sm">Bs {{ credit.amount_bs|floatformat:2 }}</div>
-                        <div class="text-gray-500 text-xs">Tasa usada: {{ credit.exchange_rate_used }}</div>
+                        <div class="text-gray-600 text-sm">Bs {{ credit_amount_bs_current|floatformat:2 }}</div>
+                        <div class="text-gray-500 text-xs">Tasa actual: {% if current_rate %}{{ current_rate.bs_to_usd|floatformat:2 }}{% endif %}</div>
                     </dd>
                 </div>
                 <div class="flex justify-between py-1 border-b border-gray-200">
@@ -129,7 +129,7 @@
                     <div>
                         <p class="text-sm text-blue-800">Monto Total:</p>
                         <p class="text-xl font-bold text-blue-900">${{ credit.amount_usd|floatformat:2 }} USD</p>
-                        <p class="text-xs text-blue-600">Bs {{ credit.amount_bs|floatformat:2 }}</p>
+                        <p class="text-xs text-blue-600">Bs {{ credit_amount_bs_current|floatformat:2 }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-blue-800">Total Pagado:</p>
@@ -177,7 +177,7 @@
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
                                 <div class="text-blue-600 font-semibold">${{ payment.amount_usd|floatformat:2 }} USD</div>
-                                <div class="text-gray-500 text-xs">Bs {{ payment.amount_bs|floatformat:2 }}</div>
+                                <div class="text-gray-500 text-xs">Bs {{ payment.amount_bs_current|floatformat:2 }}</div>
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                                 {{ payment.received_by.get_full_name|default:payment.received_by.username }}
