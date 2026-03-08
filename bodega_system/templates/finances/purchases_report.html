@@ -3,6 +3,23 @@
 
 {% block title %}Reporte de Compras{% endblock %}
 
+{% block extra_css %}
+<style>
+.form-input, .form-select {
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    width: 100%;
+}
+.form-input:focus, .form-select:focus {
+    border-color: #2563eb;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-5">
 
@@ -13,22 +30,35 @@
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Reporte de Compras</h1>
                 <p class="text-sm text-gray-500 mt-0.5">Historial completo de compras a proveedores</p>
             </div>
-            <a href="{% url 'finances:dashboard' %}"
-               class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
-                ← Volver al Dashboard
-            </a>
+            <div class="flex gap-2">
+                {% if request.GET %}
+                <a href="?{{ request.GET.urlencode }}&format=pdf"
+                   class="inline-flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Exportar PDF
+                </a>
+                {% endif %}
+                <a href="{% url 'finances:dashboard' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    ← Volver
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow-sm p-4">
         <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Filtros</h2>
-        <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {{ form.as_p }}
+        <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {% for field in form %}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endfor %}
             <div class="flex items-end">
                 <button type="submit"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors">
-                    Aplicar Filtros
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors">
+                    Aplicar
                 </button>
             </div>
         </form>
@@ -64,6 +94,7 @@
                         <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Bs</th>
                         <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total USD</th>
                         <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Pago</th>
                         <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
                     </tr>
                 </thead>
@@ -81,12 +112,15 @@
                         <td class="px-5 py-3.5 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">Bs {{ order.total_bs|floatformat:2 }}</td>
                         <td class="px-5 py-3.5 text-sm text-gray-600 text-right whitespace-nowrap">${{ order.total_usd|floatformat:2 }}</td>
                         <td class="px-5 py-3.5 text-center">
-                            {% if order.status == 'received' %}
                             <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Recibida</span>
-                            {% elif order.status == 'pending' %}
-                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendiente</span>
+                        </td>
+                        <td class="px-5 py-3.5 text-center">
+                            {% if order.paid %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Pagado</span>
+                            {% elif order.paid_amount_usd > 0 %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parcial</span>
                             {% else %}
-                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Cancelada</span>
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Pendiente</span>
                             {% endif %}
                         </td>
                         <td class="px-5 py-3.5 text-center">
@@ -100,7 +134,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-400">No hay compras en este período.</td>
+                        <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-400">No hay compras en este período.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -122,12 +156,10 @@
                     </div>
                 </div>
                 <div class="flex items-center justify-between mt-1">
-                    {% if order.status == 'received' %}
-                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Recibida</span>
-                    {% elif order.status == 'pending' %}
-                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendiente</span>
+                    {% if order.paid %}
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Pagado</span>
                     {% else %}
-                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Cancelada</span>
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Pendiente</span>
                     {% endif %}
                     <a href="{% url 'suppliers:order_detail' order.id %}" class="text-xs text-blue-600 font-medium">Ver →</a>
                 </div>

@@ -4,6 +4,10 @@ from django import forms
 from django.forms import inlineformset_factory
 from .models import Expense, ExpenseReceipt, DailyClose
 from datetime import date
+from accounts.models import User
+from sales.models import Sale
+from suppliers.models import Supplier
+from inventory.models import Category
 
 class ExpenseForm(forms.ModelForm):
     """Formulario para gastos"""
@@ -145,5 +149,73 @@ class ReportFilterForm(forms.Form):
                 raise forms.ValidationError('Fecha de fin es requerida para período personalizado.')
             if start_date > end_date:
                 raise forms.ValidationError('La fecha de inicio no puede ser mayor a la fecha de fin.')
-        
+
         return cleaned_data
+
+
+class SalesReportFilterForm(ReportFilterForm):
+    """Filtros extendidos para reporte de ventas"""
+    employee = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True),
+        required=False,
+        label="Empleado",
+        empty_label="Todos",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    payment_method = forms.ChoiceField(
+        choices=[('', 'Todos')] + list(Sale.PAYMENT_METHODS) + [('credit', 'Crédito')],
+        required=False,
+        label="Método de Pago",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+
+class PurchasesReportFilterForm(ReportFilterForm):
+    """Filtros extendidos para reporte de compras"""
+    supplier = forms.ModelChoiceField(
+        queryset=Supplier.objects.filter(is_active=True),
+        required=False,
+        label="Proveedor",
+        empty_label="Todos",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    payment_status = forms.ChoiceField(
+        choices=[('', 'Todos'), ('paid', 'Pagado'), ('unpaid', 'Pendiente')],
+        required=False,
+        label="Estado de Pago",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+
+class InventoryFilterForm(forms.Form):
+    """Filtros para reporte de inventario"""
+    category = forms.ModelChoiceField(
+        queryset=Category.objects.all(),
+        required=False,
+        label="Categoría",
+        empty_label="Todas",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    stock_status = forms.ChoiceField(
+        choices=[('', 'Todos'), ('normal', 'Normal'), ('low', 'Bajo'), ('out', 'Sin stock')],
+        required=False,
+        label="Estado de Stock",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    sort_by = forms.ChoiceField(
+        choices=[('name', 'Nombre'), ('stock', 'Stock'), ('value', 'Valor en inventario'), ('category', 'Categoría')],
+        required=False,
+        label="Ordenar por",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+
+class CreditsReportFilterForm(ReportFilterForm):
+    """Filtros para reporte de cuentas por cobrar"""
+    credit_status = forms.ChoiceField(
+        choices=[('pending', 'Pendientes'), ('overdue', 'Vencidos'), ('paid', 'Pagados'), ('all', 'Todos')],
+        initial='pending',
+        required=False,
+        label="Estado del Crédito",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )

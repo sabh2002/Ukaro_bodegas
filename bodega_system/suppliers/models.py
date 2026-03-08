@@ -289,13 +289,21 @@ class SupplierOrderItem(models.Model):
         verbose_name="Precio (USD)"
     )
     price_bs = models.DecimalField(
-        max_digits=12, 
+        max_digits=12,
         decimal_places=2,
         default=0,
         verbose_name="Precio (Bs)",
         help_text="Se calcula automáticamente basado en USD y tasa de cambio"
     )
-    
+    selling_price_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Precio de Venta (USD)",
+        help_text="Precio de venta sugerido al recibir la orden"
+    )
+
     class Meta:
         verbose_name = "Ítem de Orden"
         verbose_name_plural = "Ítems de Órdenes"

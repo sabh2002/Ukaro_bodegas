@@ -466,7 +466,10 @@
         </div>
     </div>
 
-    <form method="post" action="{% url 'suppliers:order_create' %}" x-data="orderForm()" x-init="init()">
+    <form method="post"
+          action="{% if form.instance.pk %}{% url 'suppliers:order_update' form.instance.pk %}{% else %}{% url 'suppliers:order_create' %}{% endif %}"
+          x-data="orderForm()" x-init="init()"
+          @keydown.enter="$event.target.tagName !== 'TEXTAREA' && $event.preventDefault()">
         {% csrf_token %}
         
         <!-- Order Information -->
@@ -586,6 +589,25 @@
                         </svg>
                         <span x-text="statusMessage.text"></span>
                     </div>
+
+                    <!-- Not Found Notification -->
+                    <div x-show="notFoundCode" x-transition
+                         style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <svg width="16" height="16" fill="none" stroke="#92400e" viewBox="0 0 24 24" style="flex-shrink: 0;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.083 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                        </svg>
+                        <span style="font-size: 13px; color: #92400e; font-weight: 600;">
+                            Código <code x-text="notFoundCode" style="background:#fde68a; padding:1px 5px; border-radius:3px;"></code> no existe en el inventario
+                        </span>
+                        <div style="display: flex; gap: 8px; margin-left: auto;">
+                            <button type="button" @click="confirmAddNew()" class="po-btn primary" style="font-size: 12px; padding: 4px 12px;">
+                                Registrar como nuevo
+                            </button>
+                            <button type="button" @click="notFoundCode = ''" class="po-btn secondary" style="font-size: 12px; padding: 4px 12px;">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Empty State -->
@@ -605,7 +627,8 @@
                                 <th style="min-width: 200px;">Producto</th>
                                 <th style="min-width: 100px;">SKU/Código</th>
                                 <th style="text-align: center; width: 80px;">Cant.</th>
-                                <th style="text-align: center; width: 100px;">Precio Unit. USD</th>
+                                <th style="text-align: center; width: 100px;">P. Compra USD</th>
+                                <th style="text-align: center; width: 100px;">P. Venta USD</th>
                                 <th style="text-align: right; width: 100px;">Subtotal</th>
                                 <th style="text-align: center; width: 60px;"></th>
                             </tr>
@@ -647,13 +670,24 @@
                                             class="po-table-input narrow">
                                     </td>
                                     <td style="text-align: center;">
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             x-model.number="product.purchasePrice"
                                             @input="updateTotals"
-                                            min="0" 
+                                            min="0"
                                             step="0.01"
                                             class="po-table-input narrow">
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <input
+                                            type="number"
+                                            x-model.number="product.sellingPrice"
+                                            min="0"
+                                            step="0.01"
+                                            class="po-table-input narrow"
+                                            :style="product.sellingPrice > 0 && product.sellingPrice < product.purchasePrice ? 'border-color: #ef4444;' : ''"
+                                            :title="product.sellingPrice > 0 && product.sellingPrice < product.purchasePrice ? 'Precio de venta menor al de compra' : ''"
+                                            placeholder="0.00">
                                     </td>
                                     <td style="text-align: right; font-weight: 600; color: #059669;">
                                         $<span x-text="(product.quantity * product.purchasePrice).toFixed(2)"></span>
@@ -698,7 +732,7 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="po-grid po-grid-3" style="margin-top: 12px;">
+                                            <div class="po-grid po-grid-2" style="margin-top: 12px;">
                                                 <div>
                                                     <label class="po-label" style="font-size: 11px;">Unidad *</label>
                                                     <select x-model="product.unitType" class="po-table-input">
@@ -708,22 +742,11 @@
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label class="po-label" style="font-size: 11px;">Precio Venta USD *</label>
-                                                    <input 
-                                                        type="number" 
-                                                        x-model.number="product.sellingPrice"
-                                                        min="0" 
-                                                        step="0.01"
-                                                        class="po-table-input"
-                                                        placeholder="0.00"
-                                                        >
-                                                </div>
-                                                <div>
                                                     <label class="po-label" style="font-size: 11px;">Stock Mínimo</label>
-                                                    <input 
-                                                        type="number" 
+                                                    <input
+                                                        type="number"
                                                         x-model.number="product.minStock"
-                                                        min="0" 
+                                                        min="0"
                                                         step="1"
                                                         class="po-table-input"
                                                         value="5">
@@ -762,161 +785,119 @@
             const app = Alpine.$data(document.querySelector('[x-data="orderForm()"]'));
             const formsetContainer = document.getElementById('real-formset-fields');
 
-            // Function to generate real HTML inputs for Django formset
-            function generateFormsetFields(products) {
-                console.log('=== GENERATING FORMSET FIELDS ===');
-                console.log('Number of products:', products.length);
-                console.log('Products array:', products);
+            // Sanitize values to prevent HTML injection
+            const sanitize = (value) => {
+                if (value === null || value === undefined) return '';
+                return String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            };
 
-                // Clear existing fields
+            // Function to generate real HTML inputs for Django formset
+            // Handles 3 categories: deleted existing, remaining existing, new
+            function generateFormsetFields(products) {
                 formsetContainer.innerHTML = '';
 
-                // Update management form counts
-                if (managementFormTotal) {
-                    managementFormTotal.value = products.length;
-                    console.log('✅ Updated TOTAL_FORMS to:', products.length);
-                } else {
-                    console.error('❌ TOTAL_FORMS input not found!');
-                }
+                const deletedIds = app.deletedItemIds || [];
+                const existingItems = products.filter(p => p.itemId);
+                const newItems = products.filter(p => !p.itemId);
 
-                if (managementFormInitial) {
-                    // For new orders, INITIAL_FORMS should be 0
-                    managementFormInitial.value = 0;
-                    console.log('✅ Set INITIAL_FORMS to: 0');
-                } else {
-                    console.error('❌ INITIAL_FORMS input not found!');
-                }
-                
-                // Generate fields for each product
-                products.forEach((product, index) => {
-                    console.log(`\n--- Product ${index} ---`);
-                    console.log('  Name:', product.name);
-                    console.log('  Barcode:', product.barcode);
-                    console.log('  IsNew:', product.isNew);
-                    console.log('  ProductID:', product.productId);
-                    console.log('  Quantity:', product.quantity);
-                    console.log('  Price:', product.purchasePrice);
+                // INITIAL_FORMS = deleted + remaining existing (all have DB records)
+                const initialCount = deletedIds.length + existingItems.length;
+                // TOTAL_FORMS = all forms including new
+                const totalCount = initialCount + newItems.length;
 
-                    const fieldContainer = document.createElement('div');
-                    fieldContainer.className = 'formset-item';
-                    fieldContainer.setAttribute('data-formset-form', index);
+                if (managementFormTotal) managementFormTotal.value = totalCount;
+                if (managementFormInitial) managementFormInitial.value = initialCount;
 
-                    // Validate required fields for new products
-                    if (product.isNew) {
-                        const requiredFields = ['name', 'category', 'sellingPrice', 'barcode'];
-                        const missingFields = requiredFields.filter(field => !product[field]);
+                let formIndex = 0;
 
-                        if (missingFields.length > 0) {
-                            console.error(`  ❌ Missing required fields for product ${index}:`, missingFields);
-                        } else {
-                            console.log('  ✅ All required fields present');
-                        }
-                    } else {
-                        if (product.productId) {
-                            console.log('  ✅ Has productId');
-                        } else {
-                            console.error('  ❌ Missing productId for existing product');
-                        }
-                    }
-                    
-                    // Sanitize values to prevent HTML injection and ensure valid data
-                    const sanitize = (value) => {
-                        if (value === null || value === undefined) return '';
-                        return String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                    };
-                    
-                    // Main formset fields - USAR NOMBRES CORRECTOS
-                    // IMPORTANTE: Incluir campo DELETE requerido por Django formset con can_delete=True
-                    fieldContainer.innerHTML = `
-                        <input type="hidden" name="items-${index}-id" value="">
-                        <input type="hidden" name="items-${index}-DELETE" value="">
-                        <input type="hidden" name="items-${index}-product" value="${sanitize(product.productId || '')}">
-                        <input type="hidden" name="items-${index}-quantity" value="${sanitize(product.quantity || 1)}">
-                        <input type="hidden" name="items-${index}-price_usd" value="${sanitize(product.purchasePrice || 0)}">
-                        <input type="hidden" name="items-${index}-is_new_product" value="${product.isNew ? 'on' : ''}">
-                        ${product.isNew ? `
-                            <input type="hidden" name="items-${index}-new_product_name" value="${sanitize(product.name || '')}">
-                            <input type="hidden" name="items-${index}-new_product_barcode" value="${sanitize(product.barcode || '')}">
-                            <input type="hidden" name="items-${index}-new_product_category" value="${sanitize(product.category || '')}">
-                            <input type="hidden" name="items-${index}-new_product_unit_type" value="${sanitize(product.unitType || 'unit')}">
-                            <input type="hidden" name="items-${index}-new_product_selling_price_usd" value="${sanitize(product.sellingPrice || 0)}">
-                            <input type="hidden" name="items-${index}-new_product_min_stock" value="${sanitize(product.minStock || 5)}">
-                            <input type="hidden" name="items-${index}-new_product_description" value="${sanitize(product.description || '')}">
-                        ` : ''}
+                // 1. Deleted existing items — send id + DELETE=on so Django removes them
+                deletedIds.forEach((itemId) => {
+                    const el = document.createElement('div');
+                    el.className = 'formset-item';
+                    el.innerHTML = `
+                        <input type="hidden" name="items-${formIndex}-id" value="${sanitize(itemId)}">
+                        <input type="hidden" name="items-${formIndex}-DELETE" value="on">
                     `;
-
-                    formsetContainer.appendChild(fieldContainer);
+                    formsetContainer.appendChild(el);
+                    formIndex++;
                 });
 
-                console.log('\n=== FORMSET GENERATION COMPLETE ===');
-                console.log('Total forms in DOM:', products.length);
-                console.log('Forms generated:', formsetContainer.querySelectorAll('.formset-item').length);
-                console.log('=== END ===\n');
+                // 2. Remaining existing items — send id + all data fields
+                existingItems.forEach((product) => {
+                    const el = document.createElement('div');
+                    el.className = 'formset-item';
+                    el.innerHTML = `
+                        <input type="hidden" name="items-${formIndex}-id" value="${sanitize(product.itemId)}">
+                        <input type="hidden" name="items-${formIndex}-DELETE" value="">
+                        <input type="hidden" name="items-${formIndex}-product" value="${sanitize(product.productId || '')}">
+                        <input type="hidden" name="items-${formIndex}-quantity" value="${sanitize(product.quantity || 1)}">
+                        <input type="hidden" name="items-${formIndex}-price_usd" value="${sanitize(product.purchasePrice || 0)}">
+                        <input type="hidden" name="items-${formIndex}-selling_price_usd" value="${sanitize(product.sellingPrice || '')}">
+                        <input type="hidden" name="items-${formIndex}-is_new_product" value="">
+                    `;
+                    formsetContainer.appendChild(el);
+                    formIndex++;
+                });
+
+                // 3. New items — no id, may be brand-new products
+                newItems.forEach((product) => {
+                    const el = document.createElement('div');
+                    el.className = 'formset-item';
+                    el.innerHTML = `
+                        <input type="hidden" name="items-${formIndex}-id" value="">
+                        <input type="hidden" name="items-${formIndex}-DELETE" value="">
+                        <input type="hidden" name="items-${formIndex}-product" value="${sanitize(product.productId || '')}">
+                        <input type="hidden" name="items-${formIndex}-quantity" value="${sanitize(product.quantity || 1)}">
+                        <input type="hidden" name="items-${formIndex}-price_usd" value="${sanitize(product.purchasePrice || 0)}">
+                        <input type="hidden" name="items-${formIndex}-selling_price_usd" value="${sanitize(product.sellingPrice || '')}">
+                        <input type="hidden" name="items-${formIndex}-is_new_product" value="${product.isNew ? 'on' : ''}">
+                        ${product.isNew ? `
+                            <input type="hidden" name="items-${formIndex}-new_product_name" value="${sanitize(product.name || '')}">
+                            <input type="hidden" name="items-${formIndex}-new_product_barcode" value="${sanitize(product.barcode || '')}">
+                            <input type="hidden" name="items-${formIndex}-new_product_category" value="${sanitize(product.category || '')}">
+                            <input type="hidden" name="items-${formIndex}-new_product_unit_type" value="${sanitize(product.unitType || 'unit')}">
+                            <input type="hidden" name="items-${formIndex}-new_product_selling_price_usd" value="${sanitize(product.sellingPrice || 0)}">
+                            <input type="hidden" name="items-${formIndex}-new_product_min_stock" value="${sanitize(product.minStock || 5)}">
+                            <input type="hidden" name="items-${formIndex}-new_product_description" value="${sanitize(product.description || '')}">
+                        ` : ''}
+                    `;
+                    formsetContainer.appendChild(el);
+                    formIndex++;
+                });
             }
-            
-            // Update formset fields whenever products array changes
-            app.$watch('products', (newProducts) => {
-                console.log('🔄 Products array changed, regenerating formset fields...');
-                console.log('New products array:', newProducts);
-                generateFormsetFields(newProducts);
-            });
+
+            // Initial generation for edit mode (products already loaded in init())
+            generateFormsetFields(app.products);
+
+            // Update formset fields whenever products array or deletedItemIds changes
+            app.$watch('products', () => generateFormsetFields(app.products));
+            app.$watch('deletedItemIds', () => generateFormsetFields(app.products));
             
             // Generate fields on form submit
             const form = document.querySelector('form');
             if (form) {
                 form.addEventListener('submit', (e) => {
-                    console.log('=== FORM SUBMISSION ===');
-                    console.log('Products array:', app.products);
-                    
-                    // Validate products before submission
-                    const invalidProducts = app.products.filter((product, index) => {
+                    // Validar todos los productos antes de enviar
+                    const invalidProducts = app.products.filter((product) => {
+                        if (!product.quantity || product.quantity <= 0) return true;
+                        if (!product.purchasePrice || product.purchasePrice <= 0) return true;
                         if (product.isNew) {
-                            const missing = [];
-                            if (!product.name) missing.push('name');
-                            if (!product.barcode) missing.push('barcode');
-                            if (!product.category) missing.push('category');
-                            if (!product.sellingPrice || product.sellingPrice <= 0) missing.push('sellingPrice');
-                            if (!product.quantity || product.quantity <= 0) missing.push('quantity');
-                            if (!product.purchasePrice || product.purchasePrice <= 0) missing.push('purchasePrice');
-                            
-                            if (missing.length > 0) {
-                                console.error(`Product ${index} missing fields:`, missing);
-                                return true;
-                            }
+                            if (!product.name || !product.barcode || !product.category) return true;
+                            if (!product.sellingPrice || product.sellingPrice <= 0) return true;
                         }
                         return false;
                     });
-                    
+
                     if (invalidProducts.length > 0) {
                         e.preventDefault();
-                        alert('Por favor complete todos los campos requeridos para los productos nuevos.');
-                        return false;
+                        const labels = invalidProducts.map((p) =>
+                            p.name ? `"${p.name}"` : `(código: ${p.barcode || 'sin código'})`
+                        );
+                        alert(`Datos incompletos en: ${labels.join(', ')}.\n\nVerifique cantidad, precio de compra y campos requeridos.`);
+                        return;
                     }
-                    
+
                     generateFormsetFields(app.products);
-                    
-                    // Debug: log all form data
-                    setTimeout(() => {
-                        const formData = new FormData(form);
-                        console.log('=== FINAL FORM DATA SUBMITTED ===');
-                        console.log('Total products in array:', app.products.length);
-                        app.products.forEach((prod, idx) => {
-                            console.log(`Product ${idx}:`, {
-                                name: prod.name,
-                                isNew: prod.isNew,
-                                barcode: prod.barcode,
-                                productId: prod.productId
-                            });
-                        });
-                        
-                        console.log('Form fields being sent:');
-                        for (let [key, value] of formData.entries()) {
-                            if (key.startsWith('items-') || key === 'supplier' || key === 'status' || key.includes('TOTAL_FORMS')) {
-                                console.log(key + ': ' + value);
-                            }
-                        }
-                        console.log('=== END FORM DATA ===');
-                    }, 10);
                 });
             }
         });
@@ -968,12 +949,13 @@
         </div>
 
         <!-- Modal para Producto Nuevo -->
-        <div x-show="showNewProductModal" 
-             x-transition:enter="transition ease-out duration-300" 
-             x-transition:enter-start="opacity-0 transform scale-90" 
-             x-transition:enter-end="opacity-100 transform scale-100" 
-             x-transition:leave="transition ease-in duration-200" 
-             x-transition:leave-start="opacity-100 transform scale-100" 
+        <div x-show="showNewProductModal"
+             style="display:none"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform scale-90"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform scale-100"
              x-transition:leave-end="opacity-0 transform scale-90"
              class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
              @click.self="closeNewProductModal">
@@ -987,9 +969,9 @@
                         </svg>
                         Registrar Producto Nuevo
                     </h3>
-                    <button @click="closeNewProductModal" class="text-gray-400 hover:text-gray-600">
+                    <button type="button" @click="closeNewProductModal" class="text-gray-400 hover:text-gray-600">
                         <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6m0 0l6 6m-6-6v12"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
@@ -1130,8 +1112,10 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('orderForm', () => ({
         // State
         products: [],
+        deletedItemIds: [],
         barcodeInput: '',
         scanning: false,
+        notFoundCode: '',
         statusMessage: { type: '', text: '' },
         exchangeRate: 7.0,
         showNewProductModal: false,
@@ -1170,9 +1154,7 @@ document.addEventListener('alpine:init', () => {
                 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        // Producto no encontrado - agregar como nuevo
-                        this.addNewProduct(code);
-                        this.showStatus('warning', `Producto nuevo agregado con código: ${code}`);
+                        this.notFoundCode = code;
                     } else {
                         throw new Error('Error de conexión. Intente nuevamente.');
                     }
@@ -1243,14 +1225,33 @@ document.addEventListener('alpine:init', () => {
                 location: '',
                 isNew: true
             });
-            
-            // Auto-focus on the product name field and show the new product fields
             this.$nextTick(() => {
-                const nameInputs = document.querySelectorAll('input[x-model="product.name"]');
-                if (nameInputs.length > 0) {
-                    nameInputs[nameInputs.length - 1].focus();
-                    nameInputs[nameInputs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const newRow = document.querySelectorAll('.new-product-row');
+                if (newRow.length > 0) {
+                    newRow[newRow.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
+            });
+        },
+
+        confirmAddNew() {
+            const code = this.notFoundCode;
+            this.notFoundCode = '';
+            // Abrir el modal con el código de barras pre-rellenado
+            this.newProductForm = {
+                name: '',
+                barcode: code,
+                category: '',
+                unitType: 'unit',
+                purchasePrice: 0,
+                sellingPrice: 0,
+                quantity: 1,
+                minStock: 5,
+                description: ''
+            };
+            this.showNewProductModal = true;
+            this.$nextTick(() => {
+                const nameInput = document.querySelector('input[x-model="newProductForm.name"]');
+                if (nameInput) nameInput.focus();
             });
         },
         
@@ -1324,6 +1325,11 @@ document.addEventListener('alpine:init', () => {
         },
         
         removeProduct(index) {
+            const product = this.products[index];
+            if (product && product.itemId) {
+                // Marcar como eliminado para que Django formset lo borre
+                this.deletedItemIds.push(product.itemId);
+            }
             this.products.splice(index, 1);
         },
         
@@ -1377,9 +1383,30 @@ document.addEventListener('alpine:init', () => {
         
         init() {
             this.exchangeRate = {{ current_exchange_rate.bs_to_usd|default:7.0 }};
+
+            // Cargar ítems existentes en modo edición
+            {% if existing_items_json %}
+            const existingItems = {{ existing_items_json|safe }};
+            existingItems.forEach(item => {
+                this.products.push({
+                    tempId: Date.now() + Math.random(),
+                    itemId: item.itemId,
+                    productId: item.productId,
+                    name: item.name,
+                    barcode: item.barcode,
+                    quantity: item.quantity,
+                    purchasePrice: item.purchasePrice,
+                    sellingPrice: item.sellingPrice,
+                    category: item.category,
+                    unitType: item.unitType,
+                    isNew: false,
+                    minStock: item.minStock,
+                    description: item.description,
+                });
+            });
+            {% endif %}
+
             this.focusBarcodeInput();
-            
-            console.log('Order form initialized with exchange rate:', this.exchangeRate);
         }
     }));
 });

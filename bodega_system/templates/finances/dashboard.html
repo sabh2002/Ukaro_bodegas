@@ -394,6 +394,42 @@
                     </div>
                 </div>
             </a>
+
+            <a href="{% url 'finances:inventory_report' %}" class="block p-4 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-teal-900">Inventario</p>
+                        <p class="text-sm text-teal-700">Estado del stock actual</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'finances:credits_report' %}" class="block p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-yellow-900">Cuentas por Cobrar</p>
+                        <p class="text-sm text-yellow-700">Créditos a clientes</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{% url 'finances:supplier_debt_report' %}" class="block p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-orange-900">Deuda Proveedores</p>
+                        <p class="text-sm text-orange-700">Saldos pendientes</p>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
 </div>

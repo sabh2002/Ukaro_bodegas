@@ -12,6 +12,9 @@ urlpatterns = [
     path('reports/purchases/', views.purchases_report, name='purchases_report'),
     path('reports/profits/', views.profits_report, name='profits_report'),
     path('reports/product-profitability/', views.product_profitability_report, name='product_profitability_report'),  # ⭐ NUEVO
+    path('reports/inventory/', views.inventory_report, name='inventory_report'),
+    path('reports/credits/', views.credits_report, name='credits_report'),
+    path('reports/supplier-debt/', views.supplier_debt_report, name='supplier_debt_report'),
 
     # Gestión de gastos
     path('expenses/', views.expense_list, name='expense_list'),

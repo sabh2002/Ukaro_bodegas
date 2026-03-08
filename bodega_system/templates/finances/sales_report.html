@@ -3,6 +3,23 @@
 
 {% block title %}Reporte de Ventas{% endblock %}
 
+{% block extra_css %}
+<style>
+.form-input, .form-select {
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    width: 100%;
+}
+.form-input:focus, .form-select:focus {
+    border-color: #2563eb;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-5">
 
@@ -13,22 +30,35 @@
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Reporte de Ventas</h1>
                 <p class="text-sm text-gray-500 mt-0.5">Historial completo de ventas realizadas</p>
             </div>
-            <a href="{% url 'finances:dashboard' %}"
-               class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
-                ← Volver al Dashboard
-            </a>
+            <div class="flex gap-2">
+                {% if request.GET %}
+                <a href="?{{ request.GET.urlencode }}&format=pdf"
+                   class="inline-flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Exportar PDF
+                </a>
+                {% endif %}
+                <a href="{% url 'finances:dashboard' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    ← Volver
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- Filtros -->
     <div class="bg-white rounded-xl shadow-sm p-4">
         <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Filtros</h2>
-        <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {{ form.as_p }}
+        <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {% for field in form %}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endfor %}
             <div class="flex items-end">
                 <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors">
-                    Aplicar Filtros
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors">
+                    Aplicar
                 </button>
             </div>
         </form>
@@ -50,6 +80,28 @@
         </div>
     </div>
 
+    <!-- Desglose por método de pago -->
+    {% if totals_by_method %}
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Desglose por Método de Pago</h2>
+        <div class="flex flex-wrap gap-3">
+            {% for m in totals_by_method %}
+            <div class="flex-1 min-w-[120px] bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                <p class="text-xs text-gray-500 font-medium">
+                    {% if m.payment_method == 'card' %}Punto de Venta
+                    {% elif m.payment_method == 'cash' %}Efectivo
+                    {% elif m.payment_method == 'mobile' %}Pago Móvil
+                    {% elif m.payment_method == 'credit' %}Crédito
+                    {% else %}{{ m.payment_method }}{% endif %}
+                </p>
+                <p class="text-base font-bold text-gray-800 mt-1">${{ m.total_usd|floatformat:2 }}</p>
+                <p class="text-xs text-gray-500">{{ m.count }} venta{{ m.count|pluralize }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Tabla de ventas -->
     <div class="bg-white rounded-xl shadow-md overflow-hidden">
 
@@ -58,34 +110,39 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Venta #</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
-                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Bs</th>
-                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total USD</th>
-                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Tipo</th>
-                        <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Venta #</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Cliente</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Empleado</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Método</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Total Bs</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Total USD</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
                     {% for sale in page_obj %}
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-5 py-3.5 text-sm font-semibold text-gray-900">#{{ sale.id }}</td>
-                        <td class="px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">{{ sale.date|date:"d/m/Y H:i" }}</td>
-                        <td class="px-5 py-3.5">
-                            <div class="text-sm font-medium text-gray-900">{{ sale.customer.name|default:"Cliente General" }}</div>
-                            <div class="text-xs text-gray-400">Por: {{ sale.user.get_full_name|default:sale.user.username }}</div>
-                        </td>
-                        <td class="px-5 py-3.5 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">Bs {{ sale.total_bs|floatformat:2 }}</td>
-                        <td class="px-5 py-3.5 text-sm text-gray-600 text-right whitespace-nowrap">${{ sale.total_usd|floatformat:2 }}</td>
-                        <td class="px-5 py-3.5 text-center">
+                        <td class="px-4 py-3 text-sm font-semibold text-gray-900">#{{ sale.id }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ sale.date|date:"d/m/Y H:i" }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900">{{ sale.customer.name|default:"Cliente General" }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ sale.user.get_full_name|default:sale.user.username }}</td>
+                        <td class="px-4 py-3 text-center">
                             {% if sale.is_credit %}
                             <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Crédito</span>
+                            {% elif sale.payment_method == 'card' %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Punto de Venta</span>
+                            {% elif sale.payment_method == 'cash' %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Efectivo</span>
+                            {% elif sale.payment_method == 'mobile' %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Pago Móvil</span>
                             {% else %}
-                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Contado</span>
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{{ sale.payment_method }}</span>
                             {% endif %}
                         </td>
-                        <td class="px-5 py-3.5 text-center">
+                        <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">Bs {{ sale.total_bs|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 text-right whitespace-nowrap">${{ sale.total_usd|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-center">
                             <a href="{% url 'sales:sale_detail' sale.id %}" class="text-blue-500 hover:text-blue-700" title="Ver">
                                 <svg class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -96,7 +153,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-400">No hay ventas en este período.</td>
+                        <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-400">No hay ventas en este período.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -121,7 +178,7 @@
                     {% if sale.is_credit %}
                     <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Crédito</span>
                     {% else %}
-                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Contado</span>
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">{{ sale.get_payment_method_display }}</span>
                     {% endif %}
                     <a href="{% url 'sales:sale_detail' sale.id %}" class="text-xs text-blue-600 font-medium">Ver →</a>
                 </div>

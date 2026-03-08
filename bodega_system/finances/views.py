@@ -11,9 +11,18 @@ from datetime import datetime, timedelta, date
 from decimal import Decimal
 
 from .models import Expense, ExpenseReceipt, DailyClose
-from .forms import ExpenseForm, ExpenseReceiptFormset, DailyCloseForm, ReportFilterForm
+from .forms import (
+    ExpenseForm, ExpenseReceiptFormset, DailyCloseForm, ReportFilterForm,
+    SalesReportFilterForm, PurchasesReportFilterForm,
+    InventoryFilterForm, CreditsReportFilterForm,
+)
+from .pdf_generators import (
+    pdf_sales_report, pdf_purchases_report, pdf_inventory_report,
+    pdf_credits_report, pdf_supplier_debt_report,
+)
 from sales.models import Sale, SaleItem
 from suppliers.models import SupplierOrder
+from inventory.models import Product
 from utils.decorators import admin_required
 from utils.models import ExchangeRate
 
@@ -257,64 +266,129 @@ def finance_dashboard(request):
 
 @login_required
 def sales_report(request):
-    """Vista para el reporte de ventas"""
-    form = ReportFilterForm(request.GET or None)
-    sales = Sale.objects.all()
-    
+    """Vista para el reporte de ventas con filtros avanzados y exportación PDF"""
+    form = SalesReportFilterForm(request.GET or None)
+    sales = Sale.objects.select_related('user', 'customer')
+
+    start_date = end_date = None
+
     # Aplicar filtros
     if form.is_valid():
         start_date, end_date = _get_date_range(form.cleaned_data)
         if start_date and end_date:
             sales = sales.filter(date__date__gte=start_date, date__date__lte=end_date)
-    
-    # Ordenar y paginar
-    sales = sales.order_by('-date')
-    paginator = Paginator(sales, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
+
+        # Filtro por empleado
+        employee = form.cleaned_data.get('employee')
+        if employee:
+            sales = sales.filter(user=employee)
+
+        # Filtro por método de pago
+        payment_method = form.cleaned_data.get('payment_method')
+        if payment_method == 'credit':
+            sales = sales.filter(is_credit=True)
+        elif payment_method:
+            sales = sales.filter(payment_method=payment_method, is_credit=False)
+
     # Calcular totales
     totals = sales.aggregate(
         total_bs=Sum('total_bs'),
         total_usd=Sum('total_usd'),
         count=Count('id')
     )
-    
+
+    # Desglose por método de pago
+    totals_by_method = list(
+        sales.values('payment_method').annotate(
+            total_usd=Sum('total_usd'),
+            count=Count('id')
+        )
+    )
+    # Agregar créditos al desglose
+    credit_totals = sales.filter(is_credit=True).aggregate(
+        total_usd=Sum('total_usd'), count=Count('id')
+    )
+    if credit_totals['count']:
+        totals_by_method.append({
+            'payment_method': 'credit',
+            'total_usd': credit_totals['total_usd'],
+            'count': credit_totals['count'],
+        })
+
+    # Exportar PDF
+    if request.GET.get('format') == 'pdf':
+        metadata = []
+        if start_date and end_date:
+            metadata.append(('Período', f'{start_date.strftime("%d/%m/%Y")} - {end_date.strftime("%d/%m/%Y")}'))
+        metadata.append(('Total Ventas', str(totals.get('count') or 0)))
+        return pdf_sales_report(sales.order_by('-date'), totals, metadata=metadata)
+
+    # Ordenar y paginar
+    sales = sales.order_by('-date')
+    paginator = Paginator(sales, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'finances/sales_report.html', {
         'form': form,
         'page_obj': page_obj,
         'totals': totals,
+        'totals_by_method': totals_by_method,
+        'start_date': start_date,
+        'end_date': end_date,
     })
 
 @login_required
 def purchases_report(request):
-    """Vista para el reporte de compras"""
-    form = ReportFilterForm(request.GET or None)
-    purchases = SupplierOrder.objects.filter(status='received')
-    
+    """Vista para el reporte de compras con filtros avanzados y exportación PDF"""
+    form = PurchasesReportFilterForm(request.GET or None)
+    purchases = SupplierOrder.objects.filter(status='received').select_related('supplier')
+
+    start_date = end_date = None
+
     # Aplicar filtros
     if form.is_valid():
         start_date, end_date = _get_date_range(form.cleaned_data)
         if start_date and end_date:
             purchases = purchases.filter(order_date__date__gte=start_date, order_date__date__lte=end_date)
-    
-    # Ordenar y paginar
-    purchases = purchases.order_by('-order_date').select_related('supplier')
-    paginator = Paginator(purchases, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
+
+        supplier = form.cleaned_data.get('supplier')
+        if supplier:
+            purchases = purchases.filter(supplier=supplier)
+
+        payment_status = form.cleaned_data.get('payment_status')
+        if payment_status == 'paid':
+            purchases = purchases.filter(paid=True)
+        elif payment_status == 'unpaid':
+            purchases = purchases.filter(paid=False)
+
     # Calcular totales
     totals = purchases.aggregate(
         total_bs=Sum('total_bs'),
         total_usd=Sum('total_usd'),
         count=Count('id')
     )
-    
+
+    # Exportar PDF
+    if request.GET.get('format') == 'pdf':
+        metadata = []
+        if start_date and end_date:
+            metadata.append(('Período', f'{start_date.strftime("%d/%m/%Y")} - {end_date.strftime("%d/%m/%Y")}'))
+        metadata.append(('Total Órdenes', str(totals.get('count') or 0)))
+        return pdf_purchases_report(purchases.order_by('-order_date'), totals, metadata=metadata)
+
+    # Ordenar y paginar
+    purchases = purchases.order_by('-order_date')
+    paginator = Paginator(purchases, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'finances/purchases_report.html', {
         'form': form,
         'page_obj': page_obj,
         'totals': totals,
+        'start_date': start_date,
+        'end_date': end_date,
     })
 
 @login_required
@@ -576,6 +650,224 @@ def product_profitability_report(request):
     }
 
     return render(request, 'finances/product_profitability_report.html', context)
+
+@login_required
+def inventory_report(request):
+    """Vista para el reporte de inventario actual"""
+    form = InventoryFilterForm(request.GET or None)
+    products = Product.objects.filter(is_active=True).select_related('category')
+
+    if form.is_valid():
+        category = form.cleaned_data.get('category')
+        if category:
+            products = products.filter(category=category)
+
+        sort_by = form.cleaned_data.get('sort_by') or 'name'
+        if sort_by == 'name':
+            products = products.order_by('name')
+        elif sort_by == 'category':
+            products = products.order_by('category__name', 'name')
+        elif sort_by == 'stock':
+            products = products.order_by('stock')
+        elif sort_by == 'value':
+            # Ordenar por valor en Python después de traer los datos
+            products = products.order_by('name')
+        else:
+            products = products.order_by('name')
+    else:
+        sort_by = 'name'
+        products = products.order_by('name')
+
+    products_list = list(products)
+
+    # Filtro de stock_status en Python (usa @property del modelo)
+    stock_status_filter = form.cleaned_data.get('stock_status') if form.is_valid() else ''
+    if stock_status_filter == 'out':
+        products_list = [p for p in products_list if p.stock_status == 'Sin stock']
+    elif stock_status_filter == 'low':
+        products_list = [p for p in products_list if p.stock_status == 'Stock bajo']
+    elif stock_status_filter == 'normal':
+        products_list = [p for p in products_list if p.stock_status == 'Stock normal']
+
+    # Ordenar por valor en inventario si se eligió esa opción
+    if form.is_valid() and form.cleaned_data.get('sort_by') == 'value':
+        products_list.sort(key=lambda p: float(p.stock) * float(p.purchase_price_usd), reverse=True)
+
+    # Calcular totales
+    total_value_usd = sum(float(p.stock) * float(p.purchase_price_usd) for p in products_list)
+    low_stock_count = sum(1 for p in products_list if p.stock_status == 'Stock bajo')
+    out_of_stock_count = sum(1 for p in products_list if p.stock_status == 'Sin stock')
+
+    totals = {
+        'count': len(products_list),
+        'total_value_usd': total_value_usd,
+        'low_stock_count': low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+    }
+
+    # Exportar PDF
+    if request.GET.get('format') == 'pdf':
+        metadata = [
+            ('Total Productos', str(len(products_list))),
+            ('Valor Total USD', f'${total_value_usd:.2f}'),
+        ]
+        return pdf_inventory_report(products_list, totals, metadata=metadata)
+
+    paginator = Paginator(products_list, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'finances/inventory_report.html', {
+        'form': form,
+        'page_obj': page_obj,
+        'totals': totals,
+    })
+
+
+@login_required
+def credits_report(request):
+    """Vista para el reporte de cuentas por cobrar"""
+    from customers.models import CustomerCredit
+
+    form = CreditsReportFilterForm(request.GET or None)
+    today = date.today()
+
+    credits = CustomerCredit.objects.select_related('customer', 'sale').annotate(
+        paid_amount=Sum('payments__amount_usd')
+    )
+
+    start_date = end_date = None
+    credit_status = 'pending'  # valor por defecto
+
+    if form.is_valid():
+        start_date, end_date = _get_date_range(form.cleaned_data)
+        if start_date and end_date:
+            credits = credits.filter(
+                date_created__date__gte=start_date,
+                date_created__date__lte=end_date
+            )
+
+        credit_status = form.cleaned_data.get('credit_status') or 'pending'
+
+    # Filtrar por estado
+    if credit_status == 'pending':
+        credits = credits.filter(is_paid=False)
+    elif credit_status == 'overdue':
+        credits = credits.filter(is_paid=False, date_due__lt=today)
+    elif credit_status == 'paid':
+        credits = credits.filter(is_paid=True)
+    # 'all' → sin filtro adicional
+
+    # Calcular saldo y aging en Python
+    credits_data = []
+    aging = {'current': 0.0, 'days_1_30': 0.0, 'days_31_60': 0.0, 'over_60': 0.0}
+
+    for c in credits:
+        amount = float(c.amount_usd)
+        paid = float(c.paid_amount or 0)
+        balance = max(amount - paid, 0.0)
+
+        days_overdue = 0
+        if c.date_due and not c.is_paid:
+            days_overdue = max((today - c.date_due).days, 0)
+
+        credits_data.append({
+            'id': c.id,
+            'customer': c.customer.name if c.customer else '-',
+            'sale_id': c.sale.id if c.sale else '-',
+            'amount': amount,
+            'paid': paid,
+            'balance': balance,
+            'date_due': c.date_due,
+            'days_overdue': days_overdue,
+            'is_paid': c.is_paid,
+        })
+
+        # Aging solo para créditos no pagados
+        if not c.is_paid:
+            if days_overdue == 0:
+                aging['current'] += balance
+            elif days_overdue <= 30:
+                aging['days_1_30'] += balance
+            elif days_overdue <= 60:
+                aging['days_31_60'] += balance
+            else:
+                aging['over_60'] += balance
+
+    # Exportar PDF
+    if request.GET.get('format') == 'pdf':
+        metadata = []
+        if start_date and end_date:
+            metadata.append(('Período', f'{start_date.strftime("%d/%m/%Y")} - {end_date.strftime("%d/%m/%Y")}'))
+        metadata.append(('Estado', credit_status.capitalize()))
+        return pdf_credits_report(credits_data, aging, metadata=metadata)
+
+    paginator = Paginator(credits_data, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'finances/credits_report.html', {
+        'form': form,
+        'page_obj': page_obj,
+        'aging': aging,
+        'credit_status': credit_status,
+        'start_date': start_date,
+        'end_date': end_date,
+    })
+
+
+@login_required
+def supplier_debt_report(request):
+    """Vista para el reporte de deuda a proveedores"""
+    orders = SupplierOrder.objects.filter(
+        status='received'
+    ).select_related('supplier').exclude(total_usd=0)
+
+    suppliers_data = {}
+    for order in orders:
+        owed = float(order.outstanding_balance_usd)
+        if owed <= 0:
+            continue
+        sid = order.supplier.id
+        if sid not in suppliers_data:
+            suppliers_data[sid] = {
+                'name': order.supplier.name,
+                'phone': order.supplier.phone or '',
+                'order_count': 0,
+                'total_usd': 0.0,
+                'paid_usd': 0.0,
+                'debt_usd': 0.0,
+                'orders': [],
+            }
+        suppliers_data[sid]['order_count'] += 1
+        suppliers_data[sid]['total_usd'] += float(order.total_usd)
+        suppliers_data[sid]['paid_usd'] += float(order.paid_amount_usd)
+        suppliers_data[sid]['debt_usd'] += owed
+        suppliers_data[sid]['orders'].append(order)
+
+    # Ordenar por deuda descendente
+    suppliers_list = sorted(suppliers_data.values(), key=lambda x: x['debt_usd'], reverse=True)
+    suppliers_ordered = {}
+    for s in suppliers_list:
+        # Reconstruir dict preservando orden
+        key = s['name']
+        suppliers_ordered[key] = s
+
+    total_debt = sum(s['debt_usd'] for s in suppliers_data.values())
+
+    # Exportar PDF
+    if request.GET.get('format') == 'pdf':
+        return pdf_supplier_debt_report(
+            {k: v for k, v in suppliers_ordered.items()},
+            total_debt,
+            metadata=[('Total Deuda USD', f'${total_debt:.2f}')]
+        )
+
+    return render(request, 'finances/supplier_debt_report.html', {
+        'suppliers_data': suppliers_list,
+        'total_debt': total_debt,
+    })
+
 
 # ============================================================================
 # GESTIÓN DE GASTOS

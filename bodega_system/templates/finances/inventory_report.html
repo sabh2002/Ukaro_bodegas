@@ -1,0 +1,213 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Reporte de Inventario{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-input, .form-select {
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    width: 100%;
+}
+.form-input:focus, .form-select:focus {
+    border-color: #2563eb;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Reporte de Inventario</h1>
+                <p class="text-sm text-gray-500 mt-0.5">Estado actual del inventario de productos activos</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="?{{ request.GET.urlencode }}&format=pdf"
+                   class="inline-flex items-center bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    Exportar PDF
+                </a>
+                <a href="{% url 'finances:dashboard' %}"
+                   class="inline-flex items-center bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg text-sm transition-colors">
+                    ← Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Filtros</h2>
+        <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {% for field in form %}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endfor %}
+            <div class="flex items-end">
+                <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors">
+                    Aplicar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cards de métricas -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Productos</p>
+            <p class="text-2xl font-bold text-blue-700 mt-1">{{ totals.count }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor USD</p>
+            <p class="text-2xl font-bold text-green-700 mt-1">${{ totals.total_value_usd|floatformat:2 }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-yellow-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bajo Stock</p>
+            <p class="text-2xl font-bold text-yellow-700 mt-1">{{ totals.low_stock_count }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sin Stock</p>
+            <p class="text-2xl font-bold text-red-700 mt-1">{{ totals.out_of_stock_count }}</p>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+
+        <!-- Tabla desktop -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Producto</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Código</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Categoría</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Unidad</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Stock</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Mínimo</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Estado</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">P.Compra</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">P.Venta</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    {% for product in page_obj %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ product.name }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ product.barcode|default:"-" }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ product.category.name|default:"-" }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ product.unit_display }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold text-center
+                            {% if product.stock_status == 'Sin stock' %}text-red-700
+                            {% elif product.stock_status == 'Stock bajo' %}text-yellow-700
+                            {% else %}text-green-700{% endif %}">
+                            {{ product.stock|floatformat:0 }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500 text-center">{{ product.min_stock|floatformat:0 }}</td>
+                        <td class="px-4 py-3 text-center">
+                            {% if product.stock_status == 'Sin stock' %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Sin stock</span>
+                            {% elif product.stock_status == 'Stock bajo' %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Bajo</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600 text-right whitespace-nowrap">${{ product.purchase_price_usd|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 text-right whitespace-nowrap">${{ product.selling_price_usd|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">
+                            ${% widthratio product.stock 1 product.purchase_price_usd %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="px-6 py-12 text-center text-sm text-gray-400">No hay productos que coincidan con los filtros.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Cards móvil -->
+        <div class="md:hidden divide-y divide-gray-100">
+            {% for product in page_obj %}
+            <div class="p-3">
+                <div class="flex items-start justify-between mb-1">
+                    <div class="flex-1">
+                        <p class="text-sm font-bold text-gray-900">{{ product.name }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ product.category.name|default:"Sin categoría" }} · {{ product.barcode|default:"Sin código" }}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-2">
+                        {% if product.stock_status == 'Sin stock' %}
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Sin stock</span>
+                        {% elif product.stock_status == 'Stock bajo' %}
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Bajo</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Normal</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2 text-center text-xs">
+                    <div class="bg-gray-50 rounded p-1">
+                        <p class="text-gray-500">Stock</p>
+                        <p class="font-bold text-gray-800">{{ product.stock|floatformat:0 }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded p-1">
+                        <p class="text-gray-500">P.Compra</p>
+                        <p class="font-bold text-gray-800">${{ product.purchase_price_usd|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded p-1">
+                        <p class="text-gray-500">P.Venta</p>
+                        <p class="font-bold text-gray-800">${{ product.selling_price_usd|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-10 text-center">
+                <p class="text-sm text-gray-400">No hay productos que coincidan con los filtros.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Paginación -->
+        {% if page_obj.has_other_pages %}
+        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+            <p class="text-sm text-gray-600 hidden sm:block">
+                <span class="font-semibold">{{ page_obj.start_index }}</span>–<span class="font-semibold">{{ page_obj.end_index }}</span>
+                de <span class="font-semibold">{{ page_obj.paginator.count }}</span>
+            </p>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}"
+                   class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors">
+                    ← Anterior
+                </a>
+                {% endif %}
+                <span class="px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg">
+                    {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+                </span>
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}"
+                   class="px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors">
+                    Siguiente →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

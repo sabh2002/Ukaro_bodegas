@@ -456,6 +456,15 @@ class SmokeTest(TestCase):
     def test_finances_product_profitability(self):
         self._get('finances:product_profitability_report')
 
+    def test_finances_inventory_report(self):
+        self._get('finances:inventory_report')
+
+    def test_finances_credits_report(self):
+        self._get('finances:credits_report')
+
+    def test_finances_supplier_debt_report(self):
+        self._get('finances:supplier_debt_report')
+
     def test_finances_expense_list(self):
         self._get('finances:expense_list')
 

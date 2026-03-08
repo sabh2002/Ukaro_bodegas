@@ -10,10 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-
 # Django DB
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Sum, Q
 from django.core.paginator import Paginator
 
@@ -305,7 +303,23 @@ def order_create(request, exchange_rate=None):
                         for form_item in formset.forms:
                             if form_item.cleaned_data and not form_item.cleaned_data.get('DELETE', False):
                                 if form_item.cleaned_data.get('is_new_product'):
-                                    new_product = _create_product_from_form(form_item, exchange_rate, request.user)
+                                    barcode = form_item.cleaned_data.get('new_product_barcode', '?')
+                                    try:
+                                        new_product = _create_product_from_form(form_item, exchange_rate, request.user)
+                                    except IntegrityError:
+                                        messages.error(
+                                            request,
+                                            f'El código de barras "{barcode}" ya está registrado. '
+                                            'Otro usuario lo creó mientras procesaba esta orden.'
+                                        )
+                                        return render(request, 'suppliers/order_form.html', {
+                                            'form': form,
+                                            'formset': formset,
+                                            'title': 'Nueva Orden de Compra',
+                                            'current_exchange_rate': exchange_rate,
+                                            'categories': Category.objects.all().order_by('name'),
+                                            'unit_choices': Product.UNIT_TYPES,
+                                        })
                                     form_item.instance.product = new_product
 
                                     logger.info("New product created from order", extra={
@@ -431,17 +445,37 @@ def order_update(request, pk, exchange_rate=None):
 
     # Obtener categorías y opciones de unidad
     from inventory.models import Category, Product
+    import json
     categories = Category.objects.all().order_by('name')
     unit_choices = Product.UNIT_TYPES
+
+    # Serializar ítems existentes para pre-cargar en Alpine.js
+    existing_items = []
+    for item in order.items.select_related('product', 'product__category').all():
+        existing_items.append({
+            'itemId': item.id,
+            'productId': item.product.id,
+            'name': item.product.name,
+            'barcode': item.product.barcode or '',
+            'quantity': float(item.quantity),
+            'purchasePrice': float(item.price_usd),
+            'sellingPrice': float(item.selling_price_usd) if item.selling_price_usd else float(item.product.selling_price_usd),
+            'category': item.product.category.id if item.product.category else '',
+            'unitType': item.product.unit_type,
+            'isNew': False,
+            'minStock': float(item.product.min_stock),
+            'description': item.product.description or '',
+        })
 
     return render(request, 'suppliers/order_form.html', {
         'form': form,
         'formset': formset,
         'order': order,
         'title': 'Editar Orden de Compra',
-        'current_exchange_rate': exchange_rate,  # Inyectado por decorator
+        'current_exchange_rate': exchange_rate,
         'categories': categories,
         'unit_choices': unit_choices,
+        'existing_items_json': json.dumps(existing_items),
     })
 
 @login_required
@@ -596,6 +630,10 @@ def _process_received_order(order, user, update_prices=True, notes=''):
             # Actualizar precio en Bs
             product.purchase_price_bs = item.price_bs
 
+            # Actualizar precio de venta si fue especificado en la orden
+            if item.selling_price_usd is not None and item.selling_price_usd > 0:
+                product.selling_price_usd = item.selling_price_usd
+
         product.save()
 
         # Registrar producto actualizado
@@ -673,10 +711,7 @@ def product_lookup_api(request, barcode):
             'description': product.description or '',
         })
     except Product.DoesNotExist:
-        return JsonResponse({
-            'exists': False,
-            'product': None
-        })
+        return JsonResponse({'exists': False, 'product': None}, status=404)
 
 
 # ============================================================================

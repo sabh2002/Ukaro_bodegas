@@ -42,9 +42,15 @@ class SupplierOrderForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
+
         # Filtrar solo proveedores activos
         self.fields['supplier'].queryset = Supplier.objects.filter(is_active=True)
+
+        # Al crear una orden nueva no se puede marcar como "recibida" directamente
+        if not self.instance.pk:
+            self.fields['status'].choices = [
+                c for c in SupplierOrder.ORDER_STATUS if c[0] != 'received'
+            ]
     
     def save(self, commit=True):
         order = super().save(commit=False)
@@ -108,17 +114,20 @@ class SupplierOrderItemForm(forms.ModelForm):
     
     class Meta:
         model = SupplierOrderItem
-        fields = ['product', 'quantity', 'price_usd']
+        fields = ['product', 'quantity', 'price_usd', 'selling_price_usd']
         widgets = {
             'product': forms.Select(attrs={'class': 'form-select'}),
-            # ✅ CAMBIAR: Permitir decimales en cantidad
             'quantity': forms.NumberInput(attrs={
-                'class': 'form-input', 
+                'class': 'form-input',
                 'min': '0.01',
-                'step': '0.01'  # ← AGREGAR/MODIFICAR ESTO
+                'step': '0.01'
             }),
             'price_usd': forms.NumberInput(attrs={
-                'class': 'form-input', 
+                'class': 'form-input',
+                'step': '0.01'
+            }),
+            'selling_price_usd': forms.NumberInput(attrs={
+                'class': 'form-input',
                 'step': '0.01'
             }),
         }
